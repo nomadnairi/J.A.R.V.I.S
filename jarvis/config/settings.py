@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     llm_max_tokens: int = Field(default=2048, gt=0)
 
+    #: Max agentic tool-calling rounds before returning to the user.
+    max_tool_rounds: int = Field(default=5, gt=0, le=20)
+    #: Max concurrent sessions kept in memory (LRU-evicted beyond this).
+    max_sessions: int = Field(default=1000, gt=0)
+
     # --- Assistant persona ---
     assistant_name: str = "J.A.R.V.I.S."
     user_name: str = "Sir"

@@ -12,11 +12,21 @@ _DATE_TRIGGERS = {"date", "today", "day"}
 
 
 class DateTimeSkill(BaseSkill):
-    """Handles 'what time is it' / 'what's the date' style requests."""
+    """Reports the current date/time, both as a fast-path skill and a tool."""
 
-    name = "datetime"
-    description = "Report the current date and time."
+    name = "get_datetime"
+    description = "Get the current date and/or time on the host machine."
     priority = 50
+    parameters = {
+        "type": "object",
+        "properties": {
+            "part": {
+                "type": "string",
+                "enum": ["time", "date", "both"],
+                "description": "Which part to return.",
+            }
+        },
+    }
 
     def can_handle(self, text: str) -> bool:
         tokens = set(tokenize_words(text))
@@ -24,11 +34,17 @@ class DateTimeSkill(BaseSkill):
         mentions_dt = bool((_TIME_TRIGGERS | _DATE_TRIGGERS) & tokens)
         return asks_question and mentions_dt
 
-    def handle(self, text: str, context: dict | None = None) -> SkillResult:
+    async def handle(self, text: str, context: dict | None = None) -> SkillResult:
         tokens = set(tokenize_words(text))
+        part = "time" if _TIME_TRIGGERS & tokens else "date"
+        return await self.execute(part=part)
+
+    async def execute(self, part: str = "both", **_: object) -> SkillResult:
         now = datetime.now()
-        if _TIME_TRIGGERS & tokens:
+        if part == "time":
             return SkillResult(text=f"It is {now.strftime('%H:%M')}.")
+        if part == "date":
+            return SkillResult(text=f"Today is {now.strftime('%A, %d %B %Y')}.")
         return SkillResult(
-            text=f"Today is {now.strftime('%A, %d %B %Y')}."
+            text=f"It is {now.strftime('%H:%M')} on {now.strftime('%A, %d %B %Y')}."
         )

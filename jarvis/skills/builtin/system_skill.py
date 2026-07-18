@@ -17,16 +17,20 @@ _STARTED_AT = datetime.now()
 
 
 class SystemSkill(BaseSkill):
-    """Handles 'system status' / 'diagnostics' / 'version' requests."""
+    """Reports assistant version and host diagnostics (fast-path + tool)."""
 
-    name = "system"
-    description = "Report assistant version and host diagnostics."
+    name = "system_status"
+    description = "Report the assistant version, host, and uptime diagnostics."
     priority = 40
+    parameters = {"type": "object", "properties": {}}
 
     def can_handle(self, text: str) -> bool:
         return bool(_TRIGGERS & set(tokenize_words(text)))
 
-    def handle(self, text: str, context: dict | None = None) -> SkillResult:
+    async def handle(self, text: str, context: dict | None = None) -> SkillResult:
+        return await self.execute()
+
+    async def execute(self, **_: object) -> SkillResult:
         uptime = datetime.now() - _STARTED_AT
         minutes = int(uptime.total_seconds() // 60)
         report = (

@@ -3,20 +3,30 @@ Retry helpers with exponential backoff.
 
 Used by the LLM client (and later by integrations) to survive transient
 network / rate-limit failures without hand-rolling retry loops everywhere.
+Both synchronous (:func:`retry`) and asynchronous (:func:`retry_async`)
+variants are provided.
 """
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import random
 import time
-from typing import Callable, TypeVar
+from typing import Awaitable, Callable, TypeVar
 
 from jarvis.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 T = TypeVar("T")
+
+
+def _next_delay(delay: float, max_delay: float, jitter: bool) -> float:
+    sleep_for = min(delay, max_delay)
+    if jitter:
+        sleep_for += random.uniform(0, sleep_for * 0.1)
+    return sleep_for
 
 
 def retry(
@@ -50,9 +60,7 @@ def retry(
                     last_exc = exc
                     if attempt == attempts:
                         break
-                    sleep_for = min(delay, max_delay)
-                    if jitter:
-                        sleep_for += random.uniform(0, sleep_for * 0.1)
+                    sleep_for = _next_delay(delay, max_delay, jitter)
                     logger.warning(
                         "%s failed (attempt %d/%d): %s — retrying in %.1fs",
                         func.__name__,
@@ -64,6 +72,47 @@ def retry(
                     time.sleep(sleep_for)
                     delay *= backoff
             assert last_exc is not None  # for type checkers
+            raise last_exc
+
+        return wrapper
+
+    return decorator
+
+
+def retry_async(
+    attempts: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 30.0,
+    backoff: float = 2.0,
+    jitter: bool = True,
+    exceptions: tuple[type[Exception], ...] = (Exception,),
+) -> Callable[[Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]]:
+    """Async counterpart of :func:`retry` using :func:`asyncio.sleep`."""
+
+    def decorator(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
+        @functools.wraps(func)
+        async def wrapper(*args: object, **kwargs: object) -> T:
+            delay = base_delay
+            last_exc: Exception | None = None
+            for attempt in range(1, attempts + 1):
+                try:
+                    return await func(*args, **kwargs)
+                except exceptions as exc:  # type: ignore[misc]
+                    last_exc = exc
+                    if attempt == attempts:
+                        break
+                    sleep_for = _next_delay(delay, max_delay, jitter)
+                    logger.warning(
+                        "%s failed (attempt %d/%d): %s — retrying in %.1fs",
+                        func.__name__,
+                        attempt,
+                        attempts,
+                        exc,
+                        sleep_for,
+                    )
+                    await asyncio.sleep(sleep_for)
+                    delay *= backoff
+            assert last_exc is not None
             raise last_exc
 
         return wrapper

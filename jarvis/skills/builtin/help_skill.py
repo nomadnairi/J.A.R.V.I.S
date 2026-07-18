@@ -11,16 +11,18 @@ _TRIGGERS = {"help", "capabilities", "skills", "commands"}
 class HelpSkill(BaseSkill):
     """Handles 'what can you do' / 'help' requests.
 
-    The registry is injected after construction so the skill can enumerate its
-    siblings without a circular import.
+    Fast-path only (not exposed as an LLM tool). The registry is injected
+    after construction so the skill can enumerate its siblings without a
+    circular import.
     """
 
     name = "help"
     description = "List available skills and capabilities."
     priority = 60
+    parameters = None  # meta-skill: not advertised to the model
 
     def __init__(self) -> None:
-        # Set by the engine after all skills are registered.
+        # Set by the container after all skills are registered.
         self.registry = None  # type: ignore[assignment]
 
     def can_handle(self, text: str) -> bool:
@@ -30,12 +32,13 @@ class HelpSkill(BaseSkill):
         # "what can you do"
         return {"what"} <= tokens and {"do", "can"} & tokens
 
-    def handle(self, text: str, context: dict | None = None) -> SkillResult:
+    async def handle(self, text: str, context: dict | None = None) -> SkillResult:
         lines = ["Here's what I can handle directly, Sir:"]
         skills = self.registry.all() if self.registry else []
         for skill in sorted(skills, key=lambda s: s.priority, reverse=True):
             if skill.description:
-                lines.append(f"• {skill.name}: {skill.description}")
+                tool = " (tool)" if skill.parameters is not None else ""
+                lines.append(f"• {skill.name}{tool}: {skill.description}")
         lines.append(
             "Anything else, I'll reason through with the language model."
         )

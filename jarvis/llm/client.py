@@ -1,9 +1,10 @@
 """
-Unified LLM client.
+Unified async LLM client.
 
 Wraps one or more :class:`~jarvis.llm.base.LLMProvider` instances behind a
-single ``complete`` call, adding:
+single interface, adding:
 
+* async ``complete`` (with tool calling) and async ``stream``,
 * automatic retry with exponential backoff (transient failures), and
 * provider fallback — if the primary provider fails, configured fallbacks are
   tried in order before giving up.
@@ -13,22 +14,25 @@ The rest of the system talks only to this class.
 
 from __future__ import annotations
 
+from typing import AsyncIterator
+
 from jarvis.config.settings import Settings
 from jarvis.llm.base import LLMProvider, LLMResult
 from jarvis.llm.providers import PROVIDER_REGISTRY
+from jarvis.llm.tools import ToolResult, ToolSpec
 from jarvis.utils.exceptions import (
     AllProvidersFailedError,
     LLMConfigError,
     LLMError,
 )
 from jarvis.utils.logger import get_logger
-from jarvis.utils.retry import retry
+from jarvis.utils.retry import retry_async
 
 logger = get_logger(__name__)
 
 
 class LLMClient:
-    """Provider-agnostic client with retry and fallback."""
+    """Provider-agnostic async client with retry and fallback."""
 
     def __init__(
         self,
@@ -83,21 +87,20 @@ class LLMClient:
 
     # -- completion ---------------------------------------------------------
 
-    def complete(
+    async def complete(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict],
         system: str | None = None,
+        tools: list[ToolSpec] | None = None,
     ) -> LLMResult:
         """Complete ``messages``, retrying and falling back as needed."""
-        chain = [self.primary, *self.fallbacks]
         errors: list[str] = []
-
-        for provider in chain:
+        for provider in self._chain():
             if not provider.is_available():
                 errors.append(f"{provider.name}: no credentials")
                 continue
             try:
-                return self._complete_with_retry(provider, messages, system)
+                return await self._complete_with_retry(provider, messages, system, tools)
             except LLMError as exc:
                 logger.warning("Provider '%s' failed: %s", provider.name, exc)
                 errors.append(f"{provider.name}: {exc}")
@@ -108,22 +111,80 @@ class LLMClient:
             details={"errors": errors},
         )
 
-    def _complete_with_retry(
+    async def _complete_with_retry(
         self,
         provider: LLMProvider,
-        messages: list[dict[str, str]],
+        messages: list[dict],
         system: str | None,
+        tools: list[ToolSpec] | None,
     ) -> LLMResult:
-        @retry(attempts=self._retry_attempts, base_delay=1.0, exceptions=(LLMError,))
-        def _call() -> LLMResult:
-            return provider.complete(messages, system)
+        @retry_async(attempts=self._retry_attempts, base_delay=1.0, exceptions=(LLMError,))
+        async def _call() -> LLMResult:
+            return await provider.complete(messages, system, tools)
 
-        return _call()
+        return await _call()
+
+    # -- streaming ----------------------------------------------------------
+
+    async def stream(
+        self,
+        messages: list[dict],
+        system: str | None = None,
+    ) -> AsyncIterator[str]:
+        """Stream a completion, falling back before the first chunk only.
+
+        Once a provider has produced its first chunk we are committed to it;
+        mid-stream fallback is not possible.
+        """
+        errors: list[str] = []
+        for provider in self._chain():
+            if not provider.is_available():
+                errors.append(f"{provider.name}: no credentials")
+                continue
+            agen = provider.stream(messages, system)
+            try:
+                first = await agen.__anext__()
+            except StopAsyncIteration:
+                return  # empty but successful stream
+            except LLMError as exc:
+                logger.warning("Provider '%s' stream failed: %s", provider.name, exc)
+                errors.append(f"{provider.name}: {exc}")
+                continue
+
+            yield first
+            async for chunk in agen:
+                yield chunk
+            return
+
+        raise AllProvidersFailedError(
+            "All LLM providers failed or are unconfigured.",
+            details={"errors": errors},
+        )
+
+    # -- tool-loop helpers --------------------------------------------------
+
+    def continuation_messages(
+        self,
+        result: LLMResult,
+        tool_results: list[ToolResult],
+    ) -> list[dict]:
+        """Format tool-round follow-up messages using the producing provider."""
+        provider = self._provider_by_name(result.provider) or self.primary
+        return provider.continuation_messages(result, tool_results)
+
+    def _provider_by_name(self, name: str) -> LLMProvider | None:
+        for provider in self._chain():
+            if provider.name == name:
+                return provider
+        return None
 
     # -- introspection ------------------------------------------------------
 
+    def _chain(self) -> list[LLMProvider]:
+        return [self.primary, *self.fallbacks]
+
     def available_providers(self) -> list[str]:
-        return [p.name for p in [self.primary, *self.fallbacks] if p.is_available()]
+        return [p.name for p in self._chain() if p.is_available()]
 
     def has_any_provider(self) -> bool:
         return bool(self.available_providers())

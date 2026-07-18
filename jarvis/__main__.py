@@ -1,5 +1,5 @@
 """
-Command-line entry point for J.A.R.V.I.S.
+Command-line entry point for J.A.R.V.I.S. (async, streaming).
 
 Run an interactive chat session with the assistant:
 
@@ -7,7 +7,7 @@ Run an interactive chat session with the assistant:
 
 Special commands inside the session:
     /reset    clear the conversation history
-    /skills   list locally-handled skills
+    /skills   list locally-handled skills and tools
     /stats    show telemetry for this session
     /state    show the current assistant state
     /help     show available commands
@@ -16,6 +16,7 @@ Special commands inside the session:
 
 from __future__ import annotations
 
+import asyncio
 import sys
 
 from rich.console import Console
@@ -25,10 +26,12 @@ from rich.table import Table
 from jarvis import __version__
 from jarvis.config.settings import get_settings
 from jarvis.core.engine import JarvisEngine
+from jarvis.models.response import Request
 from jarvis.utils.exceptions import JarvisError
 from jarvis.utils.logger import setup_logging
 
 console = Console()
+SESSION_ID = "cli"
 
 
 def _banner(assistant_name: str) -> None:
@@ -46,7 +49,7 @@ def _banner(assistant_name: str) -> None:
 def _print_help() -> None:
     table = Table(show_header=False, box=None, padding=(0, 2))
     table.add_row("[cyan]/reset[/cyan]", "clear conversation history")
-    table.add_row("[cyan]/skills[/cyan]", "list locally-handled skills")
+    table.add_row("[cyan]/skills[/cyan]", "list locally-handled skills and tools")
     table.add_row("[cyan]/stats[/cyan]", "show session telemetry")
     table.add_row("[cyan]/state[/cyan]", "show current assistant state")
     table.add_row("[cyan]/help[/cyan]", "show this help")
@@ -59,9 +62,11 @@ def _print_skills(engine: JarvisEngine) -> None:
     table = Table(title="Registered Skills")
     table.add_column("Skill", style="cyan")
     table.add_column("Priority", justify="right", style="magenta")
+    table.add_column("Tool", justify="center")
     table.add_column("Description")
     for skill in sorted(engine.skills.all(), key=lambda s: s.priority, reverse=True):
-        table.add_row(skill.name, str(skill.priority), skill.description)
+        is_tool = "✓" if skill.parameters is not None else "—"
+        table.add_row(skill.name, str(skill.priority), is_tool, skill.description)
     console.print(table)
 
 
@@ -82,13 +87,13 @@ def _print_stats(engine: JarvisEngine) -> None:
     console.print(table)
 
 
-def _handle_command(cmd: str, engine: JarvisEngine, settings) -> bool:
+async def _handle_command(cmd: str, engine: JarvisEngine) -> bool:
     """Handle a slash command. Returns True if the session should continue."""
     if cmd in ("/quit", "/exit"):
         console.print("[dim]Goodbye.[/dim]")
         return False
     if cmd == "/reset":
-        engine.reset()
+        await engine.reset(SESSION_ID)
         console.print("[dim]History cleared.[/dim]")
     elif cmd == "/skills":
         _print_skills(engine)
@@ -103,28 +108,45 @@ def _handle_command(cmd: str, engine: JarvisEngine, settings) -> bool:
     return True
 
 
-def main() -> int:
+async def _stream_reply(engine: JarvisEngine, text: str, assistant_name: str) -> None:
+    """Stream a reply, printing chunks as they arrive."""
+    console.print(f"[bold cyan]{assistant_name}[/bold cyan] › ", end="")
+    got_any = False
+    try:
+        async for chunk in engine.stream(Request(text=text, session_id=SESSION_ID)):
+            got_any = True
+            console.print(chunk, end="", markup=False, highlight=False)
+    except JarvisError as exc:
+        if not got_any:
+            console.print(f"[red]Error:[/red] {exc}")
+            return
+    console.print()  # newline after the streamed reply
+
+
+async def _run() -> int:
     settings = get_settings()
     setup_logging(level=settings.log_level, log_file=settings.log_file)
 
     _banner(settings.assistant_name)
 
     engine = JarvisEngine(settings)
+    await engine.start()
 
     if not engine.llm.has_any_provider():
         console.print(
             f"\n[yellow]⚠  No API key found for provider "
             f"'{settings.llm_provider}'.[/yellow]\n"
             "Copy [cyan].env.example[/cyan] to [cyan].env[/cyan] and add your "
-            "key. Skills that don't need the LLM (try [cyan]/skills[/cyan]) "
-            "still work.\n"
+            "key. Skills and tools that don't need the LLM (try "
+            "[cyan]/skills[/cyan]) still work.\n"
         )
 
     try:
         while True:
             try:
-                user_input = console.input(
-                    f"\n[bold green]{settings.user_name}[/bold green] › "
+                user_input = await asyncio.to_thread(
+                    console.input,
+                    f"\n[bold green]{settings.user_name}[/bold green] › ",
                 )
             except (EOFError, KeyboardInterrupt):
                 console.print("\n[dim]Goodbye.[/dim]")
@@ -135,24 +157,22 @@ def main() -> int:
                 continue
 
             if text.startswith("/"):
-                if not _handle_command(text, engine, settings):
+                if not await _handle_command(text, engine):
                     break
                 continue
 
-            try:
-                with console.status("[cyan]thinking…[/cyan]", spinner="dots"):
-                    response = engine.ask(text)
-            except JarvisError as exc:
-                console.print(f"[red]Error:[/red] {exc}")
-                continue
-
-            console.print(
-                f"[bold cyan]{settings.assistant_name}[/bold cyan] › {response}"
-            )
+            await _stream_reply(engine, text, settings.assistant_name)
     finally:
-        engine.shutdown()
+        await engine.shutdown()
 
     return 0
+
+
+def main() -> int:
+    try:
+        return asyncio.run(_run())
+    except KeyboardInterrupt:  # pragma: no cover
+        return 0
 
 
 if __name__ == "__main__":

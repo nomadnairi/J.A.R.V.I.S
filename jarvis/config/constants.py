@@ -64,5 +64,7 @@ class EventType(str, Enum):
     SKILL_FAILED = "skill_failed"
     LLM_REQUEST = "llm_request"
     LLM_RESPONSE = "llm_response"
+    TOOL_CALL = "tool_call"
+    TOOL_RESULT = "tool_result"
     STATE_CHANGED = "state_changed"
     ERROR = "error"

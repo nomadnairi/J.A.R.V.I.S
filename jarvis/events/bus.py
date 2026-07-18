@@ -1,19 +1,21 @@
 """
-A synchronous publish/subscribe event bus.
+An async publish/subscribe event bus.
 
 Components subscribe handlers to :class:`EventType` values and publish
 :class:`Event` objects without knowing about each other. This keeps the core
 engine decoupled from cross-cutting concerns like telemetry, logging, and
 (later) the UI layer.
 
-The bus is intentionally synchronous and dependency-free — handler errors are
-isolated so one bad subscriber never breaks publishing.
+Handlers may be **synchronous or asynchronous** — the bus awaits coroutine
+handlers and calls plain functions directly. Handler errors are isolated so
+one bad subscriber never breaks publishing.
 """
 
 from __future__ import annotations
 
+import inspect
 from collections import defaultdict
-from typing import Callable
+from typing import Awaitable, Callable, Union
 
 from jarvis.config.constants import EventType
 from jarvis.events.events import Event
@@ -21,11 +23,11 @@ from jarvis.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-Handler = Callable[[Event], None]
+Handler = Callable[[Event], Union[None, Awaitable[None]]]
 
 
 class EventBus:
-    """A simple, robust in-process event bus."""
+    """A simple, robust in-process async event bus."""
 
     def __init__(self) -> None:
         self._handlers: dict[EventType, list[Handler]] = defaultdict(list)
@@ -34,7 +36,7 @@ class EventBus:
     # -- subscription -------------------------------------------------------
 
     def subscribe(self, event_type: EventType, handler: Handler) -> Callable[[], None]:
-        """Register ``handler`` for ``event_type``.
+        """Register ``handler`` for ``event_type`` (sync or async).
 
         Returns an unsubscribe callable.
         """
@@ -62,18 +64,19 @@ class EventBus:
 
     # -- publishing ---------------------------------------------------------
 
-    def publish(self, event: Event) -> None:
+    async def publish(self, event: Event) -> None:
         """Dispatch ``event`` to all matching handlers.
 
-        Handler exceptions are caught and logged so a single failing
-        subscriber cannot disrupt the others or the publisher.
+        Async handlers are awaited; sync handlers are called directly. Handler
+        exceptions are caught and logged so a single failing subscriber cannot
+        disrupt the others or the publisher.
         """
         handlers = list(self._handlers.get(event.type, [])) + list(self._wildcard)
-        if not handlers:
-            return
         for handler in handlers:
             try:
-                handler(event)
+                result = handler(event)
+                if inspect.isawaitable(result):
+                    await result
             except Exception:  # noqa: BLE001 - isolate subscriber failures
                 logger.exception(
                     "Event handler %s failed for %s",
@@ -81,9 +84,9 @@ class EventBus:
                     event.type,
                 )
 
-    def emit(self, event_type: EventType, source: str = "", **payload: object) -> None:
+    async def emit(self, event_type: EventType, source: str = "", **payload: object) -> None:
         """Shorthand for constructing and publishing an :class:`Event`."""
-        self.publish(Event(type=event_type, source=source, payload=dict(payload)))
+        await self.publish(Event(type=event_type, source=source, payload=dict(payload)))
 
     # -- introspection ------------------------------------------------------
 

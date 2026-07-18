@@ -4,12 +4,14 @@ from jarvis.core.container import ServiceContainer
 from jarvis.core.context import SessionContext
 from jarvis.core.engine import JarvisEngine
 from jarvis.core.pipeline import Middleware, Pipeline
+from jarvis.core.session import SessionManager
 from jarvis.core.state import StateMachine
 
 __all__ = [
     "JarvisEngine",
     "ServiceContainer",
     "SessionContext",
+    "SessionManager",
     "StateMachine",
     "Pipeline",
     "Middleware",

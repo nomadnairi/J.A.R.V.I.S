@@ -42,8 +42,8 @@ class StateMachine:
             return True
         return target in _TRANSITIONS.get(self._state, set())
 
-    def transition(self, target: AssistantState) -> None:
-        """Move to ``target`` if the transition is allowed."""
+    async def transition(self, target: AssistantState) -> None:
+        """Move to ``target`` if the transition is allowed (async: emits event)."""
         if target == self._state:
             return
         if not self.can_transition(target):
@@ -54,12 +54,12 @@ class StateMachine:
         previous, self._state = self._state, target
         logger.debug("State %s → %s", previous, target)
         if self._bus is not None:
-            self._bus.emit(
+            await self._bus.emit(
                 EventType.STATE_CHANGED,
                 source="state_machine",
                 previous=previous.value,
                 current=target.value,
             )
 
-    def reset(self) -> None:
-        self.transition(AssistantState.IDLE)
+    async def reset(self) -> None:
+        await self.transition(AssistantState.IDLE)

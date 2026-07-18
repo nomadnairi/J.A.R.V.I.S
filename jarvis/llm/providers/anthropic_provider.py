@@ -1,8 +1,11 @@
-"""Anthropic (Claude) provider implementation."""
+"""Anthropic (Claude) provider implementation — async, with tools & streaming."""
 
 from __future__ import annotations
 
+from typing import AsyncIterator
+
 from jarvis.llm.base import LLMProvider, LLMResult
+from jarvis.llm.tools import ToolCall, ToolResult, ToolSpec
 from jarvis.utils.exceptions import LLMConfigError, LLMRequestError
 
 
@@ -21,42 +24,115 @@ class AnthropicProvider(LLMProvider):
                 "The 'anthropic' package is not installed. "
                 "Run: pip install anthropic"
             ) from exc
-        self._client = anthropic.Anthropic(api_key=self.api_key)
+        self._client = anthropic.AsyncAnthropic(api_key=self.api_key)
         return self._client
 
-    def complete(
+    async def complete(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict],
         system: str | None = None,
+        tools: list[ToolSpec] | None = None,
     ) -> LLMResult:
         if not self.api_key:
             raise LLMConfigError("Missing Anthropic API key.")
 
         client = self._ensure_client()
+        kwargs: dict = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "temperature": self.temperature,
+            "system": system or "",
+            "messages": messages,
+        }
+        if tools:
+            kwargs["tools"] = [t.to_anthropic() for t in tools]
+
         try:
-            response = client.messages.create(  # type: ignore[attr-defined]
-                model=self.model,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-                system=system or "",
-                messages=messages,
-            )
+            response = await client.messages.create(**kwargs)  # type: ignore[attr-defined]
         except Exception as exc:  # noqa: BLE001
             raise LLMRequestError(
                 f"Anthropic request failed: {exc}",
                 details={"model": self.model},
             ) from exc
 
-        text = "".join(
-            block.text for block in response.content if getattr(block, "type", "") == "text"
-        ).strip()
+        text_parts: list[str] = []
+        tool_calls: list[ToolCall] = []
+        for block in response.content:
+            btype = getattr(block, "type", "")
+            if btype == "text":
+                text_parts.append(block.text)
+            elif btype == "tool_use":
+                tool_calls.append(
+                    ToolCall(id=block.id, name=block.name, arguments=dict(block.input))
+                )
 
         usage = getattr(response, "usage", None)
         return LLMResult(
-            text=text,
+            text="".join(text_parts).strip(),
             model=self.model,
             provider=self.name,
             input_tokens=getattr(usage, "input_tokens", 0) if usage else 0,
             output_tokens=getattr(usage, "output_tokens", 0) if usage else 0,
+            tool_calls=tool_calls,
+            stop_reason=getattr(response, "stop_reason", "") or "",
             raw=response,
         )
+
+    async def stream(
+        self,
+        messages: list[dict],
+        system: str | None = None,
+    ) -> AsyncIterator[str]:
+        if not self.api_key:
+            raise LLMConfigError("Missing Anthropic API key.")
+
+        client = self._ensure_client()
+        try:
+            async with client.messages.stream(  # type: ignore[attr-defined]
+                model=self.model,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                system=system or "",
+                messages=messages,
+            ) as stream:
+                async for chunk in stream.text_stream:
+                    yield chunk
+        except Exception as exc:  # noqa: BLE001
+            raise LLMRequestError(
+                f"Anthropic stream failed: {exc}",
+                details={"model": self.model},
+            ) from exc
+
+    def continuation_messages(
+        self,
+        result: LLMResult,
+        tool_results: list[ToolResult],
+    ) -> list[dict]:
+        assistant_content: list[dict] = []
+        if result.text:
+            assistant_content.append({"type": "text", "text": result.text})
+        for call in result.tool_calls:
+            assistant_content.append(
+                {
+                    "type": "tool_use",
+                    "id": call.id,
+                    "name": call.name,
+                    "input": call.arguments,
+                }
+            )
+
+        result_blocks: list[dict] = []
+        for tr in tool_results:
+            block = {
+                "type": "tool_result",
+                "tool_use_id": tr.call_id,
+                "content": tr.content,
+            }
+            if tr.is_error:
+                block["is_error"] = True
+            result_blocks.append(block)
+
+        return [
+            {"role": "assistant", "content": assistant_content},
+            {"role": "user", "content": result_blocks},
+        ]
