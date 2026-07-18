@@ -1,4 +1,4 @@
-"""Tests for the Stage 2 memory subsystem (async, SQLite, recall, facts)."""
+"""Tests for the memory subsystem (async, SQLite, recall, facts)."""
 
 from __future__ import annotations
 

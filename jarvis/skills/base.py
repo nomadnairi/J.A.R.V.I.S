@@ -10,7 +10,7 @@ A *skill* is a self-contained capability with two invocation paths:
    :meth:`execute` with structured arguments.
 
 A skill may support either or both paths. Both handlers are async so skills can
-perform I/O (smart-home calls, HTTP, DB) in later stages.
+perform I/O (smart-home calls, HTTP, DB).
 """
 
 from __future__ import annotations

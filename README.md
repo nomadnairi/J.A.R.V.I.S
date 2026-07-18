@@ -22,12 +22,11 @@ an LLM-powered intelligence core, a plugin/skill system, tool calling, and a
 layered architecture designed to grow into voice, smart-home, and automation
 capabilities.
 
-> **Project status:** early development. **Stages 1–2** are built and working —
-> an async engine, LLM integration (Anthropic / OpenAI), a skill & tool system,
+> **Project status:** early development. The core is built and working — an
+> async engine, LLM integration (Anthropic / OpenAI), a skill & tool system,
 > streaming, an interactive CLI, and a **memory system** (persistent history +
-> semantic recall). The remaining stages (voice, integrations, automation,
-> web/API) are planned. See [Development stages](#development-stages) below for
-> exactly what's done and what isn't.
+> semantic recall). Voice, integrations, automation, and a web/API are planned.
+> See the [Roadmap](#roadmap) below for exactly what's done and what isn't.
 
 ---
 
@@ -90,8 +89,8 @@ Full details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Testing | pytest, pytest-asyncio |
 | Lint / CI | ruff, GitHub Actions |
 
-Dependencies for later stages (vector DB, voice, FastAPI) are listed but kept
-inactive until their stage lands.
+Optional dependencies (vector DB, voice, FastAPI) are listed but kept inactive
+until the feature that needs them is enabled.
 
 ---
 
@@ -167,17 +166,17 @@ along the way).
 
 ---
 
-## Development stages
+## Roadmap
 
-| Stage | Scope | Status |
-|-------|-------|--------|
-| 1 | Foundation: async core, LLM, skills/tools, streaming, CLI, tests, CI | ✅ done |
-| 2 | Memory system (persistent history + semantic recall) | ✅ done |
-| 3 | Voice layer (speech-to-text / text-to-speech) | planned |
-| 4 | Integrations (smart home, calendar, email) | planned |
-| 5 | Task automation (scheduler, workflows) | planned |
-| 6 | API layer (FastAPI + WebSocket) | planned |
-| 7 | Web dashboard | planned |
+| Area | Status |
+|------|--------|
+| Core: async engine, LLM, skills/tools, streaming, CLI, tests, CI | ✅ done |
+| Memory: persistent history + semantic recall | ✅ done |
+| Voice: speech-to-text / text-to-speech | planned |
+| Integrations: smart home, calendar, email | planned |
+| Task automation: scheduler, workflows | planned |
+| API layer: FastAPI + WebSocket | planned |
+| Web dashboard | planned |
 
 ---
 

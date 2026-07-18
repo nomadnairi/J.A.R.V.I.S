@@ -71,12 +71,12 @@ class SkillRegistrationError(SkillError):
     """A skill could not be registered (duplicate name, bad definition)."""
 
 
-# --- Memory (Stage 2) ----------------------------------------------------
+# --- Memory --------------------------------------------------------------
 class MemoryError(JarvisError):
     """Base class for memory-subsystem errors."""
 
 
-# --- Integrations (Stage 4) ---------------------------------------------
+# --- Integrations --------------------------------------------------------
 class IntegrationError(JarvisError):
     """Base class for third-party integration errors."""
 

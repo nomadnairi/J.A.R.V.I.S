@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     vector_store_path: str = "chroma_db"
 
-    # --- Memory (Stage 2) ---
+    # --- Memory ---
     memory_enabled: bool = True
     #: Vector backend: "sqlite" (default, persistent) | "memory" | "chroma".
     memory_backend: Literal["sqlite", "memory", "chroma"] = "sqlite"
@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     #: JSON file backing the "memory" vector backend (when selected).
     memory_vector_path: str = "data/memory.json"
 
-    # --- Voice (used from Stage 3 onward) ---
+    # --- Voice ---
     speech_recognition_engine: str = "whisper"
     text_to_speech_engine: str = "gtts"
     voice_language: str = "en-US"

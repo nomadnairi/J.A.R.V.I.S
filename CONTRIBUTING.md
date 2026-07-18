@@ -37,8 +37,8 @@ The codebase is organised into layers (see [docs/ARCHITECTURE.md](docs/ARCHITECT
 | `jarvis/skills` | Plugin/skill system + built-ins |
 | `jarvis/events` | Publish/subscribe event bus |
 | `jarvis/telemetry` | Metrics collection |
-| `jarvis/memory` | Memory contracts (impl in Stage 2) |
-| `jarvis/integrations` | Integration contracts (impl in Stage 4) |
+| `jarvis/memory` | Persistent history + semantic recall |
+| `jarvis/integrations` | Integration contracts (connectors planned) |
 
 ## Adding a skill
 

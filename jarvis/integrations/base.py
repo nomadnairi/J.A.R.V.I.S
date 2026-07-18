@@ -2,8 +2,8 @@
 Abstract integration contract.
 
 Every third-party connector (smart home, calendar, email, ...) implements
-:class:`BaseIntegration`. Concrete connectors arrive in Stage 4; defining the
-contract now keeps the engine and skill layers stable as they land.
+:class:`BaseIntegration`. Defining the contract keeps the engine and skill
+layers stable as connectors are added.
 """
 
 from __future__ import annotations

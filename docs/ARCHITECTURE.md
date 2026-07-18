@@ -2,14 +2,14 @@
 
 J.A.R.V.I.S. is built as a set of **layers** stacked on a single orchestrator
 (`JarvisEngine`), wired together by a dependency-injection container and
-connected by an event bus. Each layer is added in its own stage, and the
-system stays runnable at every point.
+connected by an event bus. Each layer is self-contained, and the system stays
+runnable at every point.
 
 ## System overview
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│  Interfaces:  CLI (Stage 1)  ·  API / Web (Stage 6)        │
+│  Interfaces:  CLI (now)  ·  API / Web (planned)           │
 └───────────────────────────────┬───────────────────────────┘
                                 │  Request
 ┌───────────────────────────────▼───────────────────────────┐
@@ -62,19 +62,19 @@ Skills are tried **first** and deterministically (e.g. "what time is it",
 "system status"), so common requests never incur an LLM call. Anything a skill
 doesn't claim falls through to the language model.
 
-## Build stages
+## Roadmap
 
-| Stage | Scope | Status |
-|-------|-------|--------|
-| **1** | Foundation: config, events, DI, state machine, pipeline, LLM core (async, tools, streaming), skills, telemetry, multi-session, CLI, tests, CI | ✅ done |
-| **2** | Memory system: persistent conversation store + semantic recall (RAG) | ✅ done |
-| 3 | Voice layer (STT / TTS) | planned |
-| 4 | Integrations (smart home, calendar, email) | planned |
-| 5 | Task automation (scheduler, workflows) | planned |
-| 6 | API layer (FastAPI + WebSocket) | planned |
-| 7 | Frontend (React dashboard) | planned |
+| Area | Status |
+|------|--------|
+| Core: config, events, DI, state machine, pipeline, LLM (async, tools, streaming), skills, telemetry, multi-session, CLI, tests, CI | ✅ done |
+| Memory: persistent conversation store + semantic recall (RAG) | ✅ done |
+| Voice layer (STT / TTS) | planned |
+| Integrations (smart home, calendar, email) | planned |
+| Task automation (scheduler, workflows) | planned |
+| API layer (FastAPI + WebSocket) | planned |
+| Web dashboard | planned |
 
-## Stage 2 — Memory
+## Memory
 
 Two complementary stores behind a single **async** :class:`MemoryManager`:
 
@@ -86,7 +86,7 @@ Two complementary stores behind a single **async** :class:`MemoryManager`:
   are injected into the system prompt (retrieval-augmented generation) so the
   assistant "remembers" facts across turns and sessions.
 
-Hardening (Stage 2+):
+Hardening:
 
 * **Async, non-blocking** — writes, recall, and embeddings run in worker
   threads via `asyncio.to_thread`, so memory never stalls the event loop.
@@ -111,7 +111,7 @@ turn ──► ConversationStore (persist inline) ──► reload on next sessi
              query ──► recall (threshold + recency) ┘──► system prompt (RAG)
 ```
 
-## Package layout (Stage 1)
+## Package layout
 
 ```
 jarvis/
@@ -141,7 +141,7 @@ jarvis/
 │   └── builtin/           # datetime, system, help
 │
 ├── events/
-│   ├── bus.py             # synchronous pub/sub EventBus
+│   ├── bus.py             # async pub/sub EventBus
 │   └── events.py          # Event dataclass
 │
 ├── telemetry/
@@ -151,8 +151,8 @@ jarvis/
 │   ├── message.py         # Message, Conversation
 │   └── response.py        # Request, Response envelopes
 │
-├── memory/                # Stage 2 contracts (BaseMemoryStore)
-├── integrations/          # Stage 4 contracts (BaseIntegration)
+├── memory/                # persistent history + semantic recall
+├── integrations/          # connector contracts (connectors planned)
 └── utils/
     ├── logger.py          # rich console + rotating file logging
     ├── exceptions.py      # typed exception hierarchy

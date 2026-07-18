@@ -1,8 +1,8 @@
 """
 Integrations subsystem (contracts).
 
-Stage 1 defines the abstract interface only. Stage 4 will add concrete
-connectors: smart home, calendar, email, media, and custom webhooks.
+Defines the abstract interface for third-party connectors. Concrete
+connectors (smart home, calendar, email, media, custom webhooks) build on it.
 """
 
 from jarvis.integrations.base import BaseIntegration, IntegrationStatus

@@ -7,8 +7,8 @@ A personal AI assistant framework with a modular, layered architecture:
         └── JarvisEngine ── pipeline ── skills / LLM
                  ├── events (pub/sub bus)
                  ├── telemetry (metrics)
-                 ├── memory (Stage 2)
-                 └── integrations (Stage 4)
+                 ├── memory
+                 └── integrations (planned)
 
 Public entry points:
     JarvisEngine   — the orchestrator you talk to.
