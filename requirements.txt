@@ -20,9 +20,10 @@ openai>=1.30,<2.0
 
 # --- Stage 2: Memory ---
 # The built-in memory backend uses only the standard library (sqlite3) and
-# pure-Python embeddings — no extra dependencies required. Install chromadb
-# only if you switch MEMORY_BACKEND=chroma.
-# chromadb>=0.5,<1.0
+# pure-Python embeddings — no extra dependencies required.
+# Optional, only if you opt in:
+#   fastembed>=0.3      # EMBEDDING_BACKEND=local (semantic embeddings)
+#   chromadb>=0.5,<1.0  # MEMORY_BACKEND=chroma
 
 # --- Stage 3: Voice ---
 # openai-whisper>=20231117

@@ -74,7 +74,7 @@ class ServiceContainer:
             return self._memory_override
         if not self._settings.memory_enabled:
             return None
-        return MemoryManager.from_settings(self._settings)
+        return MemoryManager.from_settings(self._settings, llm=self.llm)
 
     @cached_property
     def prompts(self) -> PromptBuilder:

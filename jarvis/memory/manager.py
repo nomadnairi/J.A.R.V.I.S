@@ -6,17 +6,26 @@ the engine needs:
 
 * **persistence** — every turn is written to the conversation store, so history
   survives restarts, and sessions can be reloaded on demand;
-* **semantic recall** — meaningful exchanges are embedded into the vector store
-  and relevant ones are recalled to enrich the LLM's context (RAG).
+* **semantic recall** — durable facts (or, if fact extraction is off, whole
+  exchanges) are embedded into the vector store and relevant ones are recalled
+  to enrich the LLM's context (RAG).
+
+The write/recall surface is **async**: blocking work (SQLite I/O, embeddings,
+which may hit the network) runs in a worker thread so it never stalls the event
+loop. History loading stays synchronous — it is a fast local read used while a
+session is being created.
 """
 
 from __future__ import annotations
 
+import asyncio
+
 from jarvis.config.settings import Settings
+from jarvis.llm.client import LLMClient
 from jarvis.memory.base import BaseEmbedder, BaseMemoryStore, MemoryRecord
 from jarvis.memory.conversation_store import SQLiteConversationStore
-from jarvis.memory.embeddings import HashingEmbedder, OpenAIEmbedder
-from jarvis.memory.vector_store import InMemoryVectorStore
+from jarvis.memory.embeddings import HashingEmbedder, LocalEmbedder, OpenAIEmbedder
+from jarvis.memory.facts import FactExtractor
 from jarvis.models.message import Conversation, Message
 from jarvis.utils.logger import get_logger
 
@@ -26,80 +35,131 @@ logger = get_logger(__name__)
 class MemoryManager:
     """Coordinates conversation persistence and semantic recall."""
 
+    #: How many recent messages to reload into a session's live context.
+    history_limit: int = 50
+
     def __init__(
         self,
         vector_store: BaseMemoryStore,
         conversation_store: SQLiteConversationStore,
         *,
         recall_limit: int = 4,
+        fact_extractor: FactExtractor | None = None,
     ) -> None:
         self.vectors = vector_store
         self.conversations = conversation_store
         self.recall_limit = recall_limit
+        self.fact_extractor = fact_extractor
 
     # -- construction -------------------------------------------------------
 
     @classmethod
-    def from_settings(cls, settings: Settings) -> "MemoryManager":
+    def from_settings(cls, settings: Settings,
+                    llm: LLMClient | None = None) -> "MemoryManager":
         embedder = cls._make_embedder(settings)
         vector_store = cls._make_vector_store(settings, embedder)
         conversation_store = SQLiteConversationStore(settings.memory_db_path)
+        fact_extractor = (
+            FactExtractor(llm)
+            if (settings.memory_fact_extraction and llm is not None)
+            else None
+        )
         return cls(
             vector_store,
             conversation_store,
             recall_limit=settings.memory_recall_limit,
+            fact_extractor=fact_extractor,
         )
 
     @staticmethod
     def _make_embedder(settings: Settings) -> BaseEmbedder:
-        if settings.embedding_backend == "openai" and settings.openai_api_key:
+        backend = settings.embedding_backend
+        if backend == "openai" and settings.openai_api_key:
             return OpenAIEmbedder(settings.openai_api_key)
+        if backend == "local":
+            return LocalEmbedder(settings.local_embedding_model)
         return HashingEmbedder()
 
     @staticmethod
     def _make_vector_store(settings: Settings, embedder: BaseEmbedder) -> BaseMemoryStore:
-        if settings.memory_backend == "chroma":
+        backend = settings.memory_backend
+        if backend == "chroma":
             from jarvis.memory.chroma_store import ChromaVectorStore
             return ChromaVectorStore(embedder, path=settings.vector_store_path)
-        return InMemoryVectorStore(
-            embedder=embedder, persist_path=settings.memory_vector_path
+        if backend == "memory":
+            from jarvis.memory.vector_store import InMemoryVectorStore
+            return InMemoryVectorStore(
+                embedder=embedder,
+                persist_path=settings.memory_vector_path,
+                min_score=settings.memory_min_score,
+            )
+        # Default: SQLite-backed, incremental writes.
+        from jarvis.memory.sqlite_vector_store import SQLiteVectorStore
+        return SQLiteVectorStore(
+            embedder,
+            db_path=settings.memory_db_path,
+            min_score=settings.memory_min_score,
+            recency_weight=settings.memory_recency_weight,
         )
 
-    # -- persistence --------------------------------------------------------
-
-    #: How many recent messages to reload into a session's live context.
-    history_limit: int = 50
+    # -- persistence (history) ---------------------------------------------
 
     def load_conversation(self, session_id: str) -> Conversation:
-        """Load recent persisted history for a session."""
+        """Load recent persisted history for a session (fast, synchronous)."""
         return self.conversations.load(session_id, limit=self.history_limit)
 
-    def persist_message(self, session_id: str, message: Message) -> None:
-        self.conversations.append(session_id, message)
+    async def persist_message(self, session_id: str, message: Message) -> None:
+        await asyncio.to_thread(self.conversations.append, session_id, message)
 
-    def persist_turn(self, session_id: str, user: str, assistant: str) -> None:
+    async def persist_turn(self, session_id: str, user: str, assistant: str) -> None:
         """Persist a full turn (user + assistant) to the conversation store."""
-        self.conversations.append_exchange(session_id, user, assistant)
+        await asyncio.to_thread(
+            self.conversations.append_exchange, session_id, user, assistant
+        )
+
+    async def clear_history(self, session_id: str | None = "default") -> None:
+        await asyncio.to_thread(self.conversations.clear, session_id)
 
     # -- semantic memory ----------------------------------------------------
 
-    def remember(self, session_id: str, content: str, *, kind: str = "exchange",
-                metadata: dict | None = None) -> None:
+    async def remember(self, session_id: str, content: str, *, kind: str = "fact",
+                    metadata: dict | None = None) -> None:
         """Store ``content`` in the semantic vector store."""
-        self.vectors.remember(
-            MemoryRecord(content=content, session_id=session_id, kind=kind,
-                        metadata=metadata or {})
+        record = MemoryRecord(content=content, session_id=session_id, kind=kind,
+                            metadata=metadata or {})
+        await asyncio.to_thread(self.vectors.remember, record)
+
+    async def remember_turn(self, session_id: str, user: str,
+                            assistant: str) -> None:
+        """Store the durable takeaways of a turn in semantic memory.
+
+        With a fact extractor, stores extracted facts; otherwise falls back to
+        storing the raw exchange.
+        """
+        if self.fact_extractor is not None:
+            facts = await self.fact_extractor.extract(user, assistant)
+            for fact in facts:
+                await self.remember(session_id, fact, kind="fact")
+            return
+        await self.remember(
+            session_id,
+            f"User said: {user}\nYou replied: {assistant}",
+            kind="exchange",
         )
 
-    def recall(self, query: str, *, session_id: str = "default",
-            limit: int | None = None) -> list[MemoryRecord]:
-        return self.vectors.recall(
-            query, session_id=session_id, limit=limit or self.recall_limit
+    async def recall(self, query: str, *, session_id: str = "default",
+                    limit: int | None = None) -> list[MemoryRecord]:
+        return await asyncio.to_thread(
+            self.vectors.recall,
+            query,
+            session_id=session_id,
+            limit=limit or self.recall_limit,
         )
 
-    def recall_context(self, query: str, *, session_id: str = "default") -> str | None:
+    async def recall_context(self, query: str, *,
+                            session_id: str = "default") -> str | None:
         """Return recalled memories formatted for system-prompt injection."""
-        records = self.recall(query, session_id=session_id)
+        records = await self.recall(query, session_id=session_id)
         if not records:
             return None
         lines = ["Relevant things you remember from earlier:"]
@@ -108,10 +168,10 @@ class MemoryManager:
 
     # -- lifecycle ----------------------------------------------------------
 
-    def forget(self, session_id: str | None = "default") -> None:
+    async def forget(self, session_id: str | None = "default") -> None:
         """Clear both semantic memory and stored history for a session."""
-        self.vectors.forget(session_id)
-        self.conversations.clear(session_id)
+        await asyncio.to_thread(self.vectors.forget, session_id)
+        await asyncio.to_thread(self.conversations.clear, session_id)
 
     def stats(self) -> dict:
         return {

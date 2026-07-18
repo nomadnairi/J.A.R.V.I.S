@@ -76,25 +76,39 @@ doesn't claim falls through to the language model.
 
 ## Stage 2 — Memory
 
-Two complementary stores behind a single :class:`MemoryManager`:
+Two complementary stores behind a single **async** :class:`MemoryManager`:
 
 * **Conversation store** (`SQLiteConversationStore`) — persists every turn to
   SQLite (stdlib, no external DB). Sessions reload their recent history on
   first access, so conversations survive restarts.
-* **Semantic memory** (`InMemoryVectorStore`) — embeds meaningful exchanges and
-  recalls the most relevant ones by cosine similarity. Recalled memories are
-  injected into the system prompt (retrieval-augmented generation) so the
+* **Semantic memory** (`SQLiteVectorStore`, default) — embeds durable takeaways
+  and recalls the most relevant ones by cosine similarity. Recalled memories
+  are injected into the system prompt (retrieval-augmented generation) so the
   assistant "remembers" facts across turns and sessions.
 
-Embeddings default to `HashingEmbedder` (offline, dependency-free);
-`OpenAIEmbedder` gives higher-quality semantic recall when configured. The
-vector backend can be swapped for `ChromaVectorStore` — both implement the same
-`BaseMemoryStore` contract. Memory is optional (`MEMORY_ENABLED`) and adds no
-required dependencies.
+Hardening (Stage 2+):
+
+* **Async, non-blocking** — writes, recall, and embeddings run in worker
+  threads via `asyncio.to_thread`, so memory never stalls the event loop.
+* **Incremental persistence** — the SQLite vector store appends one row per
+  memory (no rewriting a whole JSON file); recall applies a **similarity
+  threshold** and a **recency** weight so weak or stale memories are dropped.
+* **Fact extraction** — instead of storing raw transcripts, a `FactExtractor`
+  uses the LLM to distil durable facts ("the user's dog is named Rex"). It runs
+  **in the background** after the reply, adding no latency; `engine.drain()`
+  awaits pending work.
+* **Pluggable embeddings** — `HashingEmbedder` (offline default, zero deps),
+  `LocalEmbedder` (semantic, via optional `fastembed`), or `OpenAIEmbedder`.
+* **Pluggable vector backend** — `SQLiteVectorStore` (default), `InMemoryVectorStore`,
+  or `ChromaVectorStore`; all implement `BaseMemoryStore`.
+
+Memory is optional (`MEMORY_ENABLED`) and adds **no required dependencies**.
 
 ```
-turn ──► ConversationStore (persist)   ──► reload on next session
-    └──► VectorStore (embed & store) ──► recall ──► system prompt (RAG)
+turn ──► ConversationStore (persist inline) ──► reload on next session
+    └──► FactExtractor (LLM, background) ──► VectorStore (embed & store)
+                                                    │
+             query ──► recall (threshold + recency) ┘──► system prompt (RAG)
 ```
 
 ## Package layout (Stage 1)

@@ -54,15 +54,23 @@ class Settings(BaseSettings):
 
     # --- Memory (Stage 2) ---
     memory_enabled: bool = True
-    #: Vector backend: "memory" (built-in, dep-free) or "chroma".
-    memory_backend: Literal["memory", "chroma"] = "memory"
-    #: Embedding backend: "hashing" (offline default) or "openai".
-    embedding_backend: Literal["hashing", "openai"] = "hashing"
+    #: Vector backend: "sqlite" (default, persistent) | "memory" | "chroma".
+    memory_backend: Literal["sqlite", "memory", "chroma"] = "sqlite"
+    #: Embedding backend: "hashing" (offline) | "local" (semantic) | "openai".
+    embedding_backend: Literal["hashing", "local", "openai"] = "hashing"
+    #: Local (fastembed) embedding model when embedding_backend="local".
+    local_embedding_model: str = "BAAI/bge-small-en-v1.5"
     #: How many memories to recall and inject into the prompt per turn.
     memory_recall_limit: int = Field(default=4, ge=0, le=20)
-    #: SQLite file for persistent conversation history.
+    #: Minimum cosine similarity for a memory to be recalled.
+    memory_min_score: float = Field(default=0.15, ge=0.0, le=1.0)
+    #: Weight of recency vs. similarity in recall scoring (0..1).
+    memory_recency_weight: float = Field(default=0.15, ge=0.0, le=1.0)
+    #: Extract durable facts via the LLM instead of storing raw transcripts.
+    memory_fact_extraction: bool = True
+    #: SQLite file for persistent conversation history and vectors.
     memory_db_path: str = "data/jarvis.db"
-    #: JSON file backing the built-in vector store.
+    #: JSON file backing the "memory" vector backend (when selected).
     memory_vector_path: str = "data/memory.json"
 
     # --- Voice (used from Stage 3 onward) ---

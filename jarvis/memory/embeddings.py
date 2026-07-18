@@ -84,6 +84,41 @@ class OpenAIEmbedder(BaseEmbedder):
         return [item.embedding for item in response.data]
 
 
+class LocalEmbedder(BaseEmbedder):
+    """Semantic embeddings from a local model via ``fastembed``.
+
+    Uses ONNX-runtime models (no PyTorch), so it is far lighter than
+    sentence-transformers while giving real semantic similarity — "pet" will
+    match "dog". The model is downloaded on first use and cached on disk.
+    ``fastembed`` is an optional dependency.
+    """
+
+    def __init__(self, model: str = "BAAI/bge-small-en-v1.5") -> None:
+        self.model_name = model
+        self.dimensions = 384  # bge-small
+        self._model: object | None = None
+
+    def _ensure_model(self) -> object:
+        if self._model is not None:
+            return self._model
+        try:
+            from fastembed import TextEmbedding
+        except ImportError as exc:  # pragma: no cover - optional dependency
+            raise JarvisMemoryError(
+                "LocalEmbedder requires the 'fastembed' package. "
+                "Install it or use the default hashing embedder."
+            ) from exc
+        self._model = TextEmbedding(model_name=self.model_name)
+        return self._model
+
+    def embed(self, text: str) -> list[float]:
+        return self.embed_many([text])[0]
+
+    def embed_many(self, texts: list[str]) -> list[list[float]]:
+        model = self._ensure_model()
+        return [list(map(float, vec)) for vec in model.embed(texts)]  # type: ignore[attr-defined]
+
+
 def cosine_similarity(a: list[float], b: list[float]) -> float:
     """Cosine similarity between two equal-length vectors."""
     if not a or not b or len(a) != len(b):

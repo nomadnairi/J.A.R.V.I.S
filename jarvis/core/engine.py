@@ -16,6 +16,7 @@ provided by the :class:`~jarvis.core.container.ServiceContainer`.
 
 from __future__ import annotations
 
+import asyncio
 from typing import AsyncIterator
 
 from jarvis.config.constants import AssistantState, EventType, ResponseType
@@ -68,6 +69,9 @@ class JarvisEngine:
         )
         self.pipeline = Pipeline([NormalizeMiddleware(), LoggingMiddleware()])
 
+        # Fire-and-forget background work (e.g. fact extraction after a reply).
+        self._background: set[asyncio.Task] = set()
+
         logger.info(
             "%s ready (provider=%s, model=%s, skills=%d, tools=%d, memory=%s)",
             self.settings.assistant_name,
@@ -84,6 +88,7 @@ class JarvisEngine:
         await self.bus.emit(EventType.STARTUP, source="engine")
 
     async def shutdown(self) -> None:
+        await self.drain()
         await self.bus.emit(EventType.SHUTDOWN, source="engine")
 
     # -- public API ---------------------------------------------------------
@@ -137,8 +142,8 @@ class JarvisEngine:
             if result.handled:
                 session.conversation.add_user(request.text)
                 session.conversation.add_assistant(result.text)
-                self._persist_turn(session.session_id, request.text, result.text,
-                                semantic=False)
+                await self._persist_turn(session.session_id, request.text,
+                                        result.text, semantic=False)
                 await self.bus.emit(EventType.SKILL_MATCHED, source=skill.name)
                 await self.bus.emit(EventType.RESPONSE_READY, source=skill.name,
                                     via_skill=True)
@@ -149,7 +154,7 @@ class JarvisEngine:
         # LLM streaming path.
         session.conversation.add_user(request.text)
         system = self.prompts.system_prompt(
-            extra_context=self._recall(request.text, session.session_id)
+            extra_context=await self._recall(request.text, session.session_id)
         )
         await self.state.transition(AssistantState.THINKING)
         await self.bus.emit(EventType.LLM_REQUEST, source=self.settings.llm_provider)
@@ -163,7 +168,8 @@ class JarvisEngine:
 
         full = "".join(chunks).strip()
         session.conversation.add_assistant(full)
-        self._persist_turn(session.session_id, request.text, full, semantic=True)
+        await self._persist_turn(session.session_id, request.text, full,
+                                semantic=True)
         await self.bus.emit(EventType.RESPONSE_READY, source=self.settings.llm_provider)
         await self.state.transition(AssistantState.IDLE)
 
@@ -205,7 +211,8 @@ class JarvisEngine:
         session.conversation.add_user(request.text)
         session.conversation.add_assistant(result.text)
         # Persist history, but skill turns are trivial — don't add to semantic memory.
-        self._persist_turn(session.session_id, request.text, result.text, semantic=False)
+        await self._persist_turn(session.session_id, request.text, result.text,
+                                semantic=False)
         return Response.from_skill(
             result.text,
             skill_name=skill.name,
@@ -221,7 +228,7 @@ class JarvisEngine:
         session.conversation.add_user(request.text)
 
         system = self.prompts.system_prompt(
-            extra_context=self._recall(request.text, session.session_id)
+            extra_context=await self._recall(request.text, session.session_id)
         )
         tools = self.skills.tool_specs()
         messages = session.conversation.to_provider_format()
@@ -246,7 +253,8 @@ class JarvisEngine:
         await self.bus.emit(EventType.LLM_RESPONSE, source=result.provider,
                             tokens=total_tokens)
         session.conversation.add_assistant(result.text)
-        self._persist_turn(session.session_id, request.text, result.text, semantic=True)
+        await self._persist_turn(session.session_id, request.text, result.text,
+                                semantic=True)
         await self.state.transition(AssistantState.SPEAKING)
         return Response.from_llm(
             result.text,
@@ -278,24 +286,36 @@ class JarvisEngine:
 
     # -- memory helpers -----------------------------------------------------
 
-    def _recall(self, query: str, session_id: str) -> str | None:
+    async def _recall(self, query: str, session_id: str) -> str | None:
         """Recall relevant memories to enrich the system prompt (RAG)."""
         if self.memory is None:
             return None
-        return self.memory.recall_context(query, session_id=session_id)
+        return await self.memory.recall_context(query, session_id=session_id)
 
-    def _persist_turn(self, session_id: str, user: str, assistant: str, *,
-                    semantic: bool) -> None:
-        """Persist a turn to history and, optionally, semantic memory."""
+    async def _persist_turn(self, session_id: str, user: str, assistant: str, *,
+                            semantic: bool) -> None:
+        """Persist a turn to history and, optionally, semantic memory.
+
+        History is persisted inline; distilling the turn into durable memory
+        (which may call the LLM for fact extraction) runs in the background so
+        it never adds latency to the user's reply.
+        """
         if self.memory is None:
             return
-        self.memory.persist_turn(session_id, user, assistant)
+        await self.memory.persist_turn(session_id, user, assistant)
         if semantic:
-            self.memory.remember(
-                session_id,
-                f"User said: {user}\nYou replied: {assistant}",
-                kind="exchange",
-            )
+            self._spawn(self.memory.remember_turn(session_id, user, assistant))
+
+    def _spawn(self, coro) -> None:
+        """Schedule a background coroutine, keeping a reference until done."""
+        task = asyncio.create_task(coro)
+        self._background.add(task)
+        task.add_done_callback(self._background.discard)
+
+    async def drain(self) -> None:
+        """Await all pending background tasks (useful in tests and shutdown)."""
+        if self._background:
+            await asyncio.gather(*list(self._background), return_exceptions=True)
 
     # -- session management -------------------------------------------------
 
@@ -303,7 +323,7 @@ class JarvisEngine:
         """Clear the conversation history for a session (keeps long-term memory)."""
         self.sessions.reset(session_id)
         if self.memory is not None:
-            self.memory.conversations.clear(session_id)
+            await self.memory.clear_history(session_id)
         await self.state.reset()
         logger.debug("Session %r reset.", session_id)
 
@@ -311,7 +331,7 @@ class JarvisEngine:
         """Wipe both conversation history and long-term memory for a session."""
         self.sessions.reset(session_id)
         if self.memory is not None:
-            self.memory.forget(session_id)
+            await self.memory.forget(session_id)
         await self.state.reset()
         logger.debug("Session %r fully forgotten.", session_id)
 

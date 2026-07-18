@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-0.4.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-0.5.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **A modular personal AI assistant framework — inspired by Tony Stark's companion.**
@@ -40,7 +40,9 @@ capabilities.
 - **🧩 Skill / plugin system** — deterministic, zero-cost handling of common
   requests (date/time, calculator, system diagnostics) before hitting the LLM.
 - **🧠 Memory** — persistent conversation history (survives restarts) plus
-  semantic recall (RAG): the assistant remembers facts across turns/sessions.
+  semantic recall (RAG): the LLM distils **durable facts** from each turn and
+  recalls the relevant ones later. Async, SQLite-backed, with similarity
+  threshold + recency weighting; pluggable embeddings (offline / local / OpenAI).
 - **⚡ Streaming** — token-by-token streamed replies in the CLI.
 - **👥 Multi-session** — many independent conversations via a session manager.
 - **📡 Event-driven** — an internal pub/sub bus with passive telemetry.
