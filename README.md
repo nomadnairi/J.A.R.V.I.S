@@ -6,10 +6,12 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-0.6.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-0.7.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **A modular personal AI assistant framework — inspired by Tony Stark's companion.**
+
+**English** · [Русский](README.ru.md) · [O'zbek](README.uz.md)
 
 </div>
 
@@ -44,7 +46,9 @@ capabilities.
   threshold + recency weighting; pluggable embeddings (offline / local / OpenAI).
 - **⚡ Streaming** — token-by-token streamed replies in the CLI.
 - **💬 Telegram bot** — chat with the assistant from Telegram; each user gets
-  their own persistent session and memory.
+  their own persistent session and memory. Localized UI (English / Russian /
+  Uzbek) with a command menu and inline language picker; the assistant replies
+  in the user's chosen language.
 - **👥 Multi-session** — many independent conversations via a session manager.
 - **📡 Event-driven** — an internal pub/sub bus with passive telemetry.
 - **🖥️ Interactive CLI** — chat plus `/skills`, `/stats`, `/state`, `/reset`.
@@ -184,9 +188,11 @@ pip install aiogram            # optional interface dependency
 python -m jarvis.interfaces.telegram_bot     # or: jarvis-bot
 ```
 
-Bot commands: `/reset` (clear the current conversation), `/forget` (wipe
-everything remembered about you), `/help`. Access can be limited to specific
-user IDs via `TELEGRAM_ALLOWED_USERS`.
+Bot commands: `/language` (switch UI/reply language), `/reset` (clear the
+current conversation), `/forget` (wipe everything remembered about you),
+`/help`. The command menu and interface are localized in **English, Russian and
+Uzbek**, and the assistant replies in the language each user picks. Access can
+be limited to specific user IDs via `TELEGRAM_ALLOWED_USERS`.
 
 > Keep your bot token in `.env` only — never commit it. If a token is ever
 > exposed, revoke it with `/revoke` in @BotFather and generate a new one.

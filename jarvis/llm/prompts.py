@@ -34,18 +34,22 @@ class PromptBuilder:
         )
 
     def system_prompt(self, *, extra_context: str | None = None,
-                    include_time: bool = True) -> str:
+                    include_time: bool = True, language: str | None = None) -> str:
         """Assemble the full system prompt.
 
         Args:
             extra_context: Optional additional context (e.g. retrieved memory,
                 available skills) appended to the persona.
             include_time: Whether to inject the current date/time.
+            language: Human-readable language the assistant must reply in
+                (e.g. "Russian"). When omitted, the model matches the user.
         """
         parts = [self.persona()]
         if include_time:
             now = datetime.now().strftime("%A, %d %B %Y, %H:%M")
             parts.append(f"Current date and time: {now}.")
+        if language:
+            parts.append(f"Always reply to the user in {language}.")
         if extra_context:
             parts.append(extra_context.strip())
         return "\n\n".join(parts)

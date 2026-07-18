@@ -58,3 +58,9 @@ async def test_generate_reply_uses_per_user_session(engine):
     await generate_reply(engine, user_id=2, text="I am user two")
     assert engine.session(session_id_for(1)) is not engine.session(session_id_for(2))
     assert len(engine.session(session_id_for(1)).conversation) == 2
+
+
+@pytest.mark.asyncio
+async def test_generate_reply_sets_language_on_session(engine):
+    await generate_reply(engine, user_id=5, text="privet", locale="ru")
+    assert engine.session(session_id_for(5)).scratch["language"] == "ru"

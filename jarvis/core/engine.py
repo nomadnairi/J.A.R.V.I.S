@@ -30,6 +30,7 @@ from jarvis.core.pipeline import (
 )
 from jarvis.core.session import SessionManager
 from jarvis.core.state import StateMachine
+from jarvis.i18n import language_name
 from jarvis.llm.tools import ToolResult
 from jarvis.models.response import Request, Response
 from jarvis.utils.exceptions import JarvisError
@@ -154,7 +155,8 @@ class JarvisEngine:
         # LLM streaming path.
         session.conversation.add_user(request.text)
         system = self.prompts.system_prompt(
-            extra_context=await self._recall(request.text, session.session_id)
+            extra_context=await self._recall(request.text, session.session_id),
+            language=self._language(session),
         )
         await self.state.transition(AssistantState.THINKING)
         await self.bus.emit(EventType.LLM_REQUEST, source=self.settings.llm_provider)
@@ -228,7 +230,8 @@ class JarvisEngine:
         session.conversation.add_user(request.text)
 
         system = self.prompts.system_prompt(
-            extra_context=await self._recall(request.text, session.session_id)
+            extra_context=await self._recall(request.text, session.session_id),
+            language=self._language(session),
         )
         tools = self.skills.tool_specs()
         messages = session.conversation.to_provider_format()
@@ -291,6 +294,12 @@ class JarvisEngine:
         if self.memory is None:
             return None
         return await self.memory.recall_context(query, session_id=session_id)
+
+    @staticmethod
+    def _language(session: SessionContext) -> str | None:
+        """Human-readable language the assistant should reply in, if set."""
+        code = session.scratch.get("language")
+        return language_name(code) if code else None
 
     async def _persist_turn(self, session_id: str, user: str, assistant: str, *,
                             semantic: bool) -> None:
