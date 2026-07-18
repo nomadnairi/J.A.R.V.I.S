@@ -32,7 +32,11 @@ openai>=1.30,<2.0
 # SpeechRecognition>=3.10
 # sounddevice>=0.4
 
-# --- Stage 6: API ---
+# --- Telegram bot ---
+# Needed only to run the Telegram interface (python -m jarvis.interfaces.telegram_bot).
+# aiogram>=3.0,<4.0
+
+# --- API layer (planned) ---
 # fastapi>=0.110,<1.0
 # uvicorn[standard]>=0.29,<1.0
 # websockets>=12.0

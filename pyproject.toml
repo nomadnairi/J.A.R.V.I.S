@@ -28,6 +28,12 @@ Issues = "https://github.com/nomadnairi/J.A.R.V.I.S/issues"
 
 [project.scripts]
 jarvis = "jarvis.__main__:main"
+jarvis-bot = "jarvis.interfaces.telegram_bot:main"
+
+[project.optional-dependencies]
+telegram = ["aiogram>=3.0,<4.0"]
+local-embeddings = ["fastembed>=0.3"]
+chroma = ["chromadb>=0.5,<1.0"]
 
 [tool.setuptools.packages.find]
 include = ["jarvis*"]

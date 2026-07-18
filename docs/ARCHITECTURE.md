@@ -9,7 +9,7 @@ runnable at every point.
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│  Interfaces:  CLI (now)  ·  API / Web (planned)           │
+│  Interfaces:  CLI · Telegram (now)  ·  API / Web (planned) │
 └───────────────────────────────┬───────────────────────────┘
                                 │  Request
 ┌───────────────────────────────▼───────────────────────────┐
@@ -68,6 +68,7 @@ doesn't claim falls through to the language model.
 |------|--------|
 | Core: config, events, DI, state machine, pipeline, LLM (async, tools, streaming), skills, telemetry, multi-session, CLI, tests, CI | ✅ done |
 | Memory: persistent conversation store + semantic recall (RAG) | ✅ done |
+| Telegram bot interface (per-user sessions + memory) | ✅ done |
 | Voice layer (STT / TTS) | planned |
 | Integrations (smart home, calendar, email) | planned |
 | Task automation (scheduler, workflows) | planned |

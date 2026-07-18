@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-0.5.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-0.6.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **A modular personal AI assistant framework — inspired by Tony Stark's companion.**
@@ -43,6 +43,8 @@ capabilities.
   recalls the relevant ones later. Async, SQLite-backed, with similarity
   threshold + recency weighting; pluggable embeddings (offline / local / OpenAI).
 - **⚡ Streaming** — token-by-token streamed replies in the CLI.
+- **💬 Telegram bot** — chat with the assistant from Telegram; each user gets
+  their own persistent session and memory.
 - **👥 Multi-session** — many independent conversations via a session manager.
 - **📡 Event-driven** — an internal pub/sub bus with passive telemetry.
 - **🖥️ Interactive CLI** — chat plus `/skills`, `/stats`, `/state`, `/reset`.
@@ -105,6 +107,7 @@ jarvis/
 ├── skills/            # skill/tool system + built-ins (datetime, calc, system)
 ├── events/            # pub/sub event bus
 ├── telemetry/         # metrics collector
+├── interfaces/        # Telegram bot (CLI lives in __main__.py)
 ├── models/            # Message/Conversation, Request/Response
 ├── memory/            # persistent history + semantic recall (SQLite + vectors)
 ├── integrations/      # contracts (implementation planned)
@@ -166,12 +169,37 @@ along the way).
 
 ---
 
+## Telegram bot
+
+Chat with J.A.R.V.I.S. from Telegram. Each user gets their own persistent
+session, so the assistant remembers each person independently.
+
+```bash
+pip install aiogram            # optional interface dependency
+
+# In your .env:
+#   TELEGRAM_BOT_TOKEN=...      (from @BotFather)
+#   ANTHROPIC_API_KEY=...       (or OPENAI_API_KEY)
+
+python -m jarvis.interfaces.telegram_bot     # or: jarvis-bot
+```
+
+Bot commands: `/reset` (clear the current conversation), `/forget` (wipe
+everything remembered about you), `/help`. Access can be limited to specific
+user IDs via `TELEGRAM_ALLOWED_USERS`.
+
+> Keep your bot token in `.env` only — never commit it. If a token is ever
+> exposed, revoke it with `/revoke` in @BotFather and generate a new one.
+
+---
+
 ## Roadmap
 
 | Area | Status |
 |------|--------|
 | Core: async engine, LLM, skills/tools, streaming, CLI, tests, CI | ✅ done |
 | Memory: persistent history + semantic recall | ✅ done |
+| Telegram bot (per-user sessions + memory) | ✅ done |
 | Voice: speech-to-text / text-to-speech | planned |
 | Integrations: smart home, calendar, email | planned |
 | Task automation: scheduler, workflows | planned |

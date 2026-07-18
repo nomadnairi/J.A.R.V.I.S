@@ -78,6 +78,20 @@ class Settings(BaseSettings):
     text_to_speech_engine: str = "gtts"
     voice_language: str = "en-US"
 
+    # --- Telegram bot ---
+    telegram_bot_token: str = Field(default="", description="Bot token from @BotFather.")
+    #: Optional comma-separated allowlist of Telegram user IDs (empty = open).
+    telegram_allowed_users: str = ""
+
+    def telegram_allowlist(self) -> set[int]:
+        """Parsed set of allowed Telegram user IDs (empty = everyone)."""
+        ids: set[int] = set()
+        for part in self.telegram_allowed_users.split(","):
+            part = part.strip()
+            if part.isdigit():
+                ids.add(int(part))
+        return ids
+
     def active_api_key(self) -> str:
         """Return the API key for the currently selected provider."""
         return (
