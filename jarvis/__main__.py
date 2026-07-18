@@ -6,9 +6,12 @@ Run an interactive chat session with the assistant:
     python -m jarvis
 
 Special commands inside the session:
-    /reset   clear the conversation history
-    /help    show available commands
-    /quit    exit (also: /exit, Ctrl-D)
+    /reset    clear the conversation history
+    /skills   list locally-handled skills
+    /stats    show telemetry for this session
+    /state    show the current assistant state
+    /help     show available commands
+    /quit     exit (also: /exit, Ctrl-D)
 """
 
 from __future__ import annotations
@@ -17,11 +20,12 @@ import sys
 
 from rich.console import Console
 from rich.panel import Panel
+from rich.table import Table
 
 from jarvis import __version__
 from jarvis.config.settings import get_settings
 from jarvis.core.engine import JarvisEngine
-from jarvis.core.llm import LLMError
+from jarvis.utils.exceptions import JarvisError
 from jarvis.utils.logger import setup_logging
 
 console = Console()
@@ -40,12 +44,63 @@ def _banner(assistant_name: str) -> None:
 
 
 def _print_help() -> None:
-    console.print(
-        "\n[bold]Commands[/bold]\n"
-        "  [cyan]/reset[/cyan]  clear conversation history\n"
-        "  [cyan]/help[/cyan]   show this help\n"
-        "  [cyan]/quit[/cyan]   exit the session\n"
-    )
+    table = Table(show_header=False, box=None, padding=(0, 2))
+    table.add_row("[cyan]/reset[/cyan]", "clear conversation history")
+    table.add_row("[cyan]/skills[/cyan]", "list locally-handled skills")
+    table.add_row("[cyan]/stats[/cyan]", "show session telemetry")
+    table.add_row("[cyan]/state[/cyan]", "show current assistant state")
+    table.add_row("[cyan]/help[/cyan]", "show this help")
+    table.add_row("[cyan]/quit[/cyan]", "exit the session")
+    console.print("\n[bold]Commands[/bold]")
+    console.print(table)
+
+
+def _print_skills(engine: JarvisEngine) -> None:
+    table = Table(title="Registered Skills")
+    table.add_column("Skill", style="cyan")
+    table.add_column("Priority", justify="right", style="magenta")
+    table.add_column("Description")
+    for skill in sorted(engine.skills.all(), key=lambda s: s.priority, reverse=True):
+        table.add_row(skill.name, str(skill.priority), skill.description)
+    console.print(table)
+
+
+def _print_stats(engine: JarvisEngine) -> None:
+    stats = engine.stats
+    lat = stats["latency_ms"]
+    table = Table(title="Session Telemetry", show_header=False)
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", justify="right")
+    table.add_row("Requests", str(stats["requests_total"]))
+    table.add_row("Responses", str(stats["responses_total"]))
+    table.add_row("Errors", str(stats["errors_total"]))
+    table.add_row("Total tokens", str(stats["total_tokens"]))
+    table.add_row("Avg latency", f"{lat['avg']} ms")
+    table.add_row("Median latency", f"{lat['median']} ms")
+    table.add_row("Skill usage", str(stats["skill_usage"] or "—"))
+    table.add_row("Provider usage", str(stats["provider_usage"] or "—"))
+    console.print(table)
+
+
+def _handle_command(cmd: str, engine: JarvisEngine, settings) -> bool:
+    """Handle a slash command. Returns True if the session should continue."""
+    if cmd in ("/quit", "/exit"):
+        console.print("[dim]Goodbye.[/dim]")
+        return False
+    if cmd == "/reset":
+        engine.reset()
+        console.print("[dim]History cleared.[/dim]")
+    elif cmd == "/skills":
+        _print_skills(engine)
+    elif cmd == "/stats":
+        _print_stats(engine)
+    elif cmd == "/state":
+        console.print(f"State: [cyan]{engine.state.state.value}[/cyan]")
+    elif cmd == "/help":
+        _print_help()
+    else:
+        console.print(f"[yellow]Unknown command:[/yellow] {cmd}  (try /help)")
+    return True
 
 
 def main() -> int:
@@ -54,51 +109,50 @@ def main() -> int:
 
     _banner(settings.assistant_name)
 
-    if not settings.has_llm_credentials():
+    engine = JarvisEngine(settings)
+
+    if not engine.llm.has_any_provider():
         console.print(
             f"\n[yellow]⚠  No API key found for provider "
             f"'{settings.llm_provider}'.[/yellow]\n"
             "Copy [cyan].env.example[/cyan] to [cyan].env[/cyan] and add your "
-            "key, then try again.\n"
+            "key. Skills that don't need the LLM (try [cyan]/skills[/cyan]) "
+            "still work.\n"
         )
-        return 1
 
-    engine = JarvisEngine(settings)
+    try:
+        while True:
+            try:
+                user_input = console.input(
+                    f"\n[bold green]{settings.user_name}[/bold green] › "
+                )
+            except (EOFError, KeyboardInterrupt):
+                console.print("\n[dim]Goodbye.[/dim]")
+                break
 
-    while True:
-        try:
-            user_input = console.input(f"\n[bold green]{settings.user_name}[/bold green] › ")
-        except (EOFError, KeyboardInterrupt):
-            console.print("\n[dim]Goodbye.[/dim]")
-            return 0
+            text = user_input.strip()
+            if not text:
+                continue
 
-        text = user_input.strip()
-        if not text:
-            continue
+            if text.startswith("/"):
+                if not _handle_command(text, engine, settings):
+                    break
+                continue
 
-        # Handle slash-commands.
-        if text in ("/quit", "/exit"):
-            console.print("[dim]Goodbye.[/dim]")
-            return 0
-        if text == "/reset":
-            engine.reset()
-            console.print("[dim]History cleared.[/dim]")
-            continue
-        if text == "/help":
-            _print_help()
-            continue
+            try:
+                with console.status("[cyan]thinking…[/cyan]", spinner="dots"):
+                    response = engine.ask(text)
+            except JarvisError as exc:
+                console.print(f"[red]Error:[/red] {exc}")
+                continue
 
-        # Normal turn.
-        try:
-            with console.status("[cyan]thinking…[/cyan]", spinner="dots"):
-                reply = engine.ask(text)
-        except LLMError as exc:
-            console.print(f"[red]Error:[/red] {exc}")
-            continue
+            console.print(
+                f"[bold cyan]{settings.assistant_name}[/bold cyan] › {response}"
+            )
+    finally:
+        engine.shutdown()
 
-        console.print(
-            f"[bold cyan]{settings.assistant_name}[/bold cyan] › {reply}"
-        )
+    return 0
 
 
 if __name__ == "__main__":

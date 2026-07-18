@@ -2,13 +2,23 @@
 J.A.R.V.I.S. — Just A Rather Very Intelligent System.
 
 A personal AI assistant framework with a modular, layered architecture:
-voice interface, an LLM-powered intelligence core, memory, integrations,
-and task automation.
+
+    interfaces (CLI / API / voice)
+        └── JarvisEngine ── pipeline ── skills / LLM
+                 ├── events (pub/sub bus)
+                 ├── telemetry (metrics)
+                 ├── memory (Stage 2)
+                 └── integrations (Stage 4)
+
+Public entry points:
+    JarvisEngine   — the orchestrator you talk to.
+    get_settings   — cached, typed configuration.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "nomadnairi"
 
 from jarvis.config.settings import get_settings
+from jarvis.core.engine import JarvisEngine
 
-__all__ = ["get_settings", "__version__"]
+__all__ = ["JarvisEngine", "get_settings", "__version__"]
