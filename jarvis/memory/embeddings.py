@@ -1,0 +1,96 @@
+"""
+Text embedders.
+
+Two backends:
+
+* :class:`HashingEmbedder` — dependency-free, deterministic embeddings via the
+  hashing trick. Captures lexical overlap well enough for recall, works
+  offline, and needs no API key. This is the default.
+* :class:`OpenAIEmbedder` — high-quality semantic embeddings via the OpenAI
+  embeddings API. Optional; requires ``OPENAI_API_KEY`` and the ``openai``
+  package.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import math
+
+from jarvis.memory.base import BaseEmbedder
+from jarvis.utils.exceptions import MemoryError as JarvisMemoryError
+from jarvis.utils.text import tokenize_words
+
+
+class HashingEmbedder(BaseEmbedder):
+    """Deterministic bag-of-words embedding using feature hashing.
+
+    Each token is hashed into a bucket; the vector is L2-normalised. Similar
+    texts (shared vocabulary) land close together under cosine similarity.
+    """
+
+    def __init__(self, dimensions: int = 256) -> None:
+        self.dimensions = dimensions
+
+    def _bucket(self, token: str) -> tuple[int, float]:
+        digest = hashlib.md5(token.encode("utf-8")).digest()  # noqa: S324 - not security
+        index = int.from_bytes(digest[:4], "big") % self.dimensions
+        # Sign bit from a second byte keeps buckets from only ever accumulating.
+        sign = 1.0 if digest[4] & 1 else -1.0
+        return index, sign
+
+    def embed(self, text: str) -> list[float]:
+        vec = [0.0] * self.dimensions
+        for token in tokenize_words(text):
+            index, sign = self._bucket(token)
+            vec[index] += sign
+        norm = math.sqrt(sum(v * v for v in vec))
+        if norm == 0.0:
+            return vec
+        return [v / norm for v in vec]
+
+
+class OpenAIEmbedder(BaseEmbedder):
+    """Semantic embeddings via the OpenAI embeddings API."""
+
+    def __init__(self, api_key: str, model: str = "text-embedding-3-small") -> None:
+        if not api_key:
+            raise JarvisMemoryError("OpenAIEmbedder requires an OpenAI API key.")
+        self.api_key = api_key
+        self.model = model
+        self.dimensions = 1536  # text-embedding-3-small
+        self._client: object | None = None
+
+    def _ensure_client(self) -> object:
+        if self._client is not None:
+            return self._client
+        try:
+            from openai import OpenAI
+        except ImportError as exc:  # pragma: no cover - env guard
+            raise JarvisMemoryError(
+                "The 'openai' package is required for OpenAIEmbedder."
+            ) from exc
+        self._client = OpenAI(api_key=self.api_key)
+        return self._client
+
+    def embed(self, text: str) -> list[float]:
+        return self.embed_many([text])[0]
+
+    def embed_many(self, texts: list[str]) -> list[list[float]]:
+        client = self._ensure_client()
+        try:
+            response = client.embeddings.create(model=self.model, input=texts)  # type: ignore[attr-defined]
+        except Exception as exc:  # noqa: BLE001
+            raise JarvisMemoryError(f"OpenAI embedding request failed: {exc}") from exc
+        return [item.embedding for item in response.data]
+
+
+def cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Cosine similarity between two equal-length vectors."""
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    if na == 0.0 or nb == 0.0:
+        return 0.0
+    return dot / (na * nb)

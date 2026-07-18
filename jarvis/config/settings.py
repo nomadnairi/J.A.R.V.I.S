@@ -47,10 +47,23 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     log_file: str = "logs/jarvis.log"
 
-    # --- Storage (used from Stage 2 onward) ---
+    # --- Storage ---
     database_url: str = "sqlite:///data/jarvis.db"
     redis_url: str = "redis://localhost:6379/0"
     vector_store_path: str = "chroma_db"
+
+    # --- Memory (Stage 2) ---
+    memory_enabled: bool = True
+    #: Vector backend: "memory" (built-in, dep-free) or "chroma".
+    memory_backend: Literal["memory", "chroma"] = "memory"
+    #: Embedding backend: "hashing" (offline default) or "openai".
+    embedding_backend: Literal["hashing", "openai"] = "hashing"
+    #: How many memories to recall and inject into the prompt per turn.
+    memory_recall_limit: int = Field(default=4, ge=0, le=20)
+    #: SQLite file for persistent conversation history.
+    memory_db_path: str = "data/jarvis.db"
+    #: JSON file backing the built-in vector store.
+    memory_vector_path: str = "data/memory.json"
 
     # --- Voice (used from Stage 3 onward) ---
     speech_recognition_engine: str = "whisper"

@@ -15,6 +15,7 @@ from jarvis.config.settings import Settings, get_settings
 from jarvis.events.bus import EventBus
 from jarvis.llm.client import LLMClient
 from jarvis.llm.prompts import PromptBuilder
+from jarvis.memory.manager import MemoryManager
 from jarvis.skills.builtin import DEFAULT_SKILLS
 from jarvis.skills.builtin.help_skill import HelpSkill
 from jarvis.skills.registry import SkillRegistry
@@ -40,12 +41,14 @@ class ServiceContainer:
         llm_client: LLMClient | None = None,
         skill_registry: SkillRegistry | None = None,
         metrics: MetricsCollector | None = None,
+        memory: MemoryManager | None = None,
     ) -> None:
         self._settings = settings or get_settings()
         self._event_bus_override = event_bus
         self._llm_override = llm_client
         self._skills_override = skill_registry
         self._metrics_override = metrics
+        self._memory_override = memory
 
     @property
     def settings(self) -> Settings:
@@ -64,6 +67,14 @@ class ServiceContainer:
     @cached_property
     def llm(self) -> LLMClient:
         return self._llm_override or LLMClient.from_settings(self._settings)
+
+    @cached_property
+    def memory(self) -> MemoryManager | None:
+        if self._memory_override is not None:
+            return self._memory_override
+        if not self._settings.memory_enabled:
+            return None
+        return MemoryManager.from_settings(self._settings)
 
     @cached_property
     def prompts(self) -> PromptBuilder:

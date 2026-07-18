@@ -66,13 +66,36 @@ doesn't claim falls through to the language model.
 
 | Stage | Scope | Status |
 |-------|-------|--------|
-| **1** | Foundation: config, events, DI, state machine, pipeline, LLM core, skills, telemetry, CLI, tests, CI | ✅ done |
-| 2 | Memory system (conversation store + vector DB) | planned |
+| **1** | Foundation: config, events, DI, state machine, pipeline, LLM core (async, tools, streaming), skills, telemetry, multi-session, CLI, tests, CI | ✅ done |
+| **2** | Memory system: persistent conversation store + semantic recall (RAG) | ✅ done |
 | 3 | Voice layer (STT / TTS) | planned |
 | 4 | Integrations (smart home, calendar, email) | planned |
 | 5 | Task automation (scheduler, workflows) | planned |
 | 6 | API layer (FastAPI + WebSocket) | planned |
 | 7 | Frontend (React dashboard) | planned |
+
+## Stage 2 — Memory
+
+Two complementary stores behind a single :class:`MemoryManager`:
+
+* **Conversation store** (`SQLiteConversationStore`) — persists every turn to
+  SQLite (stdlib, no external DB). Sessions reload their recent history on
+  first access, so conversations survive restarts.
+* **Semantic memory** (`InMemoryVectorStore`) — embeds meaningful exchanges and
+  recalls the most relevant ones by cosine similarity. Recalled memories are
+  injected into the system prompt (retrieval-augmented generation) so the
+  assistant "remembers" facts across turns and sessions.
+
+Embeddings default to `HashingEmbedder` (offline, dependency-free);
+`OpenAIEmbedder` gives higher-quality semantic recall when configured. The
+vector backend can be swapped for `ChromaVectorStore` — both implement the same
+`BaseMemoryStore` contract. Memory is optional (`MEMORY_ENABLED`) and adds no
+required dependencies.
+
+```
+turn ──► ConversationStore (persist)   ──► reload on next session
+    └──► VectorStore (embed & store) ──► recall ──► system prompt (RAG)
+```
 
 ## Package layout (Stage 1)
 

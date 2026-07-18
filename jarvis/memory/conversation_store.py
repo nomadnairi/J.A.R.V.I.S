@@ -1,0 +1,119 @@
+"""
+Persistent conversation store (SQLite).
+
+Persists conversation turns per session so history survives process restarts.
+Uses the standard-library :mod:`sqlite3` — no external database or driver
+required. Thread-safe for the simple, low-concurrency access patterns of an
+assistant (one connection with a lock).
+"""
+
+from __future__ import annotations
+
+import sqlite3
+import threading
+from pathlib import Path
+
+from jarvis.config.constants import Role
+from jarvis.models.message import Conversation, Message
+from jarvis.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+_SCHEMA = """
+CREATE TABLE IF NOT EXISTS messages (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id  TEXT NOT NULL,
+    role        TEXT NOT NULL,
+    content     TEXT NOT NULL,
+    timestamp   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
+"""
+
+
+class SQLiteConversationStore:
+    """Stores and loads conversation history in a SQLite database."""
+
+    def __init__(self, db_path: str = "data/jarvis.db") -> None:
+        self.db_path = db_path
+        self._lock = threading.Lock()
+        if db_path != ":memory:":
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+        self._conn = sqlite3.connect(db_path, check_same_thread=False)
+        self._conn.row_factory = sqlite3.Row
+        self._conn.executescript(_SCHEMA)
+        self._conn.commit()
+
+    # -- write --------------------------------------------------------------
+
+    def append(self, session_id: str, message: Message) -> None:
+        """Persist a single message for ``session_id``."""
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO messages (session_id, role, content, timestamp) "
+                "VALUES (?, ?, ?, ?)",
+                (session_id, message.role.value, message.content,
+                message.timestamp.isoformat()),
+            )
+            self._conn.commit()
+
+    def append_exchange(self, session_id: str, user: str, assistant: str) -> None:
+        """Persist a user message and the assistant's reply together."""
+        self.append(session_id, Message.user(user))
+        self.append(session_id, Message.assistant(assistant))
+
+    # -- read ---------------------------------------------------------------
+
+    def load(self, session_id: str, *, limit: int | None = None) -> Conversation:
+        """Load a session's history into a :class:`Conversation`."""
+        query = (
+            "SELECT role, content, timestamp FROM messages "
+            "WHERE session_id = ? ORDER BY id ASC"
+        )
+        with self._lock:
+            rows = self._conn.execute(query, (session_id,)).fetchall()
+        if limit is not None:
+            rows = rows[-limit:]
+        conversation = Conversation()
+        for row in rows:
+            conversation.messages.append(
+                Message(role=Role(row["role"]), content=row["content"])
+            )
+        return conversation
+
+    def sessions(self) -> list[str]:
+        """Return all known session ids."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT DISTINCT session_id FROM messages"
+            ).fetchall()
+        return [row["session_id"] for row in rows]
+
+    def count(self, session_id: str | None = None) -> int:
+        with self._lock:
+            if session_id is None:
+                row = self._conn.execute(
+                    "SELECT COUNT(*) AS n FROM messages"
+                ).fetchone()
+            else:
+                row = self._conn.execute(
+                    "SELECT COUNT(*) AS n FROM messages WHERE session_id = ?",
+                    (session_id,),
+                ).fetchone()
+        return int(row["n"])
+
+    # -- delete -------------------------------------------------------------
+
+    def clear(self, session_id: str | None = None) -> None:
+        with self._lock:
+            if session_id is None:
+                self._conn.execute("DELETE FROM messages")
+            else:
+                self._conn.execute(
+                    "DELETE FROM messages WHERE session_id = ?", (session_id,)
+                )
+            self._conn.commit()
+
+    def close(self) -> None:  # pragma: no cover - lifecycle
+        with self._lock:
+            self._conn.close()

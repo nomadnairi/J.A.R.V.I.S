@@ -1,10 +1,15 @@
 """
-Abstract memory-store contract.
+Memory-subsystem contracts.
 
-Defines the interface every memory backend must implement so the engine can
-remember facts and recall relevant context without knowing whether the backend
-is SQLite, Redis, or a vector database. Concrete implementations arrive in
-Stage 2.
+Defines the interfaces the memory layer is built on:
+
+* :class:`MemoryRecord` — a single stored memory item.
+* :class:`BaseEmbedder` — turns text into a vector for similarity search.
+* :class:`BaseMemoryStore` — a semantic (vector) store: remember / recall /
+  forget.
+
+Concrete implementations live alongside this module (embeddings, vector store,
+conversation store).
 """
 
 from __future__ import annotations
@@ -14,20 +19,61 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 @dataclass
 class MemoryRecord:
     """A single stored memory item."""
 
     content: str
     session_id: str = "default"
-    kind: str = "note"          # note | fact | preference | event ...
+    kind: str = "note"          # note | fact | preference | exchange | event ...
     score: float = 0.0          # relevance score (set on recall)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=_now)
     metadata: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        """JSON-serialisable representation (for disk persistence)."""
+        return {
+            "content": self.content,
+            "session_id": self.session_id,
+            "kind": self.kind,
+            "timestamp": self.timestamp.isoformat(),
+            "metadata": self.metadata,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "MemoryRecord":
+        ts = data.get("timestamp")
+        return cls(
+            content=data["content"],
+            session_id=data.get("session_id", "default"),
+            kind=data.get("kind", "note"),
+            timestamp=datetime.fromisoformat(ts) if ts else _now(),
+            metadata=data.get("metadata", {}),
+        )
+
+
+class BaseEmbedder(ABC):
+    """Turns text into a fixed-length embedding vector."""
+
+    #: Dimensionality of the produced vectors.
+    dimensions: int = 0
+
+    @abstractmethod
+    def embed(self, text: str) -> list[float]:
+        """Return the embedding vector for ``text``."""
+        raise NotImplementedError
+
+    def embed_many(self, texts: list[str]) -> list[list[float]]:
+        """Embed several texts (override for batch efficiency)."""
+        return [self.embed(t) for t in texts]
 
 
 class BaseMemoryStore(ABC):
-    """Interface for short- and long-term memory backends."""
+    """Interface for semantic (vector) memory backends."""
 
     @abstractmethod
     def remember(self, record: MemoryRecord) -> None:
@@ -35,12 +81,19 @@ class BaseMemoryStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def recall(self, query: str, *, session_id: str = "default",
+    def recall(self, query: str, *, session_id: str | None = "default",
             limit: int = 5) -> list[MemoryRecord]:
-        """Return records relevant to ``query``, most relevant first."""
+        """Return records relevant to ``query``, most relevant first.
+
+        ``session_id=None`` searches across all sessions.
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def forget(self, session_id: str = "default") -> None:
-        """Delete stored memories (optionally scoped to a session)."""
+    def forget(self, session_id: str | None = "default") -> None:
+        """Delete stored memories (``None`` clears everything)."""
         raise NotImplementedError
+
+    def count(self, session_id: str | None = None) -> int:  # pragma: no cover - default
+        """Number of stored records (optionally scoped to a session)."""
+        return 0

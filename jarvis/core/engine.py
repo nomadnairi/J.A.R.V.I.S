@@ -57,19 +57,25 @@ class JarvisEngine:
         self.llm = self.container.llm
         self.skills = self.container.skills
         self.prompts = self.container.prompts
+        self.memory = self.container.memory  # None when memory is disabled
 
-        # Per-engine state.
+        # Per-engine state. When memory is on, new sessions reload their
+        # persisted history transparently via the loader.
+        loader = self.memory.load_conversation if self.memory else None
         self.state = StateMachine(self.bus)
-        self.sessions = SessionManager(max_sessions=self.settings.max_sessions)
+        self.sessions = SessionManager(
+            max_sessions=self.settings.max_sessions, loader=loader
+        )
         self.pipeline = Pipeline([NormalizeMiddleware(), LoggingMiddleware()])
 
         logger.info(
-            "%s ready (provider=%s, model=%s, skills=%d, tools=%d)",
+            "%s ready (provider=%s, model=%s, skills=%d, tools=%d, memory=%s)",
             self.settings.assistant_name,
             self.settings.llm_provider,
             self.settings.llm_model,
             len(self.skills),
             len(self.skills.tool_specs()),
+            "on" if self.memory else "off",
         )
 
     # -- lifecycle ----------------------------------------------------------
@@ -131,6 +137,8 @@ class JarvisEngine:
             if result.handled:
                 session.conversation.add_user(request.text)
                 session.conversation.add_assistant(result.text)
+                self._persist_turn(session.session_id, request.text, result.text,
+                                semantic=False)
                 await self.bus.emit(EventType.SKILL_MATCHED, source=skill.name)
                 await self.bus.emit(EventType.RESPONSE_READY, source=skill.name,
                                     via_skill=True)
@@ -140,7 +148,9 @@ class JarvisEngine:
 
         # LLM streaming path.
         session.conversation.add_user(request.text)
-        system = self.prompts.system_prompt()
+        system = self.prompts.system_prompt(
+            extra_context=self._recall(request.text, session.session_id)
+        )
         await self.state.transition(AssistantState.THINKING)
         await self.bus.emit(EventType.LLM_REQUEST, source=self.settings.llm_provider)
 
@@ -153,6 +163,7 @@ class JarvisEngine:
 
         full = "".join(chunks).strip()
         session.conversation.add_assistant(full)
+        self._persist_turn(session.session_id, request.text, full, semantic=True)
         await self.bus.emit(EventType.RESPONSE_READY, source=self.settings.llm_provider)
         await self.state.transition(AssistantState.IDLE)
 
@@ -193,6 +204,8 @@ class JarvisEngine:
         await self.bus.emit(EventType.SKILL_MATCHED, source=skill.name)
         session.conversation.add_user(request.text)
         session.conversation.add_assistant(result.text)
+        # Persist history, but skill turns are trivial — don't add to semantic memory.
+        self._persist_turn(session.session_id, request.text, result.text, semantic=False)
         return Response.from_skill(
             result.text,
             skill_name=skill.name,
@@ -207,7 +220,9 @@ class JarvisEngine:
         await self.state.transition(AssistantState.THINKING)
         session.conversation.add_user(request.text)
 
-        system = self.prompts.system_prompt()
+        system = self.prompts.system_prompt(
+            extra_context=self._recall(request.text, session.session_id)
+        )
         tools = self.skills.tool_specs()
         messages = session.conversation.to_provider_format()
         total_tokens = 0
@@ -231,6 +246,7 @@ class JarvisEngine:
         await self.bus.emit(EventType.LLM_RESPONSE, source=result.provider,
                             tokens=total_tokens)
         session.conversation.add_assistant(result.text)
+        self._persist_turn(session.session_id, request.text, result.text, semantic=True)
         await self.state.transition(AssistantState.SPEAKING)
         return Response.from_llm(
             result.text,
@@ -260,13 +276,44 @@ class JarvisEngine:
             await self.bus.emit(EventType.TOOL_RESULT, source=call.name)
         return tool_results
 
+    # -- memory helpers -----------------------------------------------------
+
+    def _recall(self, query: str, session_id: str) -> str | None:
+        """Recall relevant memories to enrich the system prompt (RAG)."""
+        if self.memory is None:
+            return None
+        return self.memory.recall_context(query, session_id=session_id)
+
+    def _persist_turn(self, session_id: str, user: str, assistant: str, *,
+                    semantic: bool) -> None:
+        """Persist a turn to history and, optionally, semantic memory."""
+        if self.memory is None:
+            return
+        self.memory.persist_turn(session_id, user, assistant)
+        if semantic:
+            self.memory.remember(
+                session_id,
+                f"User said: {user}\nYou replied: {assistant}",
+                kind="exchange",
+            )
+
     # -- session management -------------------------------------------------
 
     async def reset(self, session_id: str = "default") -> None:
-        """Clear the conversation history for a session."""
+        """Clear the conversation history for a session (keeps long-term memory)."""
         self.sessions.reset(session_id)
+        if self.memory is not None:
+            self.memory.conversations.clear(session_id)
         await self.state.reset()
         logger.debug("Session %r reset.", session_id)
+
+    async def forget(self, session_id: str = "default") -> None:
+        """Wipe both conversation history and long-term memory for a session."""
+        self.sessions.reset(session_id)
+        if self.memory is not None:
+            self.memory.forget(session_id)
+        await self.state.reset()
+        logger.debug("Session %r fully forgotten.", session_id)
 
     def session(self, session_id: str = "default") -> SessionContext:
         """Return (creating if needed) the context for a session."""

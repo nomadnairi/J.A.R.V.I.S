@@ -10,19 +10,31 @@ configured cap is reached.
 from __future__ import annotations
 
 from collections import OrderedDict
+from typing import Callable
 
 from jarvis.core.context import SessionContext
+from jarvis.models.message import Conversation
 from jarvis.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+#: A callable that loads persisted history for a session id.
+HistoryLoader = Callable[[str], Conversation]
+
 
 class SessionManager:
-    """An LRU cache of :class:`SessionContext` objects keyed by session id."""
+    """An LRU cache of :class:`SessionContext` objects keyed by session id.
 
-    def __init__(self, max_sessions: int = 1000) -> None:
+    An optional ``loader`` populates a newly-created session's conversation
+    from persistent storage (used by the memory subsystem), so a returning
+    user's history is restored transparently.
+    """
+
+    def __init__(self, max_sessions: int = 1000,
+                loader: HistoryLoader | None = None) -> None:
         self._sessions: "OrderedDict[str, SessionContext]" = OrderedDict()
         self._max = max_sessions
+        self._loader = loader
 
     def get_or_create(self, session_id: str) -> SessionContext:
         """Return the context for ``session_id``, creating it if needed."""
@@ -31,6 +43,11 @@ class SessionManager:
             self._sessions.move_to_end(session_id)
             return ctx
         ctx = SessionContext(session_id=session_id)
+        if self._loader is not None:
+            try:
+                ctx.conversation = self._loader(session_id)
+            except Exception:  # noqa: BLE001 - never let loading break a session
+                logger.exception("Failed to load history for session %r", session_id)
         self._sessions[session_id] = ctx
         self._evict()
         logger.debug("Created session %r (total=%d)", session_id, len(self._sessions))

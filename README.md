@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-0.3.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-0.4.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **A modular personal AI assistant framework — inspired by Tony Stark's companion.**
@@ -22,12 +22,12 @@ an LLM-powered intelligence core, a plugin/skill system, tool calling, and a
 layered architecture designed to grow into voice, smart-home, and automation
 capabilities.
 
-> **Project status:** early development. The **foundation (Stage 1)** is built
-> and working — an async engine, LLM integration (Anthropic / OpenAI), a
-> skill & tool system, streaming, and an interactive CLI. The remaining stages
-> (memory, voice, integrations, automation, web/API) are planned. See
-> [Development stages](#development-stages) below for exactly what's done and
-> what isn't.
+> **Project status:** early development. **Stages 1–2** are built and working —
+> an async engine, LLM integration (Anthropic / OpenAI), a skill & tool system,
+> streaming, an interactive CLI, and a **memory system** (persistent history +
+> semantic recall). The remaining stages (voice, integrations, automation,
+> web/API) are planned. See [Development stages](#development-stages) below for
+> exactly what's done and what isn't.
 
 ---
 
@@ -39,6 +39,8 @@ capabilities.
   tools (skills) to get things done, then answer with the results.
 - **🧩 Skill / plugin system** — deterministic, zero-cost handling of common
   requests (date/time, calculator, system diagnostics) before hitting the LLM.
+- **🧠 Memory** — persistent conversation history (survives restarts) plus
+  semantic recall (RAG): the assistant remembers facts across turns/sessions.
 - **⚡ Streaming** — token-by-token streamed replies in the CLI.
 - **👥 Multi-session** — many independent conversations via a session manager.
 - **📡 Event-driven** — an internal pub/sub bus with passive telemetry.
@@ -103,7 +105,7 @@ jarvis/
 ├── events/            # pub/sub event bus
 ├── telemetry/         # metrics collector
 ├── models/            # Message/Conversation, Request/Response
-├── memory/            # contracts (implementation planned)
+├── memory/            # persistent history + semantic recall (SQLite + vectors)
 ├── integrations/      # contracts (implementation planned)
 └── utils/             # logging, retry, timing, exceptions, text
 tests/                 # pytest suite
@@ -153,7 +155,9 @@ J.A.R.V.I.S. › All systems nominal. …
 
 Sir › /skills      # list skills and which are exposed as LLM tools
 Sir › /stats       # session telemetry
-Sir › /reset       # clear conversation history
+Sir › /memory      # memory statistics
+Sir › /reset       # clear conversation (keeps long-term memory)
+Sir › /forget      # wipe history and long-term memory
 ```
 
 Anything a skill doesn't handle is answered by the LLM (which may call tools
@@ -166,7 +170,7 @@ along the way).
 | Stage | Scope | Status |
 |-------|-------|--------|
 | 1 | Foundation: async core, LLM, skills/tools, streaming, CLI, tests, CI | ✅ done |
-| 2 | Memory system (conversation store + vector DB) | planned |
+| 2 | Memory system (persistent history + semantic recall) | ✅ done |
 | 3 | Voice layer (speech-to-text / text-to-speech) | planned |
 | 4 | Integrations (smart home, calendar, email) | planned |
 | 5 | Task automation (scheduler, workflows) | planned |

@@ -73,6 +73,7 @@ def settings() -> Settings:
         anthropic_api_key="test-key",
         llm_provider="anthropic",
         log_file="",  # no file handler in tests
+        memory_enabled=False,  # keep the default engine off disk
     )
 
 

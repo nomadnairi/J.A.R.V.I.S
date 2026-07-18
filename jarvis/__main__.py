@@ -48,7 +48,9 @@ def _banner(assistant_name: str) -> None:
 
 def _print_help() -> None:
     table = Table(show_header=False, box=None, padding=(0, 2))
-    table.add_row("[cyan]/reset[/cyan]", "clear conversation history")
+    table.add_row("[cyan]/reset[/cyan]", "clear conversation history (keeps memory)")
+    table.add_row("[cyan]/forget[/cyan]", "wipe history and long-term memory")
+    table.add_row("[cyan]/memory[/cyan]", "show memory statistics")
     table.add_row("[cyan]/skills[/cyan]", "list locally-handled skills and tools")
     table.add_row("[cyan]/stats[/cyan]", "show session telemetry")
     table.add_row("[cyan]/state[/cyan]", "show current assistant state")
@@ -95,6 +97,19 @@ async def _handle_command(cmd: str, engine: JarvisEngine) -> bool:
     if cmd == "/reset":
         await engine.reset(SESSION_ID)
         console.print("[dim]History cleared.[/dim]")
+    elif cmd == "/forget":
+        await engine.forget(SESSION_ID)
+        console.print("[dim]History and long-term memory wiped.[/dim]")
+    elif cmd == "/memory":
+        if engine.memory is None:
+            console.print("[yellow]Memory is disabled.[/yellow]")
+        else:
+            stats = engine.memory.stats()
+            console.print(
+                f"Memory: [cyan]{stats['memories']}[/cyan] memories · "
+                f"[cyan]{stats['stored_messages']}[/cyan] messages · "
+                f"[cyan]{stats['sessions']}[/cyan] sessions"
+            )
     elif cmd == "/skills":
         _print_skills(engine)
     elif cmd == "/stats":
