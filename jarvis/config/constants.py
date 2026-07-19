@@ -66,5 +66,7 @@ class EventType(str, Enum):
     LLM_RESPONSE = "llm_response"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
+    INTEGRATION_CONNECTED = "integration_connected"
+    INTEGRATION_ERROR = "integration_error"
     STATE_CHANGED = "state_changed"
     ERROR = "error"

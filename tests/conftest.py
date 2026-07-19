@@ -74,6 +74,7 @@ def settings() -> Settings:
         llm_provider="anthropic",
         log_file="",  # no file handler in tests
         memory_enabled=False,  # keep the default engine off disk
+        integrations_enabled=False,  # no network at construction
     )
 
 

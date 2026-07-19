@@ -97,6 +97,15 @@ class Settings(BaseSettings):
     #: Whether the bot also replies with a spoken (TTS) voice/audio message.
     voice_replies: bool = True
 
+    # --- Integrations ---
+    #: Master switch for the integrations subsystem.
+    integrations_enabled: bool = True
+    #: Weather integration (Open-Meteo, free, no key).
+    weather_enabled: bool = True
+    #: Home Assistant (smart home) — both are required to enable it.
+    homeassistant_url: str = ""
+    homeassistant_token: str = ""
+
     # --- Telegram bot ---
     telegram_bot_token: str = Field(default="", description="Bot token from @BotFather.")
     #: Optional comma-separated allowlist of Telegram user IDs (empty = open).

@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-0.10.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-0.11.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **Modulli shaxsiy AI-yordamchi frameworki — Toni Starkning yordamchisidan ilhomlangan.**
@@ -55,6 +55,9 @@ kengayishga mo'ljallangan qatlamli arxitektura.
 - **🎙 Ovoz (botda)** — ovozli xabar yuboring: u OpenAI Whisper API orqali
   matnga o'giriladi, yordamchi javob beradi va (xohishga ko'ra) OpenAI TTS
   bilan javobni ovozda aytadi. Ko'p tilli: siz gapirgan tilda javob beradi.
+- **🔌 Integratsiyalar** — tashqi xizmatlar LLM uchun tool sifatida: **ob-havo**
+  (Open-Meteo, bepul, kalitsiz) va **aqlli uy** (Home Assistant). Ulanadigan
+  karkas (connect/health/tool-ko'prik) — yana qo'shish oson.
 - **👥 Ko'p sessiya** — sessiya menejeri orqali ko'plab mustaqil suhbatlar.
 - **📡 Hodisaga asoslangan** — ichki pub/sub shina va passiv telemetriya.
 - **🖥️ Interaktiv CLI** — suhbat, shuningdek `/skills`, `/stats`, `/state`, `/reset`.
@@ -212,7 +215,9 @@ tillarida, yordamchi foydalanuvchi tanlagan tilda javob beradi. Kirishni
 | Xotira: doimiy tarix + semantik recall | ✅ tayyor |
 | Telegram bot (foydalanuvchi bo'yicha sessiyalar + xotira) | ✅ tayyor |
 | Botda ovoz: nutqni tanish (Whisper API) / sintez (OpenAI), ko'p tilli | ✅ tayyor |
+| Integratsiyalar: karkas + ob-havo + aqlli uy (Home Assistant) | ✅ tayyor |
 | Desktop / Raspberry Pi ovoz (mikrofon va karnay) | reja |
+| Yana integratsiyalar: taqvim, pochta | reja |
 | Integratsiyalar: aqlli uy, taqvim, pochta | reja |
 | Vazifalarni avtomatlashtirish: rejalashtiruvchi, ssenariylar | reja |
 | API qatlami: FastAPI + WebSocket | reja |

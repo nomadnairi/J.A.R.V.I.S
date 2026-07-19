@@ -13,6 +13,7 @@ from functools import cached_property
 
 from jarvis.config.settings import Settings, get_settings
 from jarvis.events.bus import EventBus
+from jarvis.integrations.manager import IntegrationManager
 from jarvis.llm.client import LLMClient
 from jarvis.llm.prompts import PromptBuilder
 from jarvis.memory.manager import MemoryManager
@@ -42,6 +43,7 @@ class ServiceContainer:
         skill_registry: SkillRegistry | None = None,
         metrics: MetricsCollector | None = None,
         memory: MemoryManager | None = None,
+        integrations: IntegrationManager | None = None,
     ) -> None:
         self._settings = settings or get_settings()
         self._event_bus_override = event_bus
@@ -49,6 +51,8 @@ class ServiceContainer:
         self._skills_override = skill_registry
         self._metrics_override = metrics
         self._memory_override = memory
+        self._integrations_override = integrations
+        self._integrations_set = integrations is not None
 
     @property
     def settings(self) -> Settings:
@@ -77,6 +81,29 @@ class ServiceContainer:
         return MemoryManager.from_settings(self._settings, llm=self.llm)
 
     @cached_property
+    def integrations(self) -> IntegrationManager | None:
+        if self._integrations_set:
+            return self._integrations_override
+        if not self._settings.integrations_enabled:
+            return None
+        return self._build_integrations()
+
+    def _build_integrations(self) -> IntegrationManager:
+        from jarvis.integrations.homeassistant import HomeAssistantIntegration
+        from jarvis.integrations.weather import WeatherIntegration
+
+        manager = IntegrationManager()
+        if self._settings.weather_enabled:
+            manager.register(WeatherIntegration(enabled=True))
+        manager.register(
+            HomeAssistantIntegration(
+                self._settings.homeassistant_url,
+                self._settings.homeassistant_token,
+            )
+        )
+        return manager
+
+    @cached_property
     def prompts(self) -> PromptBuilder:
         return PromptBuilder(
             assistant_name=self._settings.assistant_name,
@@ -94,5 +121,8 @@ class ServiceContainer:
         for skill in instances:
             if isinstance(skill, HelpSkill):
                 skill.registry = registry
-        logger.debug("Registered %d built-in skills", len(registry))
+        # Expose configured integrations' actions as tools.
+        if self.integrations is not None:
+            self.integrations.install_tools(registry)
+        logger.debug("Registered %d skills (incl. integration tools)", len(registry))
         return registry

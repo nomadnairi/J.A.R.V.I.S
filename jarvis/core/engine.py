@@ -60,6 +60,7 @@ class JarvisEngine:
         self.skills = self.container.skills
         self.prompts = self.container.prompts
         self.memory = self.container.memory  # None when memory is disabled
+        self.integrations = self.container.integrations  # None when disabled
 
         # Per-engine state. When memory is on, new sessions reload their
         # persisted history transparently via the loader.
@@ -74,23 +75,39 @@ class JarvisEngine:
         self._background: set[asyncio.Task] = set()
 
         logger.info(
-            "%s ready (provider=%s, model=%s, skills=%d, tools=%d, memory=%s)",
+            "%s ready (provider=%s, model=%s, skills=%d, tools=%d, memory=%s, "
+            "integrations=%d)",
             self.settings.assistant_name,
             self.settings.llm_provider,
             self.settings.llm_model,
             len(self.skills),
             len(self.skills.tool_specs()),
             "on" if self.memory else "off",
+            len(self.integrations) if self.integrations else 0,
         )
 
     # -- lifecycle ----------------------------------------------------------
 
     async def start(self) -> None:
         await self.bus.emit(EventType.STARTUP, source="engine")
+        await self._connect_integrations()
 
     async def shutdown(self) -> None:
         await self.drain()
+        if self.integrations is not None:
+            await self.integrations.disconnect_all()
         await self.bus.emit(EventType.SHUTDOWN, source="engine")
+
+    async def _connect_integrations(self) -> None:
+        if self.integrations is None:
+            return
+        for status in await self.integrations.connect_all():
+            event = (
+                EventType.INTEGRATION_CONNECTED
+                if status.state.value == "connected"
+                else EventType.INTEGRATION_ERROR
+            )
+            await self.bus.emit(event, source=status.name, detail=status.detail)
 
     # -- public API ---------------------------------------------------------
 

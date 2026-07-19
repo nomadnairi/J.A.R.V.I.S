@@ -70,8 +70,9 @@ doesn't claim falls through to the language model.
 | Memory: persistent conversation store + semantic recall (RAG) | ✅ done |
 | Telegram bot interface (per-user sessions + memory) | ✅ done |
 | Voice in the bot: pluggable STT (OpenAI / local Whisper) + TTS (OpenAI / edge-tts / gTTS), multilingual | ✅ done |
+| Integrations: framework + weather (Open-Meteo) + smart home (Home Assistant) | ✅ done |
 | Desktop / Raspberry Pi voice (mic & speaker) | planned |
-| Integrations (smart home, calendar, email) | planned |
+| More integrations (calendar, email) | planned |
 | Task automation (scheduler, workflows) | planned |
 | API layer (FastAPI + WebSocket) | planned |
 | Web dashboard | planned |
@@ -116,6 +117,25 @@ turn ──► ConversationStore (persist inline) ──► reload on next sessi
                                                     │
              query ──► recall (threshold + recency) ┘──► system prompt (RAG)
 ```
+
+## Integrations
+
+External services are connected through `BaseIntegration`. Each integration has
+a lifecycle (`connect` / `status` / `disconnect`) and exposes one or more
+`IntegrationAction`s. The `IntegrationManager` connects the configured
+integrations at startup and **bridges their actions into the skill registry as
+LLM tools** — so the agentic loop can call them with no special-casing:
+
+```
+IntegrationManager
+   ├─ connect_all()  ── on engine.start()
+   └─ install_tools() ─► SkillRegistry ─► tool_specs ─► LLM agentic loop
+```
+
+Shipped: `WeatherIntegration` (Open-Meteo, free, no key) and
+`HomeAssistantIntegration` (smart-home control, config-gated). HTTP goes through
+a small retrying `HttpClient` so integrations never touch `httpx` directly and
+stay easy to test.
 
 ## Package layout
 

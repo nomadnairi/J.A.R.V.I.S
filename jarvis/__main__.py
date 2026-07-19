@@ -52,6 +52,7 @@ def _print_help() -> None:
     table.add_row("[cyan]/forget[/cyan]", "wipe history and long-term memory")
     table.add_row("[cyan]/memory[/cyan]", "show memory statistics")
     table.add_row("[cyan]/skills[/cyan]", "list locally-handled skills and tools")
+    table.add_row("[cyan]/integrations[/cyan]", "show integration statuses")
     table.add_row("[cyan]/stats[/cyan]", "show session telemetry")
     table.add_row("[cyan]/state[/cyan]", "show current assistant state")
     table.add_row("[cyan]/help[/cyan]", "show this help")
@@ -69,6 +70,21 @@ def _print_skills(engine: JarvisEngine) -> None:
     for skill in sorted(engine.skills.all(), key=lambda s: s.priority, reverse=True):
         is_tool = "✓" if skill.parameters is not None else "—"
         table.add_row(skill.name, str(skill.priority), is_tool, skill.description)
+    console.print(table)
+
+
+def _print_integrations(engine: JarvisEngine) -> None:
+    if engine.integrations is None:
+        console.print("[yellow]Integrations are disabled.[/yellow]")
+        return
+    table = Table(title="Integrations")
+    table.add_column("Integration", style="cyan")
+    table.add_column("State")
+    table.add_column("Detail")
+    for status in engine.integrations.statuses():
+        colour = {"connected": "green", "error": "red"}.get(status.state.value, "dim")
+        table.add_row(status.name, f"[{colour}]{status.state.value}[/{colour}]",
+                    status.detail)
     console.print(table)
 
 
@@ -112,6 +128,8 @@ async def _handle_command(cmd: str, engine: JarvisEngine) -> bool:
             )
     elif cmd == "/skills":
         _print_skills(engine)
+    elif cmd == "/integrations":
+        _print_integrations(engine)
     elif cmd == "/stats":
         _print_stats(engine)
     elif cmd == "/state":

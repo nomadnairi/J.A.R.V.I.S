@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-0.10.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-0.11.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **A modular personal AI assistant framework — inspired by Tony Stark's companion.**
@@ -55,6 +55,9 @@ capabilities.
   and (optionally) spoken back. **Pluggable backends**: STT via OpenAI Whisper
   API or **local Whisper** (free, offline); TTS via OpenAI, **edge-tts** or
   **gTTS** (both free). Multilingual — replies in whatever language you spoke.
+- **🔌 Integrations** — external services exposed to the LLM as callable tools:
+  **weather** (Open-Meteo, free, no key) and **smart home** (Home Assistant).
+  A pluggable framework (connect/health/tool-bridge) makes adding more easy.
 - **👥 Multi-session** — many independent conversations via a session manager.
 - **📡 Event-driven** — an internal pub/sub bus with passive telemetry.
 - **🖥️ Interactive CLI** — chat plus `/skills`, `/stats`, `/state`, `/reset`.
@@ -81,9 +84,8 @@ Everything above runs locally; skill/tool commands work even without an API key.
                            │ events
         ┌───────────────────┼───────────────────┐
         ▼                   ▼                   ▼
-   EventBus            Telemetry          Memory /
+   EventBus            Telemetry          Memory ·
    (pub/sub)           (metrics)         Integrations
-                                          (planned)
 ```
 
 Full details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -121,7 +123,7 @@ jarvis/
 ├── interfaces/        # Telegram bot (CLI lives in __main__.py)
 ├── models/            # Message/Conversation, Request/Response
 ├── memory/            # persistent history + semantic recall (SQLite + vectors)
-├── integrations/      # contracts (implementation planned)
+├── integrations/      # external connectors as tools (weather, Home Assistant)
 └── utils/             # logging, retry, timing, exceptions, text
 tests/                 # pytest suite
 docs/                  # architecture documentation
@@ -224,8 +226,9 @@ with cloud quality. Other knobs: `VOICE_ENABLED`, `TTS_VOICE`, `VOICE_REPLIES`,
 | Memory: persistent history + semantic recall | ✅ done |
 | Telegram bot (per-user sessions + memory) | ✅ done |
 | Voice in the bot: speech-to-text / text-to-speech (multilingual) | ✅ done |
+| Integrations framework + weather + smart home (Home Assistant) | ✅ done |
 | Desktop voice + Raspberry Pi (mic/speaker) | planned |
-| Integrations: smart home, calendar, email | planned |
+| More integrations: calendar, email | planned |
 | Task automation: scheduler, workflows | planned |
 | API layer: FastAPI + WebSocket | planned |
 | Web dashboard | planned |
