@@ -65,16 +65,27 @@ class ListGoalsSkill(_GoalSkill):
         return SkillResult(text="Open goals:\n" + "\n".join(lines))
 
 
+def _as_goal_id(value: object) -> int | None:
+    """Coerce a model-supplied goal id to int, or None if it isn't one."""
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
 class CompleteGoalSkill(_GoalSkill):
     name = "complete_goal"
     description = "Mark one of the user's goals as done, by its id."
     parameters = _GOAL_ID
 
-    async def execute(self, goal_id: int = 0, **_: object) -> SkillResult:
-        ok = await self.manager.complete(current_session(), int(goal_id))
+    async def execute(self, goal_id: object = 0, **_: object) -> SkillResult:
+        gid = _as_goal_id(goal_id)
+        if gid is None:
+            return SkillResult(text="Please give me a valid goal number.")
+        ok = await self.manager.complete(current_session(), gid)
         return SkillResult(
-            text=f"Goal #{goal_id} completed. Well done, Sir." if ok
-            else f"I couldn't find goal #{goal_id}."
+            text=f"Goal #{gid} completed. Well done, Sir." if ok
+            else f"I couldn't find goal #{gid}."
         )
 
 
@@ -83,11 +94,14 @@ class CancelGoalSkill(_GoalSkill):
     description = "Cancel/drop one of the user's goals, by its id."
     parameters = _GOAL_ID
 
-    async def execute(self, goal_id: int = 0, **_: object) -> SkillResult:
-        ok = await self.manager.cancel(current_session(), int(goal_id))
+    async def execute(self, goal_id: object = 0, **_: object) -> SkillResult:
+        gid = _as_goal_id(goal_id)
+        if gid is None:
+            return SkillResult(text="Please give me a valid goal number.")
+        ok = await self.manager.cancel(current_session(), gid)
         return SkillResult(
-            text=f"Goal #{goal_id} cancelled." if ok
-            else f"I couldn't find goal #{goal_id}."
+            text=f"Goal #{gid} cancelled." if ok
+            else f"I couldn't find goal #{gid}."
         )
 
 

@@ -51,6 +51,24 @@ async def test_middleware_blocks_when_over_limit():
 
 
 @pytest.mark.asyncio
+async def test_logging_middleware_redacts_secrets(caplog):
+    import logging
+
+    from jarvis.core.pipeline import LoggingMiddleware, Pipeline
+
+    async def handler(req):
+        return Response(text="ok", request_id=req.request_id)
+
+    pipe = Pipeline([LoggingMiddleware()])
+    with caplog.at_level(logging.DEBUG, logger="jarvis.core.pipeline"):
+        await pipe.run(
+            Request(text="my key sk-abcdef0123456789abcdef ok"), handler
+        )
+    assert "sk-abcdef" not in caplog.text
+    assert "[REDACTED]" in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_engine_rate_limits():
     settings = Settings(anthropic_api_key="k", log_file="", memory_enabled=False,
                         integrations_enabled=False, goals_enabled=False,

@@ -82,6 +82,16 @@ def test_goal_skills_are_tools_not_fast_path():
         assert skill.can_handle("anything") is False
 
 
+@pytest.mark.asyncio
+async def test_complete_goal_rejects_garbage_id():
+    from jarvis.goals.tools import CompleteGoalSkill
+
+    skill = CompleteGoalSkill(_manager())
+    # A model sending a non-numeric id must not crash the tool.
+    result = await skill.execute(goal_id="not-a-number")
+    assert "valid goal number" in result.text
+
+
 # -- engine end-to-end ------------------------------------------------------
 
 

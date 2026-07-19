@@ -18,6 +18,7 @@ from typing import Awaitable, Callable
 
 from jarvis.models.response import Request, Response
 from jarvis.utils.logger import get_logger
+from jarvis.utils.redaction import redact_secrets
 from jarvis.utils.text import normalize
 
 logger = get_logger(__name__)
@@ -62,7 +63,8 @@ class LoggingMiddleware(Middleware):
     """Log each request/response pair at debug level."""
 
     async def process(self, request: Request, next_: Next) -> Response:
-        logger.debug("→ [%s] %s", request.request_id, request.text)
+        # Redact secrets so a pasted token/key never lands in the logs.
+        logger.debug("→ [%s] %s", request.request_id, redact_secrets(request.text))
         response = await next_(request)
         logger.debug(
             "← [%s] %s (%s, %.0fms)",

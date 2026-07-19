@@ -35,5 +35,8 @@ jobs:
       - name: Type check (advisory)
         run: mypy jarvis || true
 
+      - name: Dependency vulnerability scan (advisory)
+        run: pip install pip-audit && pip-audit || true
+
       - name: Run tests with coverage
         run: python -m pytest -q --cov=jarvis --cov-report=term-missing
