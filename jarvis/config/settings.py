@@ -152,6 +152,12 @@ class Settings(BaseSettings):
     homeassistant_url: str = ""
     homeassistant_token: str = ""
 
+    # --- API server ---
+    api_host: str = "0.0.0.0"
+    api_port: int = Field(default=8000, gt=0, le=65535)
+    #: Bearer / X-API-Key required to call the API (empty = open, dev only).
+    api_key: str = ""
+
     # --- Telegram bot ---
     telegram_bot_token: str = Field(default="", description="Bot token from @BotFather.")
     #: Optional comma-separated allowlist of Telegram user IDs (empty = open).

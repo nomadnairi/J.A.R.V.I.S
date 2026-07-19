@@ -139,6 +139,7 @@ jarvis/
 ├── integrations/      # external connectors as tools (weather, Home Assistant)
 ├── voice/ · i18n/     # STT/TTS backends + localization (en/ru/uz)
 ├── interfaces/        # Telegram bot (CLI lives in __main__.py)
+├── api/               # FastAPI + WebSocket server (jarvis-api)
 ├── events/ · telemetry/  # pub/sub bus + metrics
 ├── models/            # Message/Conversation, Request/Response
 └── utils/             # logging, retry, timing, exceptions, redaction, text
@@ -235,6 +236,45 @@ with cloud quality. Other knobs: `VOICE_ENABLED`, `TTS_VOICE`, `VOICE_REPLIES`,
 
 ---
 
+## HTTP / WebSocket API
+
+Expose the same engine over HTTP so other clients (a desktop app, a mobile app,
+scripts) can talk to J.A.R.V.I.S.
+
+```bash
+pip install fastapi 'uvicorn[standard]'   # optional API dependencies
+
+# In your .env:
+#   API_KEY=a_long_random_secret     (required before exposing publicly)
+#   API_HOST=0.0.0.0                 (default)
+#   API_PORT=8000                    (default)
+
+python -m jarvis.api        # or: jarvis-api
+```
+
+Endpoints:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET`  | `/`             | Service info (name, version, status). |
+| `GET`  | `/health`       | Diagnostics — LLM, memory, integrations, security posture. |
+| `POST` | `/chat`         | Send `{ "message": "...", "session_id": "..." }`, get a reply. |
+| `WS`   | `/ws/{session}` | Stream a reply chunk by chunk; ends with `{ "event": "done" }`. |
+
+Authentication: when `API_KEY` is set, protected routes require it via
+`Authorization: Bearer <key>` or an `X-API-Key` header (or `?key=<key>` for the
+WebSocket). An empty `API_KEY` leaves the API **open** — for local development
+only; never expose an open server publicly.
+
+```bash
+curl -s http://localhost:8000/chat \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Good evening, J.A.R.V.I.S."}'
+```
+
+---
+
 ## Roadmap
 
 | Area | Status |
@@ -244,10 +284,11 @@ with cloud quality. Other knobs: `VOICE_ENABLED`, `TTS_VOICE`, `VOICE_REPLIES`,
 | Telegram bot (per-user sessions + memory) | ✅ done |
 | Voice in the bot: speech-to-text / text-to-speech (multilingual) | ✅ done |
 | Integrations framework + weather + smart home (Home Assistant) | ✅ done |
+| API layer: FastAPI + WebSocket (HTTP + streaming) | ✅ done |
 | Desktop voice + Raspberry Pi (mic/speaker) | planned |
 | More integrations: calendar, email | planned |
 | Task automation: scheduler, workflows | planned |
-| API layer: FastAPI + WebSocket | planned |
+| Desktop (exe) & mobile (apk) clients | planned |
 | Web dashboard | planned |
 
 ---

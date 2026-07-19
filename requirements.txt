@@ -36,10 +36,10 @@ openai>=1.30,<2.0
 # Needed only to run the Telegram interface (python -m jarvis.interfaces.telegram_bot).
 # aiogram>=3.0,<4.0
 
-# --- API layer (planned) ---
-# fastapi>=0.110,<1.0
-# uvicorn[standard]>=0.29,<1.0
-# websockets>=12.0
+# --- API layer ---
+# Needed only to run the HTTP/WebSocket API (python -m jarvis.api).
+# fastapi>=0.110
+# uvicorn[standard]>=0.29
 
 # --- Dev / testing ---
 # pytest>=8.0,<9.0

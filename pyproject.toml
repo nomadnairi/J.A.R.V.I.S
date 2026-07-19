@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jarvis-assistant"
-version = "0.1.0"
+version = "1.2.0"
 description = "J.A.R.V.I.S. — Just A Rather Very Intelligent System. A modular personal AI assistant framework."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,9 +29,11 @@ Issues = "https://github.com/nomadnairi/J.A.R.V.I.S/issues"
 [project.scripts]
 jarvis = "jarvis.__main__:main"
 jarvis-bot = "jarvis.interfaces.telegram_bot:main"
+jarvis-api = "jarvis.api.__main__:main"
 
 [project.optional-dependencies]
 telegram = ["aiogram>=3.0,<4.0"]
+api = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
 local-embeddings = ["fastembed>=0.3"]
 chroma = ["chromadb>=0.5,<1.0"]
 # Voice — OpenAI backends need only the base 'openai' dep. Free/offline extras:

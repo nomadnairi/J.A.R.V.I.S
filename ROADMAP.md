@@ -55,5 +55,5 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 |------|--------|
 | Telegram bot | ✅ |
 | Desktop voice app | ⬜ |
-| API layer (FastAPI + WebSocket) | ⬜ |
+| API layer (FastAPI + WebSocket) | ✅ |
 | Web dashboard | ⬜ (later) |
