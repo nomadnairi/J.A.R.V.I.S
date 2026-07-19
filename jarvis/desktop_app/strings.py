@@ -4,6 +4,16 @@ from __future__ import annotations
 
 STRINGS: dict[str, dict[str, str]] = {
     "en": {
+        "tab_voice": "Voice",
+        "voice_record": "🎙 Record",
+        "voice_stop": "⏹ Stop",
+        "voice_processing": "Processing…",
+        "voice_speak_replies": "Speak replies aloud",
+        "voice_unavailable_desktop": (
+            "Voice needs local mode with voice enabled in settings (STT backend + key)."
+        ),
+        "voice_no_speech": "I didn't catch any speech — try again.",
+        "voice_you_said": "You said",
         "app_title": "J.A.R.V.I.S. — Personal AI Assistant",
         "tab_chat": "Chat",
         "tab_assistant": "Assistant",
@@ -54,6 +64,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "error": "Error: {error}",
     },
     "ru": {
+        "tab_voice": "Голос",
+        "voice_record": "🎙 Запись",
+        "voice_stop": "⏹ Стоп",
+        "voice_processing": "Обрабатываю…",
+        "voice_speak_replies": "Озвучивать ответы",
+        "voice_unavailable_desktop": (
+            "Голос работает в локальном режиме при включённом голосе в настройках (STT + ключ)."
+        ),
+        "voice_no_speech": "Речь не распознана — попробуйте ещё раз.",
+        "voice_you_said": "Вы сказали",
         "app_title": "J.A.R.V.I.S. — персональный ИИ-ассистент",
         "tab_chat": "Чат",
         "tab_assistant": "Ассистент",
@@ -104,6 +124,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "error": "Ошибка: {error}",
     },
     "uz": {
+        "tab_voice": "Ovoz",
+        "voice_record": "🎙 Yozish",
+        "voice_stop": "⏹ To'xtatish",
+        "voice_processing": "Qayta ishlanmoqda…",
+        "voice_speak_replies": "Javoblarni ovoz bilan aytish",
+        "voice_unavailable_desktop": (
+            "Ovoz lokal rejimda, sozlamalarda ovoz yoqilganda ishlaydi (STT + kalit)."
+        ),
+        "voice_no_speech": "Nutq aniqlanmadi — yana urinib ko'ring.",
+        "voice_you_said": "Siz aytdingiz",
         "app_title": "J.A.R.V.I.S. — shaxsiy AI yordamchi",
         "tab_chat": "Suhbat",
         "tab_assistant": "Yordamchi",

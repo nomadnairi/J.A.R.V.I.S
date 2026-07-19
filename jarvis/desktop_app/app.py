@@ -52,6 +52,7 @@ def run_app() -> int:
 
         done = Signal(str, str)  # reply, error
         chunk = Signal(str)      # one streamed piece of the reply
+        voice = Signal(str, str, str, str)  # transcript, reply, audio_path, error
 
     # -- login dialog ---------------------------------------------------------
 
@@ -133,6 +134,7 @@ def run_app() -> int:
 
             tabs = QTabWidget()
             tabs.addTab(self._chat_tab(), tr("tab_chat", loc))
+            tabs.addTab(self._voice_tab(), tr("tab_voice", loc))
             tabs.addTab(self._assistant_tab(), tr("tab_assistant", loc))
             tabs.addTab(self._capabilities_tab(), tr("tab_capabilities", loc))
             tabs.addTab(self._integrations_tab(), tr("tab_integrations", loc))
@@ -140,8 +142,10 @@ def run_app() -> int:
             tabs.addTab(self._logs_tab(), tr("tab_logs", loc))
             self.setCentralWidget(tabs)
 
+            self.voice_controller = None
             if config.mode == "local":
                 self._start_local_engine()
+                self._init_voice()
 
         # -- engine -----------------------------------------------------------
 
@@ -156,6 +160,23 @@ def run_app() -> int:
                 self.engine_thread.start()
             except Exception as exc:  # noqa: BLE001 - shown in the chat view
                 self._append_system(tr("error", config.language, error=exc))
+
+        def _init_voice(self) -> None:
+            if self.engine_thread is None or not config.voice_enabled:
+                return
+            try:
+                from jarvis.config.settings import Settings
+                from jarvis.desktop_app.voice_controller import VoiceController
+                from jarvis.voice import VoiceService
+
+                settings = Settings(**config.to_settings_overrides())
+                voice = VoiceService.from_settings(settings)
+                self.voice_controller = VoiceController(
+                    voice, self.engine_thread
+                )
+                self._update_voice_ui()
+            except Exception as exc:  # noqa: BLE001 - voice is optional
+                logger.warning("Voice init failed: %s", exc)
 
         # -- chat tab -----------------------------------------------------
 
@@ -263,6 +284,160 @@ def run_app() -> int:
                 self._append_system(tr("error", loc, error=error))
             elif reply:
                 self.transcript.append(f"<b>J.A.R.V.I.S.:</b> {reply}")
+
+        # -- voice tab -----------------------------------------------------
+
+        def _voice_tab(self) -> "QWidget":
+            loc = config.language
+            widget = QWidget()
+            layout = QVBoxLayout(widget)
+
+            self.voice_status = QLabel(tr("voice_unavailable_desktop", loc))
+            self.voice_status.setWordWrap(True)
+            layout.addWidget(self.voice_status)
+
+            self.voice_button = QPushButton(tr("voice_record", loc))
+            self.voice_button.setEnabled(False)
+            self.voice_button.setMinimumHeight(64)
+            self.voice_button.clicked.connect(self._toggle_recording)
+            layout.addWidget(self.voice_button)
+
+            self.voice_speak = QCheckBox(tr("voice_speak_replies", loc))
+            self.voice_speak.setChecked(True)
+            layout.addWidget(self.voice_speak)
+
+            self.voice_output = QTextEdit()
+            self.voice_output.setReadOnly(True)
+            layout.addWidget(self.voice_output, stretch=1)
+
+            self._recording = False
+            self._recorder = None
+            self._capture = None
+            self._audio_in = None
+            self._player = None
+            self._audio_out = None
+            self._voice_file = ""
+            self.bridge.voice.connect(self._on_voice_result)
+            return widget
+
+        def _update_voice_ui(self) -> None:
+            loc = config.language
+            if self.voice_controller is not None and self.voice_controller.available():
+                self.voice_status.setText("")
+                self.voice_button.setEnabled(True)
+            else:
+                self.voice_status.setText(tr("voice_unavailable_desktop", loc))
+                self.voice_button.setEnabled(False)
+
+        def _toggle_recording(self) -> None:
+            loc = config.language
+            if self._recording:
+                self._recording = False
+                self.voice_button.setText(tr("voice_record", loc))
+                if self._recorder is not None:
+                    self._recorder.stop()
+                return
+
+            try:
+                import tempfile
+
+                from PySide6.QtCore import QUrl
+                from PySide6.QtMultimedia import (
+                    QAudioInput,
+                    QMediaCaptureSession,
+                    QMediaFormat,
+                    QMediaRecorder,
+                )
+            except ImportError as exc:
+                self.voice_status.setText(tr("error", loc, error=exc))
+                return
+
+            self._voice_file = tempfile.NamedTemporaryFile(
+                suffix=".wav", delete=False
+            ).name
+            self._capture = QMediaCaptureSession()
+            self._audio_in = QAudioInput()
+            self._capture.setAudioInput(self._audio_in)
+            self._recorder = QMediaRecorder()
+            self._capture.setRecorder(self._recorder)
+            fmt = QMediaFormat()
+            fmt.setFileFormat(QMediaFormat.FileFormat.Wave)
+            self._recorder.setMediaFormat(fmt)
+            self._recorder.setOutputLocation(QUrl.fromLocalFile(self._voice_file))
+            self._recorder.recorderStateChanged.connect(self._on_recorder_state)
+            self._recording = True
+            self.voice_button.setText(tr("voice_stop", loc))
+            self._recorder.record()
+
+        def _on_recorder_state(self, state) -> None:
+            from PySide6.QtMultimedia import QMediaRecorder
+
+            if state != QMediaRecorder.RecorderState.StoppedState:
+                return
+            loc = config.language
+            self.voice_status.setText(tr("voice_processing", loc))
+
+            import threading
+            from pathlib import Path
+
+            path = self._voice_file
+            speak = self.voice_speak.isChecked()
+
+            def _worker() -> None:
+                try:
+                    audio = Path(path).read_bytes()
+                    controller = self.voice_controller
+                    controller.speak_replies = speak
+                    turn = controller.run_turn(audio, filename="voice.wav")
+                    out_path = ""
+                    if turn.reply_audio:
+                        import tempfile
+                        out = tempfile.NamedTemporaryFile(
+                            suffix=f".{turn.reply_audio_ext}", delete=False
+                        )
+                        out.write(turn.reply_audio)
+                        out.close()
+                        out_path = out.name
+                    self.bridge.voice.emit(turn.transcript, turn.reply,
+                                        out_path, "")
+                except Exception as exc:  # noqa: BLE001 - shown in the UI
+                    self.bridge.voice.emit("", "", "", str(exc))
+                finally:
+                    Path(path).unlink(missing_ok=True)
+
+            threading.Thread(target=_worker, daemon=True).start()
+
+        def _on_voice_result(self, transcript: str, reply: str,
+                            audio_path: str, error: str) -> None:
+            loc = config.language
+            self.voice_status.setText("")
+            if error:
+                self.voice_output.append(f"<i>{tr('error', loc, error=error)}</i>")
+                return
+            if not transcript:
+                self.voice_output.append(
+                    f"<i>{tr('voice_no_speech', loc)}</i>")
+                return
+            self.voice_output.append(
+                f"<b>{tr('voice_you_said', loc)}:</b> {transcript}")
+            self.voice_output.append(f"<b>J.A.R.V.I.S.:</b> {reply}")
+            self.transcript.append(
+                f"<b>{tr('you', loc)}:</b> 🎙 {transcript}")
+            self.transcript.append(f"<b>J.A.R.V.I.S.:</b> {reply}")
+            if audio_path:
+                self._play_audio(audio_path)
+
+        def _play_audio(self, path: str) -> None:
+            try:
+                from PySide6.QtCore import QUrl
+                from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+            except ImportError:
+                return
+            self._player = QMediaPlayer()
+            self._audio_out = QAudioOutput()
+            self._player.setAudioOutput(self._audio_out)
+            self._player.setSource(QUrl.fromLocalFile(path))
+            self._player.play()
 
         # -- assistant tab ------------------------------------------------
 
