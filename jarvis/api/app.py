@@ -2,13 +2,21 @@
 FastAPI application factory.
 
 Endpoints:
-    GET  /health         — diagnostics (open).
-    POST /chat           — send a message, get a reply (auth).
-    WS   /ws/{session}   — stream a reply chunk by chunk (auth via ?key=).
+    GET  /                — service info (open).
+    GET  /health          — diagnostics (open).
+    POST /chat            — send a message, get a reply (auth).
+    WS   /ws/{session}    — stream a reply chunk by chunk (auth via ?key=).
+    POST /auth/login …    — per-user accounts (only when AUTH_ENABLED).
+    POST /admin/…         — operator endpoints (only when AUTH_ENABLED).
 
-Authentication: if ``api_key`` is configured, every protected route requires it
-via ``Authorization: Bearer <key>`` or an ``X-API-Key`` header (or ``?key=`` for
-the WebSocket). An empty key means the API is open — for local development only.
+Authentication resolves a *principal* for each request:
+
+* A per-user login token (``AUTH_ENABLED``) — the strongest, and it namespaces
+  the caller's sessions/memory to their account.
+* The shared ``API_KEY`` — a single bearer/``X-API-Key`` secret.
+
+If neither accounts nor a shared key are configured the API is **open** — for
+local development only.
 """
 
 from contextlib import asynccontextmanager
@@ -16,8 +24,10 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 
 from jarvis import __version__
+from jarvis.api.auth import install_auth_routes, resolve_principal
 from jarvis.config.settings import Settings, get_settings
 from jarvis.core.engine import JarvisEngine
+from jarvis.licensing import LicenseService
 from jarvis.models.response import Request
 from jarvis.utils.logger import get_logger
 
@@ -55,6 +65,12 @@ def create_app(engine: JarvisEngine | None = None,
     settings = settings or get_settings()
     engine = engine or JarvisEngine(settings)
 
+    service: LicenseService | None = None
+    if settings.auth_enabled:
+        service = LicenseService(
+            settings.auth_db_path, token_ttl_hours=settings.auth_token_ttl_hours
+        )
+
     @asynccontextmanager
     async def lifespan(_app):
         await engine.start()
@@ -62,36 +78,41 @@ def create_app(engine: JarvisEngine | None = None,
             yield
         finally:
             await engine.shutdown()
+            if service is not None:
+                service.close()
 
     app = FastAPI(title="J.A.R.V.I.S. API", version=__version__, lifespan=lifespan)
 
-    class ChatIn(BaseModel):
-        message: str
-        session_id: str = "default"
+    def _principal(provided: str | None) -> str | None:
+        return resolve_principal(provided, settings, service)
 
-    class ChatOut(BaseModel):
-        reply: str
-        session_id: str
+    def _scoped(principal: str, session_id: str) -> str:
+        """Namespace a session by its owner so users never share memory."""
+        return f"{principal}::{session_id}"
 
-    def _check_key(provided: str | None) -> bool:
-        return not settings.api_key or provided == settings.api_key
-
-    async def require_key(
+    async def require_principal(
         authorization: str | None = Header(default=None),
         x_api_key: str | None = Header(default=None),
-    ) -> None:
+    ) -> str:
         provided = None
         if authorization and authorization.startswith("Bearer "):
             provided = authorization[len("Bearer "):]
         provided = provided or x_api_key
-        if not _check_key(provided):
-            raise HTTPException(status_code=401, detail="Invalid or missing API key.")
+        principal = _principal(provided)
+        if principal is None:
+            raise HTTPException(status_code=401, detail="Invalid or missing credentials.")
+        return principal
 
     # -- routes -------------------------------------------------------------
 
     @app.get("/")
     async def root() -> dict:
-        return {"name": "J.A.R.V.I.S.", "version": __version__, "status": "online"}
+        return {
+            "name": "J.A.R.V.I.S.",
+            "version": __version__,
+            "status": "online",
+            "auth": "accounts" if service is not None else "shared-key",
+        }
 
     @app.get("/health")
     async def health() -> dict:
@@ -104,26 +125,35 @@ def create_app(engine: JarvisEngine | None = None,
         }
 
     @app.post("/chat", response_model=ChatOut)
-    async def chat(body: ChatIn, _: None = Depends(require_key)) -> ChatOut:
-        reply = await engine.ask(body.message, session_id=body.session_id)
+    async def chat(body: ChatIn,
+                principal: str = Depends(require_principal)) -> ChatOut:
+        reply = await engine.ask(
+            body.message, session_id=_scoped(principal, body.session_id)
+        )
         return ChatOut(reply=reply, session_id=body.session_id)
 
     @app.websocket("/ws/{session_id}")
     async def ws(websocket: WebSocket, session_id: str) -> None:
-        if not _check_key(websocket.query_params.get("key")):
+        principal = _principal(websocket.query_params.get("key"))
+        if principal is None:
             await websocket.close(code=1008)  # policy violation
             return
         await websocket.accept()
+        scoped = _scoped(principal, session_id)
         try:
             while True:
                 text = await websocket.receive_text()
                 async for chunk in engine.stream(
-                    Request(text=text, session_id=session_id)
+                    Request(text=text, session_id=scoped)
                 ):
                     await websocket.send_text(chunk)
                 await websocket.send_json({"event": "done"})
         except WebSocketDisconnect:
             return
 
+    if service is not None:
+        install_auth_routes(app, settings, service)
+
     app.state.engine = engine
+    app.state.license_service = service
     return app

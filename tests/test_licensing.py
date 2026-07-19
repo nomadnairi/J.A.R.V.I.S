@@ -1,0 +1,129 @@
+"""Tests for the accounts / licensing / token service."""
+
+from __future__ import annotations
+
+import time
+
+import pytest
+
+from jarvis.licensing import AuthError, LicenseService, hash_password, verify_password
+
+
+@pytest.fixture()
+def svc() -> LicenseService:
+    service = LicenseService(":memory:", token_ttl_hours=1)
+    yield service
+    service.close()
+
+
+def test_password_hash_roundtrip():
+    stored = hash_password("s3cret!")
+    assert stored.startswith("pbkdf2_sha256$")
+    assert verify_password("s3cret!", stored)
+    assert not verify_password("wrong", stored)
+    # Two hashes of the same password differ (random salt).
+    assert hash_password("s3cret!") != stored
+
+
+def test_verify_rejects_garbage():
+    assert not verify_password("x", "not-a-valid-hash")
+    assert not verify_password("x", "")
+
+
+def test_create_account_and_duplicate(svc: LicenseService):
+    acc = svc.create_account("Tony", "arcreactor")
+    assert acc.username == "tony"  # normalised to lower-case
+    assert acc.active and not acc.telegram_verified
+    with pytest.raises(AuthError):
+        svc.create_account("tony", "other")
+
+
+def test_authenticate_requires_license(svc: LicenseService):
+    acc = svc.create_account("bruce", "hulk")
+    # No license yet → auth fails even with the right password.
+    with pytest.raises(AuthError):
+        svc.authenticate("bruce", "hulk")
+    svc.issue_license(acc.id)
+    assert svc.authenticate("bruce", "hulk").id == acc.id
+    with pytest.raises(AuthError):
+        svc.authenticate("bruce", "nope")
+
+
+def test_disabled_account_cannot_login(svc: LicenseService):
+    acc = svc.create_account("nat", "widow")
+    svc.issue_license(acc.id)
+    svc.set_active("nat", False)
+    with pytest.raises(AuthError):
+        svc.authenticate("nat", "widow")
+
+
+def test_unknown_user_raises(svc: LicenseService):
+    with pytest.raises(AuthError):
+        svc.authenticate("ghost", "boo")
+
+
+def test_token_issue_validate_revoke(svc: LicenseService):
+    acc = svc.create_account("steve", "shield")
+    svc.issue_license(acc.id)
+    token = svc.issue_token(acc.id)
+    assert svc.validate_token(token).id == acc.id
+    assert svc.validate_token("bogus") is None
+    assert svc.validate_token("") is None
+    svc.revoke_token(token)
+    assert svc.validate_token(token) is None
+
+
+def test_expired_token_is_invalid(svc: LicenseService):
+    acc = svc.create_account("thor", "mjolnir")
+    svc.issue_license(acc.id)
+    token = svc.issue_token(acc.id)
+    # Force the token to be expired.
+    svc._conn.execute(
+        "UPDATE tokens SET expires_at = ? WHERE token_hash IS NOT NULL",
+        (time.time() - 1,),
+    )
+    svc._conn.commit()
+    assert svc.validate_token(token) is None
+    assert svc.purge_expired_tokens() == 1
+
+
+def test_license_expiry_and_revoke(svc: LicenseService):
+    acc = svc.create_account("clint", "arrow")
+    key = svc.issue_license(acc.id, valid_days=30)
+    assert svc.has_active_license(acc.id)
+    # Expired in the past → not active.
+    assert not svc.has_active_license(acc.id, now=time.time() + 31 * 86400)
+    assert svc.revoke_license_by_key(key)
+    assert not svc.has_active_license(acc.id)
+    assert not svc.revoke_license_by_key("JVS-unknown")
+
+
+def test_license_key_is_not_stored_plaintext(svc: LicenseService):
+    acc = svc.create_account("wanda", "chaos")
+    key = svc.issue_license(acc.id)
+    rows = svc._conn.execute("SELECT key_hash FROM licenses").fetchall()
+    assert all(key not in r["key_hash"] for r in rows)
+
+
+def test_telegram_pairing(svc: LicenseService):
+    acc = svc.create_account("peter", "spider")
+    svc.issue_license(acc.id)
+    code = svc.create_pairing_code(acc.id)
+    assert len(code) == 8
+    linked = svc.confirm_pairing(code.lower(), telegram_user_id=42)
+    assert linked is not None and linked.telegram_verified
+    assert svc.get_account_by_telegram(42).id == acc.id
+    # A used code cannot be replayed.
+    assert svc.confirm_pairing(code, telegram_user_id=99) is None
+
+
+def test_pairing_code_expiry(svc: LicenseService):
+    acc = svc.create_account("scott", "antman")
+    code = svc.create_pairing_code(acc.id, ttl_seconds=-1)
+    assert svc.confirm_pairing(code, telegram_user_id=7) is None
+
+
+def test_require_telegram_flag_on_login(svc: LicenseService):
+    acc = svc.create_account("carol", "marvel")
+    svc.issue_license(acc.id)
+    assert svc.get_account_by_telegram(1234) is None

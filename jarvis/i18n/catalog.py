@@ -34,6 +34,14 @@ CATALOG: dict[str, dict[str, str]] = {
         "cmd_reset": "Clear the conversation",
         "cmd_forget": "Wipe memory about you",
         "cmd_language": "Change language",
+        "cmd_link": "Link your J.A.R.V.I.S. account",
+        "link_usage": (
+            "🔗 To link your account, get a pairing code in the app "
+            "(Settings → Link Telegram) and send: /link CODE"
+        ),
+        "link_success": "✅ Telegram linked to your account <b>{username}</b>.",
+        "link_invalid": "❌ That code is invalid or has expired. Get a new one in the app.",
+        "link_disabled": "ℹ️ Account linking is not enabled on this server.",
     },
     "ru": {
         "welcome": (
@@ -55,6 +63,14 @@ CATALOG: dict[str, dict[str, str]] = {
         "cmd_reset": "Очистить диалог",
         "cmd_forget": "Стереть память о вас",
         "cmd_language": "Сменить язык",
+        "cmd_link": "Привязать аккаунт J.A.R.V.I.S.",
+        "link_usage": (
+            "🔗 Чтобы привязать аккаунт, получите код в приложении "
+            "(Настройки → Привязать Telegram) и отправьте: /link КОД"
+        ),
+        "link_success": "✅ Telegram привязан к вашему аккаунту <b>{username}</b>.",
+        "link_invalid": "❌ Код неверный или истёк. Получите новый в приложении.",
+        "link_disabled": "ℹ️ Привязка аккаунтов на этом сервере не включена.",
     },
     "uz": {
         "welcome": (
@@ -81,5 +97,13 @@ CATALOG: dict[str, dict[str, str]] = {
         "cmd_reset": "Suhbatni tozalash",
         "cmd_forget": "Xotirani o'chirish",
         "cmd_language": "Tilni o'zgartirish",
+        "cmd_link": "J.A.R.V.I.S. hisobini bog'lash",
+        "link_usage": (
+            "🔗 Hisobingizni bog'lash uchun ilovada kod oling "
+            "(Sozlamalar → Telegram bog'lash) va yuboring: /link KOD"
+        ),
+        "link_success": "✅ Telegram <b>{username}</b> hisobingizga bog'landi.",
+        "link_invalid": "❌ Kod noto'g'ri yoki muddati o'tgan. Ilovada yangisini oling.",
+        "link_disabled": "ℹ️ Bu serverda hisob bog'lash yoqilmagan.",
     },
 }

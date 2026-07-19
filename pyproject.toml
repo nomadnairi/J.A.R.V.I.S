@@ -30,6 +30,7 @@ Issues = "https://github.com/nomadnairi/J.A.R.V.I.S/issues"
 jarvis = "jarvis.__main__:main"
 jarvis-bot = "jarvis.interfaces.telegram_bot:main"
 jarvis-api = "jarvis.api.__main__:main"
+jarvis-admin = "jarvis.licensing.__main__:main"
 
 [project.optional-dependencies]
 telegram = ["aiogram>=3.0,<4.0"]

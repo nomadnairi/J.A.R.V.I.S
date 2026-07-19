@@ -101,6 +101,24 @@ def _is_allowed(settings: Settings, user_id: int) -> bool:
     return not allowlist or user_id in allowlist
 
 
+def handle_link(service, text: str, telegram_user_id: int, locale: str) -> str:
+    """Process ``/link <code>`` and return the reply text (testable core).
+
+    ``service`` is a :class:`~jarvis.licensing.service.LicenseService` or
+    ``None`` when accounts are disabled on this server.
+    """
+    if service is None:
+        return t("link_disabled", locale)
+    parts = (text or "").split(maxsplit=1)
+    code = parts[1].strip() if len(parts) > 1 else ""
+    if not code:
+        return t("link_usage", locale)
+    account = service.confirm_pairing(code, telegram_user_id)
+    if account is None:
+        return t("link_invalid", locale)
+    return t("link_success", locale, username=account.username)
+
+
 def _resolve_locale(prefs: UserPreferences, user) -> str:
     """User's stored language, else a guess from their Telegram client."""
     stored = prefs.get_language(user.id)
@@ -143,6 +161,12 @@ async def run(settings: Settings | None = None) -> None:
     await engine.start()
     prefs = UserPreferences(settings.memory_db_path)
     voice = VoiceService.from_settings(settings) if settings.voice_enabled else None
+    license_service = None
+    if settings.auth_enabled:
+        from jarvis.licensing import LicenseService
+        license_service = LicenseService(
+            settings.auth_db_path, token_ttl_hours=settings.auth_token_ttl_hours
+        )
 
     bot = Bot(
         token=settings.telegram_bot_token,
@@ -198,6 +222,15 @@ async def run(settings: Settings | None = None) -> None:
             t("welcome", locale, name=settings.assistant_name)
         )
         await callback.answer()
+
+    @dp.message(Command("link"))
+    async def _link(message: "Message") -> None:
+        locale = _resolve_locale(prefs, message.from_user)
+        if not await _guard(message, locale):
+            return
+        reply = handle_link(license_service, message.text or "",
+                            message.from_user.id, locale)
+        await message.answer(reply)
 
     @dp.message(Command("reset"))
     async def _reset(message: "Message") -> None:
@@ -275,6 +308,10 @@ async def run(settings: Settings | None = None) -> None:
                 BotCommand(command="reset", description=t("cmd_reset", loc)),
                 BotCommand(command="forget", description=t("cmd_forget", loc)),
             ]
+            if license_service is not None:
+                commands.append(
+                    BotCommand(command="link", description=t("cmd_link", loc))
+                )
             if loc == DEFAULT_LOCALE:
                 await bot.set_my_commands(commands)
             else:
@@ -286,6 +323,8 @@ async def run(settings: Settings | None = None) -> None:
         await dp.start_polling(bot)
     finally:
         await engine.shutdown()
+        if license_service is not None:
+            license_service.close()
         await bot.session.close()
 
 

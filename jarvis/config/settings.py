@@ -158,6 +158,19 @@ class Settings(BaseSettings):
     #: Bearer / X-API-Key required to call the API (empty = open, dev only).
     api_key: str = ""
 
+    # --- Accounts & licensing (per-user login for exe/apk clients) ---
+    #: Enable username/password accounts + license checks on the API.
+    #: When off, the API falls back to the shared ``api_key`` only.
+    auth_enabled: bool = False
+    #: SQLite file holding accounts, licenses, tokens and pairings.
+    auth_db_path: str = "data/auth.db"
+    #: Admin key required to create accounts / issue licenses (empty = disabled).
+    auth_admin_key: str = ""
+    #: Lifetime of an issued login token, in hours.
+    auth_token_ttl_hours: int = Field(default=720, gt=0)
+    #: Require a linked+verified Telegram account before login succeeds.
+    auth_require_telegram: bool = False
+
     # --- Telegram bot ---
     telegram_bot_token: str = Field(default="", description="Bot token from @BotFather.")
     #: Optional comma-separated allowlist of Telegram user IDs (empty = open).
