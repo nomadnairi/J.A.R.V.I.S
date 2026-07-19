@@ -101,6 +101,24 @@ def _is_allowed(settings: Settings, user_id: int) -> bool:
     return not allowlist or user_id in allowlist
 
 
+def handle_successful_payment(billing, settings: Settings, telegram_user_id: int,
+                            charge_id: str, locale: str) -> str:
+    """Fulfil a paid Telegram invoice and return the reply text (testable core)."""
+    days = settings.billing_plan_days or None
+    fulfillment = billing.process_payment(
+        charge_id,
+        telegram_user_id=telegram_user_id,
+        plan=settings.billing_plan,
+        valid_days=days,
+    )
+    if fulfillment is None:  # duplicate delivery of the same charge
+        return t("buy_thanks_existing", locale, username="—")
+    if fulfillment.created_account:
+        return t("buy_thanks_new", locale, username=fulfillment.username,
+                password=fulfillment.password)
+    return t("buy_thanks_existing", locale, username=fulfillment.username)
+
+
 def handle_link(service, text: str, telegram_user_id: int, locale: str) -> str:
     """Process ``/link <code>`` and return the reply text (testable core).
 
@@ -167,6 +185,10 @@ async def run(settings: Settings | None = None) -> None:
         license_service = LicenseService(
             settings.auth_db_path, token_ttl_hours=settings.auth_token_ttl_hours
         )
+    billing = None
+    if settings.billing_enabled and license_service is not None:
+        from jarvis.billing import BillingService
+        billing = BillingService(license_service, settings.auth_db_path)
 
     bot = Bot(
         token=settings.telegram_bot_token,
@@ -222,6 +244,40 @@ async def run(settings: Settings | None = None) -> None:
             t("welcome", locale, name=settings.assistant_name)
         )
         await callback.answer()
+
+    @dp.message(Command("buy"))
+    async def _buy(message: "Message") -> None:
+        locale = _resolve_locale(prefs, message.from_user)
+        if not await _guard(message, locale):
+            return
+        if billing is None:
+            await message.answer(t("buy_disabled", locale))
+            return
+        from aiogram.types import LabeledPrice
+        await message.bot.send_invoice(
+            chat_id=message.chat.id,
+            title=t("buy_invoice_title", locale),
+            description=t("buy_invoice_desc", locale),
+            payload="jarvis-license",
+            currency="XTR",  # Telegram Stars
+            prices=[LabeledPrice(label=t("buy_invoice_title", locale),
+                                amount=settings.billing_price_stars)],
+        )
+
+    @dp.pre_checkout_query()
+    async def _pre_checkout(query) -> None:
+        await query.answer(ok=billing is not None)
+
+    @dp.message(F.successful_payment)
+    async def _paid(message: "Message") -> None:
+        locale = _resolve_locale(prefs, message.from_user)
+        if billing is None:
+            return
+        reply = handle_successful_payment(
+            billing, settings, message.from_user.id,
+            message.successful_payment.telegram_payment_charge_id, locale,
+        )
+        await message.answer(reply)
 
     @dp.message(Command("link"))
     async def _link(message: "Message") -> None:
@@ -311,6 +367,10 @@ async def run(settings: Settings | None = None) -> None:
             if license_service is not None:
                 commands.append(
                     BotCommand(command="link", description=t("cmd_link", loc))
+                )
+            if billing is not None:
+                commands.append(
+                    BotCommand(command="buy", description=t("cmd_buy", loc))
                 )
             if loc == DEFAULT_LOCALE:
                 await bot.set_my_commands(commands)

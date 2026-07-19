@@ -173,6 +173,9 @@ def create_app(engine: JarvisEngine | None = None,
 
     if service is not None:
         install_auth_routes(app, settings, service)
+        if settings.billing_enabled and settings.billing_webhook_secret:
+            from jarvis.api.billing_routes import install_billing_routes
+            install_billing_routes(app, settings, service)
 
     app.state.engine = engine
     app.state.license_service = service

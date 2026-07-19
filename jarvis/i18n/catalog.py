@@ -15,6 +15,25 @@ LANGUAGE_NAMES = {
 
 CATALOG: dict[str, dict[str, str]] = {
     "en": {
+        "cmd_buy": "Buy a J.A.R.V.I.S. license",
+        "buy_invoice_title": "J.A.R.V.I.S. license",
+        "buy_invoice_desc": (
+            "Access to J.A.R.V.I.S. on desktop and mobile: your personal "
+            "account, license and shared memory across devices."
+        ),
+        "buy_disabled": "ℹ️ Purchases are not enabled on this server.",
+        "buy_thanks_new": (
+            "✅ Payment received — welcome aboard!\n\n"
+            "Your J.A.R.V.I.S. account:\n"
+            "• Login: <code>{username}</code>\n"
+            "• Password: <code>{password}</code>\n\n"
+            "Sign in from the desktop or mobile app. Keep the password safe — "
+            "it is shown only once."
+        ),
+        "buy_thanks_existing": (
+            "✅ Payment received — your license has been extended for account "
+            "<code>{username}</code>. Enjoy, Sir."
+        ),
         "welcome": (
             "👋 Hello, Sir. I am <b>{name}</b> — your personal assistant.\n\n"
             "Just talk to me naturally; I remember our conversations.\n\n"
@@ -44,6 +63,25 @@ CATALOG: dict[str, dict[str, str]] = {
         "link_disabled": "ℹ️ Account linking is not enabled on this server.",
     },
     "ru": {
+        "cmd_buy": "Купить лицензию J.A.R.V.I.S.",
+        "buy_invoice_title": "Лицензия J.A.R.V.I.S.",
+        "buy_invoice_desc": (
+            "Доступ к J.A.R.V.I.S. на компьютере и телефоне: личный аккаунт, "
+            "лицензия и общая память на всех устройствах."
+        ),
+        "buy_disabled": "ℹ️ Покупки на этом сервере не включены.",
+        "buy_thanks_new": (
+            "✅ Оплата получена — добро пожаловать!\n\n"
+            "Ваш аккаунт J.A.R.V.I.S.:\n"
+            "• Логин: <code>{username}</code>\n"
+            "• Пароль: <code>{password}</code>\n\n"
+            "Входите из десктопного или мобильного приложения. Сохраните "
+            "пароль — он показывается только один раз."
+        ),
+        "buy_thanks_existing": (
+            "✅ Оплата получена — лицензия аккаунта <code>{username}</code> "
+            "продлена. Приятного пользования!"
+        ),
         "welcome": (
             "👋 Здравствуйте. Я <b>{name}</b> — ваш персональный ассистент.\n\n"
             "Просто общайтесь со мной как обычно — я помню наши разговоры.\n\n"
@@ -73,6 +111,25 @@ CATALOG: dict[str, dict[str, str]] = {
         "link_disabled": "ℹ️ Привязка аккаунтов на этом сервере не включена.",
     },
     "uz": {
+        "cmd_buy": "J.A.R.V.I.S. litsenziyasini sotib olish",
+        "buy_invoice_title": "J.A.R.V.I.S. litsenziyasi",
+        "buy_invoice_desc": (
+            "Kompyuter va telefonda J.A.R.V.I.S.: shaxsiy hisob, litsenziya "
+            "va barcha qurilmalarda umumiy xotira."
+        ),
+        "buy_disabled": "ℹ️ Bu serverda xaridlar yoqilmagan.",
+        "buy_thanks_new": (
+            "✅ To'lov qabul qilindi — xush kelibsiz!\n\n"
+            "J.A.R.V.I.S. hisobingiz:\n"
+            "• Login: <code>{username}</code>\n"
+            "• Parol: <code>{password}</code>\n\n"
+            "Desktop yoki mobil ilovadan kiring. Parolni saqlab qo'ying — "
+            "u faqat bir marta ko'rsatiladi."
+        ),
+        "buy_thanks_existing": (
+            "✅ To'lov qabul qilindi — <code>{username}</code> hisobining "
+            "litsenziyasi uzaytirildi!"
+        ),
         "welcome": (
             "👋 Assalomu alaykum. Men <b>{name}</b> — sizning shaxsiy "
             "yordamchingizman.\n\n"

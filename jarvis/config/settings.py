@@ -171,6 +171,18 @@ class Settings(BaseSettings):
     #: Require a linked+verified Telegram account before login succeeds.
     auth_require_telegram: bool = False
 
+    # --- Billing (payments → automatic license issuance) ---
+    #: Enable the /buy flow in the bot and the /billing/webhook endpoint.
+    billing_enabled: bool = False
+    #: Price of a license in Telegram Stars (XTR).
+    billing_price_stars: int = Field(default=2500, gt=0)
+    #: Plan name written on issued licenses.
+    billing_plan: str = "standard"
+    #: License validity in days (0 = perpetual).
+    billing_plan_days: int = Field(default=365, ge=0)
+    #: HMAC-SHA256 secret for POST /billing/webhook (empty = webhook disabled).
+    billing_webhook_secret: str = ""
+
     # --- Telegram bot ---
     telegram_bot_token: str = Field(default="", description="Bot token from @BotFather.")
     #: Optional comma-separated allowlist of Telegram user IDs (empty = open).
