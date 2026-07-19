@@ -116,7 +116,7 @@ async def test_open_goals_injected_into_prompt():
     captured: dict = {}
     original = provider.complete
 
-    async def spy(messages, system=None, tools=None):
+    async def spy(messages, system=None, tools=None, model=None):
         captured["system"] = system
         return await original(messages, system, tools)
 

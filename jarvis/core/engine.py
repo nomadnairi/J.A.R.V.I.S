@@ -64,6 +64,7 @@ class JarvisEngine:
         self.integrations = self.container.integrations  # None when disabled
         self.goals = self.container.goals  # None when goals are disabled
         self.security = self.container.security  # capability gate + audit
+        self.router = self.container.router  # model-tier routing
 
         # Per-engine state. When memory is on, new sessions reload their
         # persisted history transparently via the loader.
@@ -256,6 +257,7 @@ class JarvisEngine:
             language=self._language(session),
         )
         tools = self.skills.tool_specs()
+        model = self.router.model_for(request.text)  # None → provider default
         messages = session.conversation.to_provider_format()
         total_tokens = 0
         result = None
@@ -263,7 +265,8 @@ class JarvisEngine:
         with measure() as sw:
             await self.bus.emit(EventType.LLM_REQUEST, source=self.settings.llm_provider)
             for _ in range(self.settings.max_tool_rounds):
-                result = await self.llm.complete(messages, system=system, tools=tools)
+                result = await self.llm.complete(messages, system=system,
+                                                tools=tools, model=model)
                 total_tokens += result.total_tokens
 
                 if not result.wants_tools:

@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     llm_max_tokens: int = Field(default=2048, gt=0)
 
+    # --- AI router (model-tier routing) ---
+    #: Route simple turns to a fast model and complex ones to a strong model.
+    ai_router_enabled: bool = False
+    #: Fast/strong model names (empty → use llm_model). Must match the provider.
+    llm_model_fast: str = ""
+    llm_model_strong: str = ""
+    #: Word count at/above which a turn is routed to the strong model.
+    router_word_threshold: int = Field(default=40, gt=0)
+
     #: Max agentic tool-calling rounds before returning to the user.
     max_tool_rounds: int = Field(default=5, gt=0, le=20)
     #: Max concurrent sessions kept in memory (LRU-evicted beyond this).

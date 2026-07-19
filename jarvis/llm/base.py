@@ -63,6 +63,7 @@ class LLMProvider(ABC):
         messages: list[dict],
         system: str | None = None,
         tools: list[ToolSpec] | None = None,
+        model: str | None = None,
     ) -> LLMResult:
         """Generate a completion for ``messages``.
 

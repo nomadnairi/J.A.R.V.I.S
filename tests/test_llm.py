@@ -18,7 +18,7 @@ class _AlwaysFails(LLMProvider):
         super().__init__(api_key="k", model="m")
         self.attempts = 0
 
-    async def complete(self, messages, system=None, tools=None):
+    async def complete(self, messages, system=None, tools=None, model=None):
         self.attempts += 1
         raise LLMRequestError("nope")
 
@@ -36,7 +36,7 @@ class _Works(LLMProvider):
     def __init__(self):
         super().__init__(api_key="k", model="m")
 
-    async def complete(self, messages, system=None, tools=None):
+    async def complete(self, messages, system=None, tools=None, model=None):
         return LLMResult(text="ok", model="m", provider=self.name)
 
     async def stream(self, messages, system=None) -> AsyncIterator[str]:

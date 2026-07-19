@@ -257,7 +257,7 @@ async def test_engine_injects_recalled_memory():
     captured: dict = {}
     original = provider.complete
 
-    async def spy(messages, system=None, tools=None):
+    async def spy(messages, system=None, tools=None, model=None):
         captured["system"] = system
         return await original(messages, system, tools)
 

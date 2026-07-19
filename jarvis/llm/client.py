@@ -92,15 +92,22 @@ class LLMClient:
         messages: list[dict],
         system: str | None = None,
         tools: list[ToolSpec] | None = None,
+        model: str | None = None,
     ) -> LLMResult:
-        """Complete ``messages``, retrying and falling back as needed."""
+        """Complete ``messages``, retrying and falling back as needed.
+
+        ``model`` optionally overrides the provider's default model for this
+        call (used by the AI router to pick a tier).
+        """
         errors: list[str] = []
         for provider in self._chain():
             if not provider.is_available():
                 errors.append(f"{provider.name}: no credentials")
                 continue
             try:
-                return await self._complete_with_retry(provider, messages, system, tools)
+                return await self._complete_with_retry(
+                    provider, messages, system, tools, model
+                )
             except LLMError as exc:
                 logger.warning("Provider '%s' failed: %s", provider.name, exc)
                 errors.append(f"{provider.name}: {exc}")
@@ -117,10 +124,11 @@ class LLMClient:
         messages: list[dict],
         system: str | None,
         tools: list[ToolSpec] | None,
+        model: str | None = None,
     ) -> LLMResult:
         @retry_async(attempts=self._retry_attempts, base_delay=1.0, exceptions=(LLMError,))
         async def _call() -> LLMResult:
-            return await provider.complete(messages, system, tools)
+            return await provider.complete(messages, system, tools, model)
 
         return await _call()
 

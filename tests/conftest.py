@@ -30,10 +30,12 @@ class FakeProvider(LLMProvider):
         self.default_reply = default_reply
         self._queue = list(results or [])
         self.calls: list[list[dict]] = []
+        self.models: list[str | None] = []
         self.stream_chunks = ["Cer", "tainly, ", "Sir."]
 
-    async def complete(self, messages, system=None, tools=None) -> LLMResult:  # type: ignore[override]
+    async def complete(self, messages, system=None, tools=None, model=None) -> LLMResult:  # type: ignore[override]
         self.calls.append(messages)
+        self.models.append(model)
         if self._queue:
             return self._queue.pop(0)
         return LLMResult(

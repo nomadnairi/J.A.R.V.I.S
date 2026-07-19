@@ -32,13 +32,15 @@ class AnthropicProvider(LLMProvider):
         messages: list[dict],
         system: str | None = None,
         tools: list[ToolSpec] | None = None,
+        model: str | None = None,
     ) -> LLMResult:
         if not self.api_key:
             raise LLMConfigError("Missing Anthropic API key.")
 
         client = self._ensure_client()
+        use_model = model or self.model
         kwargs: dict = {
-            "model": self.model,
+            "model": use_model,
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
             "system": system or "",
@@ -52,7 +54,7 @@ class AnthropicProvider(LLMProvider):
         except Exception as exc:  # noqa: BLE001
             raise LLMRequestError(
                 f"Anthropic request failed: {exc}",
-                details={"model": self.model},
+                details={"model": use_model},
             ) from exc
 
         text_parts: list[str] = []
@@ -69,7 +71,7 @@ class AnthropicProvider(LLMProvider):
         usage = getattr(response, "usage", None)
         return LLMResult(
             text="".join(text_parts).strip(),
-            model=self.model,
+            model=use_model,
             provider=self.name,
             input_tokens=getattr(usage, "input_tokens", 0) if usage else 0,
             output_tokens=getattr(usage, "output_tokens", 0) if usage else 0,

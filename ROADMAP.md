@@ -22,7 +22,7 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 | Tool Manager | ✅ | Skill/tool registry + integration & capability tools |
 | Goal System | ✅ | Per-session goals; LLM tools to add/list/complete/cancel; open goals surfaced in context |
 | Agent System | 🟡 | Agentic tool loop done; autonomous sub-agents planned |
-| AI Router | 🟡 | Provider fallback done; task→model-tier routing planned |
+| AI Router | ✅ | Provider fallback + task→model-tier routing (fast/strong) with transparent heuristics; per-call model override |
 | File Manager | ✅ | Sandboxed read/list/search/write tools; write gated by security |
 | Coding Assistant | ✅ | Read/search/write code (file tools) + run_command / run_tests (shell gated by security) |
 | Desktop Control | ⬜ | Apps, windows, keyboard/mouse (desktop-only) |

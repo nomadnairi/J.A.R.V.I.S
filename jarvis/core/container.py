@@ -131,6 +131,11 @@ class ServiceContainer:
         return manager
 
     @cached_property
+    def router(self):
+        from jarvis.routing.router import AIRouter
+        return AIRouter.from_settings(self._settings)
+
+    @cached_property
     def prompts(self) -> PromptBuilder:
         return PromptBuilder(
             assistant_name=self._settings.assistant_name,
