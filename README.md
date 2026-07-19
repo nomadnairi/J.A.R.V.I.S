@@ -275,6 +275,22 @@ curl -s http://localhost:8000/chat \
 
 ---
 
+## Deploy on a server
+
+Run the API and the Telegram bot on a VPS with Docker:
+
+```bash
+cp .env.example .env      # fill ANTHROPIC_API_KEY, API_KEY, TELEGRAM_BOT_TOKEN
+docker compose up -d --build
+```
+
+The bot uses long-polling (no inbound port needed); the API listens on `:8000`.
+Both share persistent `data/` and `logs/` volumes. A systemd option, an nginx +
+TLS example, and a public-deployment security checklist are in
+**[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
+---
+
 ## Roadmap
 
 | Area | Status |

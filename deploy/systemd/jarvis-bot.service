@@ -1,0 +1,24 @@
+[Unit]
+Description=J.A.R.V.I.S. Telegram bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jarvis
+Group=jarvis
+WorkingDirectory=/opt/jarvis
+EnvironmentFile=/opt/jarvis/.env
+ExecStart=/opt/jarvis/.venv/bin/python -m jarvis.interfaces.telegram_bot
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/jarvis/data /opt/jarvis/logs
+
+[Install]
+WantedBy=multi-user.target

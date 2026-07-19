@@ -1,0 +1,45 @@
+# J.A.R.V.I.S. — API + Telegram bot on one host.
+#
+#   cp .env.example .env      # then fill in your keys (ANTHROPIC_API_KEY, API_KEY, ...)
+#   docker compose up -d --build
+#
+# The two services share the same image and the same data/ + logs/ volumes, so
+# memory persists whether you talk to J.A.R.V.I.S. over the API or the bot.
+
+services:
+  api:
+    build: .
+    image: jarvis-assistant:latest
+    command: python -m jarvis.api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - jarvis-data:/app/data
+      - jarvis-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  bot:
+    build: .
+    image: jarvis-assistant:latest
+    command: python -m jarvis.interfaces.telegram_bot
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - api
+    volumes:
+      - jarvis-data:/app/data
+      - jarvis-logs:/app/logs
+
+volumes:
+  jarvis-data:
+  jarvis-logs:

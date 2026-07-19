@@ -1,0 +1,40 @@
+# Secrets — never bake these into an image.
+.env
+.env.*
+*.env
+
+# VCS / CI
+.git
+.github
+.gitignore
+
+# Python caches & build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+env/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local data & logs (mounted as volumes at runtime)
+data/
+logs/
+*.db
+chroma_db/
+
+# Editor / OS cruft
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Docs & tests are not needed in the runtime image
+tests/
+docs/

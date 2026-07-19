@@ -54,6 +54,8 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 | Item | Status |
 |------|--------|
 | Telegram bot | ✅ |
-| Desktop voice app | ⬜ |
 | API layer (FastAPI + WebSocket) | ✅ |
+| Deployment: Docker + Compose + systemd | ✅ |
+| Desktop voice app | ⬜ |
+| Desktop (exe) & mobile (apk) clients | ⬜ |
 | Web dashboard | ⬜ (later) |
