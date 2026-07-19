@@ -8,6 +8,8 @@ on/off. Requires ``HOMEASSISTANT_URL`` and ``HOMEASSISTANT_TOKEN``.
 
 from __future__ import annotations
 
+import re
+
 from jarvis.integrations.base import (
     BaseIntegration,
     IntegrationAction,
@@ -15,6 +17,10 @@ from jarvis.integrations.base import (
 )
 from jarvis.integrations.http import HttpClient
 from jarvis.utils.exceptions import IntegrationError
+
+# A valid Home Assistant entity id: "<domain>.<object_id>". Restricting the
+# character set stops a model-supplied id from escaping the API path.
+_ENTITY_RE = re.compile(r"^[a-z_]+\.[a-z0-9_]+$")
 
 
 class HomeAssistantIntegration(BaseIntegration):
@@ -116,16 +122,20 @@ class HomeAssistantIntegration(BaseIntegration):
         more = "" if len(entities) <= 40 else f" (+{len(entities) - 40} more)"
         return "Devices: " + ", ".join(shown) + more
 
+    @staticmethod
+    def _valid_entity(entity_id: str) -> bool:
+        return bool(_ENTITY_RE.match(entity_id or ""))
+
     async def get_state(self, entity_id: str = "", **_: object) -> str:
-        if not entity_id:
-            return "Please provide an entity id."
+        if not self._valid_entity(entity_id):
+            return "Please provide a valid entity id (e.g. 'light.kitchen')."
         data = await self._http.get_json(
             f"{self._base_url}/api/states/{entity_id}", headers=self._headers()
         )
         return f"{entity_id} is {data.get('state', 'unknown')}."
 
     async def _call_service(self, entity_id: str, service: str) -> str:
-        if not entity_id or "." not in entity_id:
+        if not self._valid_entity(entity_id):
             return "Please provide a valid entity id (e.g. 'light.kitchen')."
         domain = entity_id.split(".", 1)[0]
         await self._http.post_json(

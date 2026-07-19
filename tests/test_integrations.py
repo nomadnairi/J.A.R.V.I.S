@@ -101,6 +101,14 @@ async def test_homeassistant_turn_on_validates_entity():
     assert "valid entity" in await ha.turn_on("not-an-entity")
 
 
+@pytest.mark.asyncio
+async def test_homeassistant_rejects_path_traversal_entity():
+    ha = HomeAssistantIntegration("http://ha", "token", http=FakeHttp({}))
+    # A crafted id must not be able to escape the API path.
+    assert "valid entity" in await ha.get_state("../../config")
+    assert "valid entity" in await ha.turn_off("light.kitchen/../admin")
+
+
 # -- manager + tool bridge --------------------------------------------------
 
 

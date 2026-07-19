@@ -68,7 +68,8 @@ capabilities.
 - **🔀 AI router** — sends simple turns to a fast model and complex ones to a
   strong model, by transparent heuristics.
 - **🔒 Security** — dangerous capabilities (file write, shell, desktop) are
-  **off by default**, gated, and audited (with secrets redacted).
+  **off by default**, gated, and audited (with secrets redacted). Filesystem
+  sandbox, input validation, rate limiting. See [SECURITY.md](SECURITY.md).
 - **👥 Multi-session** — many independent conversations via a session manager.
 - **📡 Event-driven** — an internal pub/sub bus with passive telemetry.
 - **🖥️ Interactive CLI** — chat plus `/skills`, `/stats`, `/state`, `/reset`.
