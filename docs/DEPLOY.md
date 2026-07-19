@@ -71,6 +71,18 @@ docker compose down -v            # also deletes data + logs volumes
 > **Only want the API** (no Telegram bot)? Leave `TELEGRAM_BOT_TOKEN` empty and
 > run just that service: `docker compose up -d --build api`.
 
+### Build options
+
+- **Smaller image without voice:** `ffmpeg` is only needed for local Whisper
+  (`STT_BACKEND=local`). Skip it with
+  `docker build --build-arg WITH_VOICE=false -t jarvis-assistant .`
+- **Behind a TLS-inspecting (corporate) proxy:** drop your proxy's PEM bundle
+  next to the Dockerfile as `extra-ca.crt` — it is added to the container's
+  trust store automatically (the file is gitignored; never commit it).
+- If Docker Hub is blocked in your network, pull the base image through
+  Google's mirror first:
+  `docker pull mirror.gcr.io/library/python:3.11-slim && docker tag mirror.gcr.io/library/python:3.11-slim python:3.11-slim`
+
 ---
 
 ## 3. systemd (no Docker)

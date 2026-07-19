@@ -68,3 +68,6 @@ ml_models/*.gguf
 *.wav
 *.mp3
 audio_cache/
+
+# Local-only CA bundle for TLS-inspecting proxies (never commit)
+extra-ca.crt
