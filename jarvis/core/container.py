@@ -117,6 +117,7 @@ class ServiceContainer:
 
     def _build_integrations(self) -> IntegrationManager:
         from jarvis.integrations.homeassistant import HomeAssistantIntegration
+        from jarvis.integrations.telegram_channel import TelegramIntegration
         from jarvis.integrations.weather import WeatherIntegration
 
         manager = IntegrationManager()
@@ -126,6 +127,13 @@ class ServiceContainer:
             HomeAssistantIntegration(
                 self._settings.homeassistant_url,
                 self._settings.homeassistant_token,
+            )
+        )
+        manager.register(
+            TelegramIntegration(
+                self._settings.telegram_bot_token,
+                enabled=self._settings.telegram_send_enabled,
+                default_channel=self._settings.telegram_channel,
             )
         )
         return manager

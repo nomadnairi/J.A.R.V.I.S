@@ -31,6 +31,7 @@ jarvis = "jarvis.__main__:main"
 jarvis-bot = "jarvis.interfaces.telegram_bot:main"
 jarvis-api = "jarvis.api.__main__:main"
 jarvis-admin = "jarvis.licensing.__main__:main"
+jarvis-desktop = "jarvis.desktop_app.__main__:main"
 
 [project.optional-dependencies]
 telegram = ["aiogram>=3.0,<4.0"]
@@ -42,6 +43,7 @@ voice-local = ["openai-whisper"]   # local Whisper STT (github.com/openai/whispe
 voice-edge = ["edge-tts>=6.1"]     # free multilingual TTS
 voice-gtts = ["gTTS>=2.5"]         # free TTS
 desktop = ["pyautogui>=0.9"]       # desktop control (keyboard/mouse/screenshot)
+gui = ["PySide6>=6.6"]             # the desktop app (jarvis-desktop)
 
 [tool.setuptools.packages.find]
 include = ["jarvis*"]
