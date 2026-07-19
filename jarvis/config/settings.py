@@ -187,6 +187,8 @@ class Settings(BaseSettings):
     telegram_bot_token: str = Field(default="", description="Bot token from @BotFather.")
     #: Optional comma-separated allowlist of Telegram user IDs (empty = open).
     telegram_allowed_users: str = ""
+    #: Comma-separated Telegram user IDs with access to the bot's admin panel.
+    telegram_admin_users: str = ""
     #: Allow the assistant to SEND Telegram messages/posts as a tool (outbound).
     telegram_send_enabled: bool = False
     #: Default channel (@channelusername or chat id) for the telegram_post tool.
@@ -196,6 +198,15 @@ class Settings(BaseSettings):
         """Parsed set of allowed Telegram user IDs (empty = everyone)."""
         ids: set[int] = set()
         for part in self.telegram_allowed_users.split(","):
+            part = part.strip()
+            if part.isdigit():
+                ids.add(int(part))
+        return ids
+
+    def telegram_admins(self) -> set[int]:
+        """Parsed set of Telegram user IDs allowed to use the admin panel."""
+        ids: set[int] = set()
+        for part in self.telegram_admin_users.split(","):
             part = part.strip()
             if part.isdigit():
                 ids.add(int(part))

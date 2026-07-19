@@ -304,6 +304,38 @@ async def run(settings: Settings | None = None) -> None:
         await engine.forget(session_id_for(message.from_user.id))
         await message.answer(t("forget_done", locale))
 
+    admins = settings.telegram_admins()
+
+    @dp.message(F.text.startswith("/admin"))
+    async def _admin(message: "Message") -> None:
+        locale = _resolve_locale(prefs, message.from_user)
+        if message.from_user.id not in admins:
+            await message.answer(t("not_authorized", locale))
+            return
+        if license_service is None:
+            await message.answer(t("admin_needs_auth", locale))
+            return
+        from jarvis.interfaces.admin_panel import handle_admin_command
+
+        text = message.text or ""
+        command = text.split(maxsplit=1)[0].split("@", 1)[0].lower()
+        if command == "/admin_post":
+            content = text.split(maxsplit=1)[1] if " " in text else ""
+            if not content.strip():
+                await message.answer(t("admin_post_usage", locale))
+                return
+            if not settings.telegram_channel:
+                await message.answer(t("admin_no_channel", locale))
+                return
+            await message.bot.send_message(settings.telegram_channel,
+                                        content, parse_mode=None)
+            await message.answer(
+                t("admin_posted", locale, channel=settings.telegram_channel))
+            return
+        reply = handle_admin_command(license_service, billing, text)
+        await message.answer(reply if reply is not None
+                            else t("admin_unknown", locale))
+
     @dp.message(F.text)
     async def _chat(message: "Message") -> None:
         locale = _resolve_locale(prefs, message.from_user)
@@ -376,6 +408,28 @@ async def run(settings: Settings | None = None) -> None:
                 await bot.set_my_commands(commands)
             else:
                 await bot.set_my_commands(commands, language_code=loc)
+
+        # Admins see an extended menu — only in their own chat.
+        from aiogram.types import BotCommandScopeChat
+        admin_extra = [
+            BotCommand(command="admin", description=t("cmd_admin", DEFAULT_LOCALE)),
+        ]
+        base = [
+            BotCommand(command="help", description=t("cmd_help", DEFAULT_LOCALE)),
+            BotCommand(command="language",
+                    description=t("cmd_language", DEFAULT_LOCALE)),
+            BotCommand(command="reset", description=t("cmd_reset", DEFAULT_LOCALE)),
+            BotCommand(command="forget",
+                    description=t("cmd_forget", DEFAULT_LOCALE)),
+        ]
+        for admin_id in admins:
+            try:
+                await bot.set_my_commands(
+                    base + admin_extra,
+                    scope=BotCommandScopeChat(chat_id=admin_id),
+                )
+            except Exception as exc:  # noqa: BLE001 - admin hasn't /start-ed yet
+                logger.debug("Admin menu for %s skipped: %s", admin_id, exc)
 
     await _set_commands()
     logger.info("Telegram bot starting (long-polling)…")

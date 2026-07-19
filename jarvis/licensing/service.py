@@ -300,6 +300,36 @@ class LicenseService:
             for r in rows
         ]
 
+    # -- overview / admin -------------------------------------------------
+
+    def stats(self) -> dict:
+        """Aggregate account/license counters for the admin panel."""
+        now = time.time()
+        row = self._conn.execute(
+            "SELECT COUNT(*) AS total, "
+            "SUM(active) AS active, "
+            "SUM(telegram_verified) AS linked FROM accounts"
+        ).fetchone()
+        licensed = self._conn.execute(
+            "SELECT COUNT(DISTINCT user_id) FROM licenses "
+            "WHERE revoked = 0 AND (expires_at IS NULL OR expires_at > ?)",
+            (now,),
+        ).fetchone()[0]
+        return {
+            "accounts": row["total"] or 0,
+            "active_accounts": row["active"] or 0,
+            "telegram_linked": row["linked"] or 0,
+            "licensed_accounts": licensed or 0,
+        }
+
+    def list_accounts(self, limit: int = 20) -> list[Account]:
+        """Most recently created accounts first."""
+        rows = self._conn.execute(
+            "SELECT * FROM accounts ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [self._account_from_row(r) for r in rows]
+
     # -- Telegram pairing -----------------------------------------------------
 
     def create_pairing_code(self, user_id: int, *, ttl_seconds: int = 600) -> str:

@@ -15,6 +15,12 @@ LANGUAGE_NAMES = {
 
 CATALOG: dict[str, dict[str, str]] = {
     "en": {
+        "cmd_admin": "Admin panel (owner)",
+        "admin_needs_auth": "⚙️ The admin panel needs AUTH_ENABLED=true on the server.",
+        "admin_post_usage": "Usage: /admin_post your post text",
+        "admin_no_channel": "⚙️ Set TELEGRAM_CHANNEL on the server to publish posts.",
+        "admin_posted": "✅ Posted to {channel}.",
+        "admin_unknown": "Unknown admin command. Send /admin for the list.",
         "cmd_buy": "Buy a J.A.R.V.I.S. license",
         "buy_invoice_title": "J.A.R.V.I.S. license",
         "buy_invoice_desc": (
@@ -63,6 +69,12 @@ CATALOG: dict[str, dict[str, str]] = {
         "link_disabled": "ℹ️ Account linking is not enabled on this server.",
     },
     "ru": {
+        "cmd_admin": "Админ-панель (владелец)",
+        "admin_needs_auth": "⚙️ Для админ-панели нужен AUTH_ENABLED=true на сервере.",
+        "admin_post_usage": "Использование: /admin_post текст поста",
+        "admin_no_channel": "⚙️ Укажите TELEGRAM_CHANNEL на сервере, чтобы публиковать посты.",
+        "admin_posted": "✅ Опубликовано в {channel}.",
+        "admin_unknown": "Неизвестная админ-команда. Отправьте /admin для списка.",
         "cmd_buy": "Купить лицензию J.A.R.V.I.S.",
         "buy_invoice_title": "Лицензия J.A.R.V.I.S.",
         "buy_invoice_desc": (
@@ -111,6 +123,12 @@ CATALOG: dict[str, dict[str, str]] = {
         "link_disabled": "ℹ️ Привязка аккаунтов на этом сервере не включена.",
     },
     "uz": {
+        "cmd_admin": "Admin panel (egasi)",
+        "admin_needs_auth": "⚙️ Admin panel uchun serverda AUTH_ENABLED=true kerak.",
+        "admin_post_usage": "Foydalanish: /admin_post post matni",
+        "admin_no_channel": "⚙️ Post joylash uchun serverda TELEGRAM_CHANNEL ni belgilang.",
+        "admin_posted": "✅ {channel} kanaliga joylandi.",
+        "admin_unknown": "Noma'lum admin buyruq. Ro'yxat uchun /admin yuboring.",
         "cmd_buy": "J.A.R.V.I.S. litsenziyasini sotib olish",
         "buy_invoice_title": "J.A.R.V.I.S. litsenziyasi",
         "buy_invoice_desc": (

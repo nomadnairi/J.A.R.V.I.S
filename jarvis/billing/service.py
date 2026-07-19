@@ -130,6 +130,27 @@ class BillingService:
             created_account=created,
         )
 
+    # -- overview / admin ------------------------------------------------
+
+    def stats(self) -> dict:
+        """Payment counters for the admin panel."""
+        total = self._conn.execute(
+            "SELECT COUNT(*) FROM payments").fetchone()[0]
+        last30 = self._conn.execute(
+            "SELECT COUNT(*) FROM payments WHERE created_at > ?",
+            (time.time() - 30 * 86400,),
+        ).fetchone()[0]
+        return {"payments": total or 0, "payments_30d": last30 or 0}
+
+    def recent_payments(self, limit: int = 10) -> list[dict]:
+        """Most recent payments, newest first."""
+        rows = self._conn.execute(
+            "SELECT charge_id, telegram_user_id, username, plan, created_at "
+            "FROM payments ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def _unique_username(self, base: str) -> str:
         base = base.strip().lower() or "user"
         candidate = base
