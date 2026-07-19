@@ -8,6 +8,7 @@ text; the bot layer only wires messages in and out.
 
 Commands:
     /admin                      — panel: stats + recent users + payments
+    /admin_sales                — sales report: buyers, revenue, periods, plans
     /admin_add <name> [pass]    — create an account (password shown once)
     /admin_lic <name> [days]    — issue a license (no days = perpetual)
     /admin_info <name>          — account details + licenses
@@ -34,6 +35,21 @@ def _esc(value: object) -> str:
 
 def _fmt_ts(ts: float) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%d.%m.%Y")
+
+
+def _fmt_money(revenue: dict[str, int]) -> str:
+    """Render a {currency: amount} map (XTR = Telegram Stars)."""
+    if not revenue:
+        return "0"
+    parts = []
+    for currency, amount in sorted(revenue.items()):
+        if currency == "XTR":
+            parts.append(f"⭐ {amount}")
+        elif currency:
+            parts.append(f"{amount} {currency}")
+        else:
+            parts.append(str(amount))
+    return " + ".join(parts)
 
 
 def panel_text(licenses: LicenseService,
@@ -81,6 +97,7 @@ def panel_text(licenses: LicenseService,
     lines += [
         "",
         "⌨️ <b>Commands</b>",
+        "/admin_sales — sales report",
         "/admin_add name [password] — create user",
         "/admin_lic name [days] — issue license",
         "/admin_info name — user details",
@@ -88,6 +105,52 @@ def panel_text(licenses: LicenseService,
         "/admin_revoke key — revoke license",
         "/admin_post text — post to the channel",
     ]
+    return "\n".join(lines)
+
+
+def sales_report_text(licenses: LicenseService,
+                    billing: BillingService | None) -> str:
+    """The /admin_sales report: buyers, sales by period, revenue, plans."""
+    if billing is None:
+        return "⚙️ Sales reporting needs BILLING_ENABLED=true."
+    report = billing.sales_report()
+    periods = report["periods"]
+    stats = licenses.stats()
+
+    def period_line(label: str, key: str) -> str:
+        p = periods[key]
+        revenue = f" — {_fmt_money(p['revenue'])}" if p["revenue"] else ""
+        return f"• {label}: {p['payments']}{revenue}"
+
+    lines = [
+        "📈 <b>Sales report</b>",
+        "",
+        "👥 <b>Customers</b>",
+        f"• Buyers (paid at least once): {report['buyers']}",
+        f"• Accounts with an active license: {stats['licensed_accounts']}",
+        "",
+        "💳 <b>Sales</b>",
+        period_line("Today", "today"),
+        period_line("Last 7 days", "7d"),
+        period_line("Last 30 days", "30d"),
+        period_line("All time", "all"),
+        "",
+        "💰 <b>Revenue (all time)</b>",
+        f"• {_fmt_money(periods['all']['revenue'])}",
+    ]
+    if report["plans"]:
+        lines += ["", "📦 <b>By plan</b>"]
+        for plan, count in report["plans"].items():
+            lines.append(f"• {_esc(plan)}: {count}")
+
+    payments = billing.recent_payments(limit=10)
+    if payments:
+        lines += ["", "🧾 <b>Last payments</b>"]
+        for p in payments:
+            money = _fmt_money({p["currency"]: p["amount"]}) if p["amount"] else "—"
+            lines.append(
+                f"• {_fmt_ts(p['created_at'])} — "
+                f"<code>{_esc(p['username'])}</code> ({_esc(p['plan'])}, {money})")
     return "\n".join(lines)
 
 
@@ -182,6 +245,8 @@ def handle_admin_command(licenses: LicenseService,
 
     if command == "/admin":
         return panel_text(licenses, billing)
+    if command == "/admin_sales":
+        return sales_report_text(licenses, billing)
     if command == "/admin_add":
         if not args:
             return "Usage: /admin_add name [password]"

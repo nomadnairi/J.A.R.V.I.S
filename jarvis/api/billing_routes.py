@@ -75,6 +75,10 @@ def install_billing_routes(app, settings: Settings,
                                     or valid_days <= 0):
             raise HTTPException(status_code=400,
                                 detail="valid_days must be a positive integer.")
+        amount = payload.get("amount", 0)
+        if not isinstance(amount, int) or amount < 0:
+            raise HTTPException(status_code=400,
+                                detail="amount must be a non-negative integer.")
 
         try:
             fulfillment = billing.process_payment(
@@ -83,6 +87,8 @@ def install_billing_routes(app, settings: Settings,
                 username=payload.get("username"),
                 plan=str(payload.get("plan") or settings.billing_plan),
                 valid_days=valid_days,
+                amount=amount,
+                currency=str(payload.get("currency") or ""),
             )
         except AuthError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

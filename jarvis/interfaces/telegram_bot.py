@@ -102,7 +102,8 @@ def _is_allowed(settings: Settings, user_id: int) -> bool:
 
 
 def handle_successful_payment(billing, settings: Settings, telegram_user_id: int,
-                            charge_id: str, locale: str) -> str:
+                            charge_id: str, locale: str, *,
+                            amount: int = 0, currency: str = "") -> str:
     """Fulfil a paid Telegram invoice and return the reply text (testable core)."""
     days = settings.billing_plan_days or None
     fulfillment = billing.process_payment(
@@ -110,6 +111,8 @@ def handle_successful_payment(billing, settings: Settings, telegram_user_id: int
         telegram_user_id=telegram_user_id,
         plan=settings.billing_plan,
         valid_days=days,
+        amount=amount,
+        currency=currency,
     )
     if fulfillment is None:  # duplicate delivery of the same charge
         return t("buy_thanks_existing", locale, username="—")
@@ -273,9 +276,11 @@ async def run(settings: Settings | None = None) -> None:
         locale = _resolve_locale(prefs, message.from_user)
         if billing is None:
             return
+        payment = message.successful_payment
         reply = handle_successful_payment(
             billing, settings, message.from_user.id,
-            message.successful_payment.telegram_payment_charge_id, locale,
+            payment.telegram_payment_charge_id, locale,
+            amount=payment.total_amount, currency=payment.currency,
         )
         await message.answer(reply)
 
@@ -413,6 +418,8 @@ async def run(settings: Settings | None = None) -> None:
         from aiogram.types import BotCommandScopeChat
         admin_extra = [
             BotCommand(command="admin", description=t("cmd_admin", DEFAULT_LOCALE)),
+            BotCommand(command="admin_sales",
+                    description=t("cmd_admin_sales", DEFAULT_LOCALE)),
         ]
         base = [
             BotCommand(command="help", description=t("cmd_help", DEFAULT_LOCALE)),

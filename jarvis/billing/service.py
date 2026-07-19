@@ -52,10 +52,21 @@ class BillingService:
                 telegram_user_id INTEGER,
                 username TEXT,
                 plan TEXT NOT NULL,
-                created_at REAL NOT NULL
+                created_at REAL NOT NULL,
+                amount INTEGER NOT NULL DEFAULT 0,
+                currency TEXT NOT NULL DEFAULT ''
             )
             """
         )
+        # Migrate databases created before amount/currency existed.
+        columns = {row["name"] for row in
+                self._conn.execute("PRAGMA table_info(payments)")}
+        if "amount" not in columns:
+            self._conn.execute(
+                "ALTER TABLE payments ADD COLUMN amount INTEGER NOT NULL DEFAULT 0")
+        if "currency" not in columns:
+            self._conn.execute(
+                "ALTER TABLE payments ADD COLUMN currency TEXT NOT NULL DEFAULT ''")
         self._conn.commit()
 
     def close(self) -> None:
@@ -77,6 +88,8 @@ class BillingService:
         username: str | None = None,
         plan: str = "standard",
         valid_days: int | None = None,
+        amount: int = 0,
+        currency: str = "",
     ) -> Fulfillment | None:
         """Provision for a confirmed payment; ``None`` if already processed.
 
@@ -116,8 +129,9 @@ class BillingService:
         )
         self._conn.execute(
             "INSERT INTO payments (charge_id, telegram_user_id, username, plan, "
-            "created_at) VALUES (?, ?, ?, ?, ?)",
-            (charge_id, telegram_user_id, account.username, plan, time.time()),
+            "created_at, amount, currency) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (charge_id, telegram_user_id, account.username, plan, time.time(),
+            int(amount or 0), (currency or "").upper()),
         )
         self._conn.commit()
         logger.info("Payment %s fulfilled for %s (plan=%s, new=%s).",
@@ -145,11 +159,46 @@ class BillingService:
     def recent_payments(self, limit: int = 10) -> list[dict]:
         """Most recent payments, newest first."""
         rows = self._conn.execute(
-            "SELECT charge_id, telegram_user_id, username, plan, created_at "
-            "FROM payments ORDER BY created_at DESC LIMIT ?",
+            "SELECT charge_id, telegram_user_id, username, plan, created_at, "
+            "amount, currency FROM payments ORDER BY created_at DESC LIMIT ?",
             (limit,),
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def sales_report(self) -> dict:
+        """Full sales figures for the owner's report menu.
+
+        Returns::
+
+            {
+                "buyers": <distinct paying users>,
+                "periods": {"today"|"7d"|"30d"|"all":
+                            {"payments": n, "revenue": {currency: sum}}},
+                "plans": {plan: count},
+            }
+        """
+        now = time.time()
+        windows = {"today": now - 86400, "7d": now - 7 * 86400,
+                "30d": now - 30 * 86400, "all": 0.0}
+        periods: dict[str, dict] = {}
+        for name, since in windows.items():
+            rows = self._conn.execute(
+                "SELECT currency, COUNT(*) AS n, SUM(amount) AS total "
+                "FROM payments WHERE created_at > ? GROUP BY currency",
+                (since,),
+            ).fetchall()
+            revenue = {r["currency"]: int(r["total"] or 0)
+                    for r in rows if r["total"]}
+            periods[name] = {"payments": sum(r["n"] for r in rows),
+                            "revenue": revenue}
+        buyers = self._conn.execute(
+            "SELECT COUNT(DISTINCT username) FROM payments").fetchone()[0]
+        plans = {
+            r["plan"]: r["n"] for r in self._conn.execute(
+                "SELECT plan, COUNT(*) AS n FROM payments GROUP BY plan "
+                "ORDER BY n DESC")
+        }
+        return {"buyers": buyers or 0, "periods": periods, "plans": plans}
 
     def _unique_username(self, base: str) -> str:
         base = base.strip().lower() or "user"

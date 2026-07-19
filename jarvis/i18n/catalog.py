@@ -15,6 +15,7 @@ LANGUAGE_NAMES = {
 
 CATALOG: dict[str, dict[str, str]] = {
     "en": {
+        "cmd_admin_sales": "Sales report (owner)",
         "cmd_admin": "Admin panel (owner)",
         "admin_needs_auth": "⚙️ The admin panel needs AUTH_ENABLED=true on the server.",
         "admin_post_usage": "Usage: /admin_post your post text",
@@ -69,6 +70,7 @@ CATALOG: dict[str, dict[str, str]] = {
         "link_disabled": "ℹ️ Account linking is not enabled on this server.",
     },
     "ru": {
+        "cmd_admin_sales": "Отчёт продаж (владелец)",
         "cmd_admin": "Админ-панель (владелец)",
         "admin_needs_auth": "⚙️ Для админ-панели нужен AUTH_ENABLED=true на сервере.",
         "admin_post_usage": "Использование: /admin_post текст поста",
@@ -123,6 +125,7 @@ CATALOG: dict[str, dict[str, str]] = {
         "link_disabled": "ℹ️ Привязка аккаунтов на этом сервере не включена.",
     },
     "uz": {
+        "cmd_admin_sales": "Sotuvlar hisoboti (egasi)",
         "cmd_admin": "Admin panel (egasi)",
         "admin_needs_auth": "⚙️ Admin panel uchun serverda AUTH_ENABLED=true kerak.",
         "admin_post_usage": "Foydalanish: /admin_post post matni",
