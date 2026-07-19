@@ -63,6 +63,7 @@ class JarvisEngine:
         self.memory = self.container.memory  # None when memory is disabled
         self.integrations = self.container.integrations  # None when disabled
         self.goals = self.container.goals  # None when goals are disabled
+        self.security = self.container.security  # capability gate + audit
 
         # Per-engine state. When memory is on, new sessions reload their
         # persisted history transparently via the loader.

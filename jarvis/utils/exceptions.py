@@ -84,3 +84,12 @@ class IntegrationError(JarvisError):
 # --- Events --------------------------------------------------------------
 class EventError(JarvisError):
     """Base class for event-bus errors."""
+
+
+# --- Security ------------------------------------------------------------
+class SecurityError(JarvisError):
+    """Base class for security-related errors."""
+
+
+class PermissionDenied(SecurityError):
+    """A dangerous capability was invoked without permission."""

@@ -26,7 +26,7 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 | File Manager | ⬜ | Sandboxed file read/write/search |
 | Coding Assistant | ⬜ | Read/write/run code |
 | Desktop Control | ⬜ | Apps, windows, keyboard/mouse (desktop-only) |
-| Security Module | 🟡 | Secret redaction + allowlist done; permission gating + audit planned |
+| Security Module | ✅ | Capability gating (file/shell/desktop OFF by default) + audit log + secret redaction |
 
 ## Integrations
 

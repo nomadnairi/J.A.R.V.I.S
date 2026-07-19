@@ -18,6 +18,7 @@ from jarvis.integrations.manager import IntegrationManager
 from jarvis.llm.client import LLMClient
 from jarvis.llm.prompts import PromptBuilder
 from jarvis.memory.manager import MemoryManager
+from jarvis.security.manager import SecurityManager
 from jarvis.skills.builtin import DEFAULT_SKILLS
 from jarvis.skills.builtin.help_skill import HelpSkill
 from jarvis.skills.registry import SkillRegistry
@@ -80,6 +81,10 @@ class ServiceContainer:
         if not self._settings.memory_enabled:
             return None
         return MemoryManager.from_settings(self._settings, llm=self.llm)
+
+    @cached_property
+    def security(self) -> SecurityManager:
+        return SecurityManager.from_settings(self._settings)
 
     @cached_property
     def goals(self) -> GoalManager | None:

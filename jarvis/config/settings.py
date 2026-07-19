@@ -97,6 +97,16 @@ class Settings(BaseSettings):
     #: Whether the bot also replies with a spoken (TTS) voice/audio message.
     voice_replies: bool = True
 
+    # --- Security (dangerous capabilities are OFF by default) ---
+    #: Root directory file/coding tools are sandboxed to.
+    workspace_root: str = "."
+    allow_file_read: bool = True
+    allow_file_write: bool = False
+    allow_shell: bool = False
+    allow_desktop_control: bool = False
+    #: Audit log file for dangerous-capability attempts ("" disables it).
+    audit_log_path: str = "logs/audit.log"
+
     # --- Goals ---
     #: Track goals/tasks and surface open ones to the assistant.
     goals_enabled: bool = True
