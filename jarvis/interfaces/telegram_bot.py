@@ -231,7 +231,7 @@ async def run(settings: Settings | None = None) -> None:
         locale = _resolve_locale(prefs, message.from_user)
         if not await _guard(message, locale):
             return
-        if voice is None or not voice.is_available():
+        if voice is None or not voice.stt_available():
             await message.answer(t("voice_unavailable", locale))
             return
 
@@ -256,10 +256,14 @@ async def run(settings: Settings | None = None) -> None:
         for chunk in split_message(reply):
             await message.answer(chunk, parse_mode=None)
 
-        if settings.voice_replies:
+        if settings.voice_replies and voice.tts_available():
             try:
-                audio = await voice.synthesize(reply)
-                await message.answer_voice(BufferedInputFile(audio, "reply.ogg"))
+                audio = await voice.synthesize(reply, transcription.language)
+                out = BufferedInputFile(audio, f"reply.{voice.tts_ext}")
+                if voice.tts_is_voice_note:
+                    await message.answer_voice(out)
+                else:
+                    await message.answer_audio(out)
             except Exception as exc:  # noqa: BLE001 - text reply already delivered
                 logger.warning("Voice synthesis failed: %s", exc)
 

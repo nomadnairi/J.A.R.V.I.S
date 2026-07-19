@@ -69,7 +69,7 @@ doesn't claim falls through to the language model.
 | Core: config, events, DI, state machine, pipeline, LLM (async, tools, streaming), skills, telemetry, multi-session, CLI, tests, CI | ✅ done |
 | Memory: persistent conversation store + semantic recall (RAG) | ✅ done |
 | Telegram bot interface (per-user sessions + memory) | ✅ done |
-| Voice in the bot: STT (Whisper API) / TTS (OpenAI), multilingual | ✅ done |
+| Voice in the bot: pluggable STT (OpenAI / local Whisper) + TTS (OpenAI / edge-tts / gTTS), multilingual | ✅ done |
 | Desktop / Raspberry Pi voice (mic & speaker) | planned |
 | Integrations (smart home, calendar, email) | planned |
 | Task automation (scheduler, workflows) | planned |

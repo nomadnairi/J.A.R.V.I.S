@@ -1,12 +1,17 @@
 """
 Voice layer.
 
-Speech-to-text and text-to-speech via the OpenAI audio API. Whisper
-auto-detects the spoken language, and OpenAI TTS speaks whatever language the
-reply text is in, so the assistant works across languages (English, Russian,
+Pluggable speech-to-text and text-to-speech:
+
+    STT: OpenAISTT (Whisper API) · LocalWhisperSTT (free, offline)
+    TTS: OpenAITTS · EdgeTTS (free) · GTTS (free)
+
+Whisper auto-detects the spoken language and the TTS backends speak the reply
+in that language, so the assistant works across languages (English, Russian,
 Uzbek, …) with no per-language configuration.
 """
 
-from jarvis.voice.service import Transcription, VoiceService
+from jarvis.voice.base import BaseSTT, BaseTTS, Transcription, VoiceError
+from jarvis.voice.service import VoiceService
 
-__all__ = ["VoiceService", "Transcription"]
+__all__ = ["VoiceService", "Transcription", "VoiceError", "BaseSTT", "BaseTTS"]

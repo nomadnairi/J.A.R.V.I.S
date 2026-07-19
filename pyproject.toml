@@ -34,6 +34,10 @@ jarvis-bot = "jarvis.interfaces.telegram_bot:main"
 telegram = ["aiogram>=3.0,<4.0"]
 local-embeddings = ["fastembed>=0.3"]
 chroma = ["chromadb>=0.5,<1.0"]
+# Voice — OpenAI backends need only the base 'openai' dep. Free/offline extras:
+voice-local = ["openai-whisper"]   # local Whisper STT (github.com/openai/whisper)
+voice-edge = ["edge-tts>=6.1"]     # free multilingual TTS
+voice-gtts = ["gTTS>=2.5"]         # free TTS
 
 [tool.setuptools.packages.find]
 include = ["jarvis*"]

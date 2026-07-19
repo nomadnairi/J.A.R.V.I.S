@@ -79,15 +79,22 @@ class Settings(BaseSettings):
     #: JSON file backing the "memory" vector backend (when selected).
     memory_vector_path: str = "data/memory.json"
 
-    # --- Voice (OpenAI STT / TTS) ---
-    #: Enable voice messages in the Telegram bot (needs OPENAI_API_KEY).
+    # --- Voice (pluggable STT / TTS) ---
+    #: Enable voice messages in the Telegram bot.
     voice_enabled: bool = True
-    #: Speech-to-text model (Whisper). It auto-detects the spoken language.
+    #: Speech-to-text backend: "openai" (Whisper API, paid) or
+    #: "local" (open-source Whisper, free/offline, needs openai-whisper).
+    stt_backend: Literal["openai", "local"] = "openai"
+    #: Text-to-speech backend: "openai" (paid), "edge" (free, edge-tts),
+    #: or "gtts" (free, gTTS).
+    tts_backend: Literal["openai", "edge", "gtts"] = "openai"
+    #: OpenAI STT/TTS model + voice (when the OpenAI backend is selected).
     stt_model: str = "whisper-1"
-    #: Text-to-speech model and voice.
     tts_model: str = "tts-1"
     tts_voice: str = "alloy"
-    #: Whether the bot also replies with a spoken (TTS) voice message.
+    #: Local Whisper model size (tiny | base | small | medium | large).
+    local_whisper_model: str = "base"
+    #: Whether the bot also replies with a spoken (TTS) voice/audio message.
     voice_replies: bool = True
 
     # --- Telegram bot ---

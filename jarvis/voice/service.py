@@ -1,112 +1,78 @@
 """
-Voice service — OpenAI speech-to-text and text-to-speech.
+Voice service facade.
 
-Wraps the OpenAI audio API behind a small async interface so the rest of the
-system never touches the SDK directly. The OpenAI client is imported lazily;
-voice is an optional capability that only needs the ``openai`` package and an
-API key.
+Selects speech-to-text and text-to-speech backends from configuration and
+exposes a single small interface to the rest of the system. Backends range from
+paid cloud quality (OpenAI) to free / offline engines (local Whisper, edge-tts,
+gTTS).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from jarvis.config.settings import Settings
-from jarvis.utils.exceptions import JarvisError
 from jarvis.utils.logger import get_logger
+from jarvis.voice.base import BaseSTT, BaseTTS, Transcription, VoiceError
 
 logger = get_logger(__name__)
 
 
-class VoiceError(JarvisError):
-    """Raised when speech transcription or synthesis fails."""
+def _make_stt(settings: Settings) -> BaseSTT:
+    if settings.stt_backend == "local":
+        from jarvis.voice.local_whisper import LocalWhisperSTT
+        return LocalWhisperSTT(settings.local_whisper_model)
+    from jarvis.voice.openai_backend import OpenAISTT
+    return OpenAISTT(settings.openai_api_key, model=settings.stt_model)
 
 
-@dataclass
-class Transcription:
-    """Result of transcribing an audio clip."""
-
-    text: str
-    language: str | None = None  # Whisper-detected language, if available
+def _make_tts(settings: Settings) -> BaseTTS:
+    backend = settings.tts_backend
+    if backend == "edge":
+        from jarvis.voice.free_tts import EdgeTTS
+        return EdgeTTS()
+    if backend == "gtts":
+        from jarvis.voice.free_tts import GTTS
+        return GTTS()
+    from jarvis.voice.openai_backend import OpenAITTS
+    return OpenAITTS(settings.openai_api_key, model=settings.tts_model,
+                    voice=settings.tts_voice)
 
 
 class VoiceService:
-    """Speech-to-text (Whisper) and text-to-speech (OpenAI TTS)."""
+    """Coordinates the configured STT and TTS backends."""
 
-    def __init__(
-        self,
-        api_key: str,
-        *,
-        stt_model: str = "whisper-1",
-        tts_model: str = "tts-1",
-        tts_voice: str = "alloy",
-    ) -> None:
-        self.api_key = api_key
-        self.stt_model = stt_model
-        self.tts_model = tts_model
-        self.tts_voice = tts_voice
-        self._client: object | None = None
+    def __init__(self, stt: BaseSTT, tts: BaseTTS) -> None:
+        self.stt = stt
+        self.tts = tts
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "VoiceService":
-        return cls(
-            settings.openai_api_key,
-            stt_model=settings.stt_model,
-            tts_model=settings.tts_model,
-            tts_voice=settings.tts_voice,
-        )
+        return cls(_make_stt(settings), _make_tts(settings))
 
-    def is_available(self) -> bool:
-        return bool(self.api_key)
+    # -- availability -------------------------------------------------------
 
-    def _ensure_client(self) -> object:
-        if self._client is not None:
-            return self._client
-        try:
-            from openai import AsyncOpenAI
-        except ImportError as exc:  # pragma: no cover - env guard
-            raise VoiceError(
-                "The 'openai' package is required for voice. Run: pip install openai"
-            ) from exc
-        self._client = AsyncOpenAI(api_key=self.api_key)
-        return self._client
+    def stt_available(self) -> bool:
+        return self.stt.is_available()
 
-    # -- speech-to-text -----------------------------------------------------
+    def tts_available(self) -> bool:
+        return self.tts.is_available()
+
+    # -- operations ---------------------------------------------------------
 
     async def transcribe(self, audio: bytes, filename: str = "voice.ogg") -> Transcription:
-        """Transcribe ``audio`` bytes, returning text and detected language."""
-        if not self.api_key:
-            raise VoiceError("Missing OpenAI API key for transcription.")
-        client = self._ensure_client()
-        try:
-            response = await client.audio.transcriptions.create(  # type: ignore[attr-defined]
-                model=self.stt_model,
-                file=(filename, audio),
-                response_format="verbose_json",
-            )
-        except Exception as exc:  # noqa: BLE001
-            raise VoiceError(f"Transcription failed: {exc}") from exc
-        return Transcription(
-            text=(getattr(response, "text", "") or "").strip(),
-            language=getattr(response, "language", None),
-        )
+        return await self.stt.transcribe(audio, filename)
 
-    # -- text-to-speech -----------------------------------------------------
+    async def synthesize(self, text: str, language: str | None = None) -> bytes:
+        return await self.tts.synthesize(text, language)
 
-    async def synthesize(self, text: str, *, response_format: str = "opus") -> bytes:
-        """Synthesise ``text`` into spoken audio (Opus by default)."""
-        if not self.api_key:
-            raise VoiceError("Missing OpenAI API key for speech synthesis.")
-        if not text.strip():
-            raise VoiceError("Nothing to synthesise.")
-        client = self._ensure_client()
-        try:
-            async with client.audio.speech.with_streaming_response.create(  # type: ignore[attr-defined]
-                model=self.tts_model,
-                voice=self.tts_voice,
-                input=text,
-                response_format=response_format,
-            ) as response:
-                return await response.read()
-        except Exception as exc:  # noqa: BLE001
-            raise VoiceError(f"Speech synthesis failed: {exc}") from exc
+    # -- output metadata ----------------------------------------------------
+
+    @property
+    def tts_is_voice_note(self) -> bool:
+        return self.tts.is_voice_note
+
+    @property
+    def tts_ext(self) -> str:
+        return self.tts.output_ext
+
+
+__all__ = ["VoiceService", "Transcription", "VoiceError"]

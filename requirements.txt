@@ -25,12 +25,12 @@ openai>=1.30,<2.0
 #   fastembed>=0.3      # EMBEDDING_BACKEND=local (semantic embeddings)
 #   chromadb>=0.5,<1.0  # MEMORY_BACKEND=chroma
 
-# --- Stage 3: Voice ---
-# openai-whisper>=20231117
-# gTTS>=2.5,<3.0
-# pyttsx3>=2.90
-# SpeechRecognition>=3.10
-# sounddevice>=0.4
+# --- Voice ---
+# OpenAI STT/TTS backends need only the base 'openai' dep (already listed above).
+# Free / offline backends are optional — install what you use:
+# openai-whisper       # STT_BACKEND=local (local Whisper; also needs ffmpeg)
+# edge-tts>=6.1        # TTS_BACKEND=edge (free, multilingual)
+# gTTS>=2.5            # TTS_BACKEND=gtts (free)
 
 # --- Telegram bot ---
 # Needed only to run the Telegram interface (python -m jarvis.interfaces.telegram_bot).
