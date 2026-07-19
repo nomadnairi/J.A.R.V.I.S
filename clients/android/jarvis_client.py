@@ -75,3 +75,36 @@ class JarvisApiClient:
         out = self._request("POST", "/chat",
                             {"message": message, "session_id": session_id})
         return out["reply"]
+
+    def chat_stream(self, message: str, session_id: str = "android",
+                    *, on_chunk=None) -> str:
+        """Stream the reply; calls ``on_chunk(text)`` per chunk as it arrives."""
+        url = f"{self.base_url}/chat/stream"
+        data = json.dumps({"message": message,
+                        "session_id": session_id}).encode()
+        request = urllib.request.Request(url, data=data, method="POST")
+        request.add_header("Content-Type", "application/json")
+        if self.token:
+            request.add_header("Authorization", f"Bearer {self.token}")
+        parts: list[str] = []
+        try:
+            with urllib.request.urlopen(request, timeout=self._timeout) as resp:
+                while True:
+                    chunk = resp.read(1024)
+                    if not chunk:
+                        break
+                    text = chunk.decode("utf-8", errors="replace")
+                    parts.append(text)
+                    if on_chunk is not None:
+                        on_chunk(text)
+        except urllib.error.HTTPError as exc:
+            detail = ""
+            try:
+                payload = json.loads(exc.read() or b"{}")
+                detail = str(payload.get("detail", ""))
+            except (json.JSONDecodeError, OSError):
+                pass
+            raise ApiError(exc.code, detail or f"HTTP {exc.code}") from exc
+        except urllib.error.URLError as exc:
+            raise ApiError(0, f"Cannot reach server: {exc.reason}") from exc
+        return "".join(parts)

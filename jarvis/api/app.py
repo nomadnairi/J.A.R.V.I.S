@@ -132,6 +132,26 @@ def create_app(engine: JarvisEngine | None = None,
         )
         return ChatOut(reply=reply, session_id=body.session_id)
 
+    @app.post("/chat/stream")
+    async def chat_stream(body: ChatIn,
+                        principal: str = Depends(require_principal)):
+        """Stream the reply as plain-text chunks (chunked transfer encoding).
+
+        Easy to consume from any HTTP client — no WebSocket needed: read the
+        body incrementally until EOF.
+        """
+        from fastapi.responses import StreamingResponse
+
+        scoped = _scoped(principal, body.session_id)
+
+        async def _generate():
+            async for chunk in engine.stream(
+                Request(text=body.message, session_id=scoped)
+            ):
+                yield chunk
+
+        return StreamingResponse(_generate(), media_type="text/plain; charset=utf-8")
+
     @app.websocket("/ws/{session_id}")
     async def ws(websocket: WebSocket, session_id: str) -> None:
         principal = _principal(websocket.query_params.get("key"))

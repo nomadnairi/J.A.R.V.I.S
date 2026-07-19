@@ -91,6 +91,32 @@ class EngineThread:
 
         future.add_done_callback(_done)
 
+    def stream_async(self, text: str, *, session_id: str = "desktop",
+                    on_chunk: Callable[[str], None],
+                    on_done: Callable[[Exception | None], None]) -> None:
+        """Stream a reply; ``on_chunk`` fires per chunk, ``on_done`` at the end.
+
+        Both callbacks run on the engine thread — marshal to the UI thread.
+        """
+        from jarvis.models.response import Request
+
+        async def _consume() -> None:
+            async for chunk in self.engine.stream(
+                Request(text=text, session_id=session_id)
+            ):
+                on_chunk(chunk)
+
+        future = self.submit(_consume())
+
+        def _done(fut: Future) -> None:
+            try:
+                fut.result()
+                on_done(None)
+            except Exception as exc:  # noqa: BLE001 - surfaced to the UI
+                on_done(exc)
+
+        future.add_done_callback(_done)
+
     def reset(self, session_id: str = "desktop") -> None:
         self.submit(self.engine.reset(session_id)).result(30)
 

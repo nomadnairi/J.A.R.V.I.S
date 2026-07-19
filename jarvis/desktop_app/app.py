@@ -51,6 +51,7 @@ def run_app() -> int:
         """Marshals engine-thread callbacks onto the GUI thread."""
 
         done = Signal(str, str)  # reply, error
+        chunk = Signal(str)      # one streamed piece of the reply
 
     # -- login dialog ---------------------------------------------------------
 
@@ -123,6 +124,8 @@ def run_app() -> int:
             self.engine_thread = None
             self.bridge = ReplyBridge()
             self.bridge.done.connect(self._on_reply)
+            self.bridge.chunk.connect(self._on_chunk)
+            self._streaming = False
             loc = config.language
 
             self.setWindowTitle(tr("app_title", loc))
@@ -206,13 +209,16 @@ def run_app() -> int:
             self.transcript.append(f"<b>{tr('you', loc)}:</b> {text}")
             self._append_system(tr("thinking", loc))
 
+            self._streaming = False
             if config.mode == "remote" and self.client is not None:
                 import threading
 
                 def _worker() -> None:
                     try:
-                        reply = self.client.chat(text)
-                        self.bridge.done.emit(reply, "")
+                        self.client.chat_stream(
+                            text, on_chunk=self.bridge.chunk.emit
+                        )
+                        self.bridge.done.emit("", "")
                     except ApiError as exc:
                         self.bridge.done.emit("", exc.detail)
 
@@ -220,26 +226,42 @@ def run_app() -> int:
             elif self.engine_thread is not None:
                 session = self.engine_thread.engine.session("desktop")
                 session.scratch["language"] = config.language
-                self.engine_thread.ask_async(
+                self.engine_thread.stream_async(
                     text,
-                    on_done=lambda reply, err: self.bridge.done.emit(
-                        reply or "", str(err) if err else ""
+                    on_chunk=self.bridge.chunk.emit,
+                    on_done=lambda err: self.bridge.done.emit(
+                        "", str(err) if err else ""
                     ),
                 )
             else:
                 self.bridge.done.emit("", tr("not_signed_in", loc))
 
-        def _on_reply(self, reply: str, error: str) -> None:
+        def _drop_thinking_line(self) -> None:
             loc = config.language
-            # Drop the "Thinking…" line.
             cursor = self.transcript.textCursor()
             cursor.movePosition(cursor.MoveOperation.End)
             cursor.select(cursor.SelectionType.BlockUnderCursor)
             if tr("thinking", loc) in cursor.selectedText():
                 cursor.removeSelectedText()
+
+        def _on_chunk(self, text: str) -> None:
+            if not self._streaming:
+                self._streaming = True
+                self._drop_thinking_line()
+                self.transcript.append("<b>J.A.R.V.I.S.:</b> ")
+            cursor = self.transcript.textCursor()
+            cursor.movePosition(cursor.MoveOperation.End)
+            cursor.insertText(text)
+            self.transcript.setTextCursor(cursor)
+
+        def _on_reply(self, reply: str, error: str) -> None:
+            loc = config.language
+            if not self._streaming:
+                self._drop_thinking_line()
+            self._streaming = False
             if error:
                 self._append_system(tr("error", loc, error=error))
-            else:
+            elif reply:
                 self.transcript.append(f"<b>J.A.R.V.I.S.:</b> {reply}")
 
         # -- assistant tab ------------------------------------------------

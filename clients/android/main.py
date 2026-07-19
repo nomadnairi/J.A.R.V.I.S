@@ -75,7 +75,6 @@ class LoginScreen(Screen):
         self.username.text = config.get("username", "")
 
     def _sign_in(self, *_args):
-        app = App.get_running_app()
         server = self.server.text.strip()
         user = self.username.text.strip()
         password = self.password.text
@@ -146,16 +145,28 @@ class ChatScreen(Screen):
             return
         self.input.text = ""
         self._append(f"[b]You:[/b] {text}")
+        self._streaming = False
 
         def worker():
             try:
-                reply = app.client.chat(text)
+                app.client.chat_stream(text, on_chunk=self._chunk)
+                self._finish()
             except ApiError as exc:
                 self._receive(f"[i]Error: {exc.detail}[/i]")
-                return
-            self._receive(f"[b]J.A.R.V.I.S.:[/b] {reply}")
 
         threading.Thread(target=worker, daemon=True).start()
+
+    @mainthread
+    def _chunk(self, piece: str):
+        if not self._streaming:
+            self._streaming = True
+            self.transcript.text += "[b]J.A.R.V.I.S.:[/b] "
+        self.transcript.text += piece
+
+    @mainthread
+    def _finish(self):
+        self.transcript.text += "\n\n"
+        self._streaming = False
 
     @mainthread
     def _receive(self, line: str):
