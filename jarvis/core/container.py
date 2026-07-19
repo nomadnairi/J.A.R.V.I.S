@@ -136,6 +136,11 @@ class ServiceContainer:
         return AIRouter.from_settings(self._settings)
 
     @cached_property
+    def tool_manager(self):
+        from jarvis.skills.manager import ToolManager
+        return ToolManager(self.skills)
+
+    @cached_property
     def prompts(self) -> PromptBuilder:
         return PromptBuilder(
             assistant_name=self._settings.assistant_name,
@@ -167,6 +172,11 @@ class ServiceContainer:
             registry.register_many(
                 coding_skills(self.shell, self._settings.test_command)
             )
+        # Expose desktop-control tools (gated by allow_desktop_control).
+        if self._settings.desktop_enabled:
+            from jarvis.desktop.controller import DesktopController
+            from jarvis.desktop.tools import desktop_skills
+            registry.register_many(desktop_skills(DesktopController(self.security)))
         # Expose the run_agent tool (delegating to an autonomous sub-agent).
         if self._settings.agents_enabled:
             from jarvis.agents.tools import RunAgentSkill

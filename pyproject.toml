@@ -38,6 +38,7 @@ chroma = ["chromadb>=0.5,<1.0"]
 voice-local = ["openai-whisper"]   # local Whisper STT (github.com/openai/whisper)
 voice-edge = ["edge-tts>=6.1"]     # free multilingual TTS
 voice-gtts = ["gTTS>=2.5"]         # free TTS
+desktop = ["pyautogui>=0.9"]       # desktop control (keyboard/mouse/screenshot)
 
 [tool.setuptools.packages.find]
 include = ["jarvis*"]

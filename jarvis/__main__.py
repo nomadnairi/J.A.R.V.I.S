@@ -54,6 +54,7 @@ def _print_help() -> None:
     table.add_row("[cyan]/skills[/cyan]", "list locally-handled skills and tools")
     table.add_row("[cyan]/integrations[/cyan]", "show integration statuses")
     table.add_row("[cyan]/goals[/cyan]", "show open goals")
+    table.add_row("[cyan]/tools[/cyan]", "list tools by category")
     table.add_row("[cyan]/stats[/cyan]", "show session telemetry")
     table.add_row("[cyan]/state[/cyan]", "show current assistant state")
     table.add_row("[cyan]/help[/cyan]", "show this help")
@@ -86,6 +87,15 @@ def _print_integrations(engine: JarvisEngine) -> None:
         colour = {"connected": "green", "error": "red"}.get(status.state.value, "dim")
         table.add_row(status.name, f"[{colour}]{status.state.value}[/{colour}]",
                     status.detail)
+    console.print(table)
+
+
+def _print_tools(engine: JarvisEngine) -> None:
+    table = Table(title="Tools by Category")
+    table.add_column("Category", style="cyan")
+    table.add_column("Tools")
+    for category, names in engine.tools.categories().items():
+        table.add_row(category, ", ".join(names))
     console.print(table)
 
 
@@ -149,6 +159,8 @@ async def _handle_command(cmd: str, engine: JarvisEngine) -> bool:
         _print_integrations(engine)
     elif cmd == "/goals":
         await _print_goals(engine)
+    elif cmd == "/tools":
+        _print_tools(engine)
     elif cmd == "/stats":
         _print_stats(engine)
     elif cmd == "/state":

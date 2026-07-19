@@ -6,8 +6,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-0.17.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
-[![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-1.0.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Status](https://img.shields.io/badge/Status-Desktop%20Edition%20complete-brightgreen)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **A modular personal AI assistant framework — inspired by Tony Stark's companion.**
 
@@ -24,11 +24,12 @@ an LLM-powered intelligence core, a plugin/skill system, tool calling, and a
 layered architecture designed to grow into voice, smart-home, and automation
 capabilities.
 
-> **Project status:** early development. The core is built and working — an
-> async engine, LLM integration (Anthropic / OpenAI), a skill & tool system,
-> streaming, an interactive CLI, and a **memory system** (persistent history +
-> semantic recall). Voice, integrations, automation, and a web/API are planned.
-> See the [Roadmap](#roadmap) below for exactly what's done and what isn't.
+> **Project status:** the **Desktop Edition is feature-complete** — async
+> engine, LLM core with model-tier routing, memory, goals, autonomous agents,
+> tools (files, coding/shell, desktop control), a security module, integrations
+> (weather, smart home), and voice — reachable from the CLI and the Telegram
+> bot. Next up is the Smart-Home Edition (Raspberry Pi, wake word, sensors,
+> cameras). See [VISION.md](VISION.md) and [ROADMAP.md](ROADMAP.md).
 
 ---
 
@@ -58,6 +59,16 @@ capabilities.
 - **🔌 Integrations** — external services exposed to the LLM as callable tools:
   **weather** (Open-Meteo, free, no key) and **smart home** (Home Assistant).
   A pluggable framework (connect/health/tool-bridge) makes adding more easy.
+- **🎯 Goals & 🤖 agents** — tracks your goals (and stays aware of them) and can
+  delegate multi-step work to an autonomous sub-agent (`run_agent`) that uses
+  tools until the task is done.
+- **🗂 Files & coding** — sandboxed read/write/search plus shell/test tools, so
+  it can work with your files and code (gated by the security module).
+- **🖥 Desktop control** — type, press keys, click, screenshot, open URLs.
+- **🔀 AI router** — sends simple turns to a fast model and complex ones to a
+  strong model, by transparent heuristics.
+- **🔒 Security** — dangerous capabilities (file write, shell, desktop) are
+  **off by default**, gated, and audited (with secrets redacted).
 - **👥 Multi-session** — many independent conversations via a session manager.
 - **📡 Event-driven** — an internal pub/sub bus with passive telemetry.
 - **🖥️ Interactive CLI** — chat plus `/skills`, `/stats`, `/state`, `/reset`.
@@ -118,15 +129,19 @@ jarvis/
 ├── config/            # typed settings & constants
 ├── core/              # engine, DI container, pipeline, state, sessions
 ├── llm/               # provider-agnostic client + Anthropic/OpenAI + tools
-├── skills/            # skill/tool system + built-ins (datetime, calc, system)
-├── events/            # pub/sub event bus
-├── telemetry/         # metrics collector
-├── voice/             # STT/TTS backends (OpenAI / local Whisper / edge / gTTS)
-├── interfaces/        # Telegram bot (CLI lives in __main__.py)
-├── models/            # Message/Conversation, Request/Response
+├── skills/            # skill/tool system + built-ins + ToolManager facade
+├── llm/ · routing/    # LLM client + model-tier AI router
 ├── memory/            # persistent history + semantic recall (SQLite + vectors)
+├── goals/ · agents/   # goal system + autonomous sub-agents
+├── files/ · coding/   # sandboxed file tools + shell/coding tools
+├── desktop/           # desktop control (keyboard/mouse/screen)
+├── security/          # capability gating + audit
 ├── integrations/      # external connectors as tools (weather, Home Assistant)
-└── utils/             # logging, retry, timing, exceptions, text
+├── voice/ · i18n/     # STT/TTS backends + localization (en/ru/uz)
+├── interfaces/        # Telegram bot (CLI lives in __main__.py)
+├── events/ · telemetry/  # pub/sub bus + metrics
+├── models/            # Message/Conversation, Request/Response
+└── utils/             # logging, retry, timing, exceptions, redaction, text
 tests/                 # pytest suite
 docs/                  # architecture documentation
 ```

@@ -125,6 +125,8 @@ class Settings(BaseSettings):
     test_command: str = "pytest -q"
     #: Timeout (seconds) for shell commands.
     shell_timeout: float = 60.0
+    #: Expose desktop-control tools (gated by allow_desktop_control).
+    desktop_enabled: bool = True
 
     # --- Agents ---
     #: Expose the run_agent tool (delegate multi-step tasks to a sub-agent).

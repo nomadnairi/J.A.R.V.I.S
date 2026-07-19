@@ -65,6 +65,7 @@ class JarvisEngine:
         self.goals = self.container.goals  # None when goals are disabled
         self.security = self.container.security  # capability gate + audit
         self.router = self.container.router  # model-tier routing
+        self.tools = self.container.tool_manager  # tool governance/introspection
 
         # Per-engine state. When memory is on, new sessions reload their
         # persisted history transparently via the loader.

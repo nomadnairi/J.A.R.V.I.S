@@ -19,13 +19,13 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 | Text Interface | ✅ | CLI + Telegram bot |
 | Voice Interface | 🟡 | In the bot (STT/TTS, pluggable, multilingual). Desktop mic/speaker + wake word planned |
 | Memory | ✅ | Persistent history + semantic recall + facts; bounded, deduped, secret-redacted |
-| Tool Manager | ✅ | Skill/tool registry + integration & capability tools |
+| Tool Manager | ✅ | Skill/tool registry + governance facade (list/categorize/disable) |
 | Goal System | ✅ | Per-session goals; LLM tools to add/list/complete/cancel; open goals surfaced in context |
 | Agent System | ✅ | Agentic tool loop + autonomous sub-agents via the run_agent tool (step-limited, delegated by the main assistant) |
 | AI Router | ✅ | Provider fallback + task→model-tier routing (fast/strong) with transparent heuristics; per-call model override |
 | File Manager | ✅ | Sandboxed read/list/search/write tools; write gated by security |
 | Coding Assistant | ✅ | Read/search/write code (file tools) + run_command / run_tests (shell gated by security) |
-| Desktop Control | ⬜ | Apps, windows, keyboard/mouse (desktop-only) |
+| Desktop Control | ✅ | Type/keys/click/screenshot/open-URL tools, gated by security (desktop-only, needs pyautogui) |
 | Security Module | ✅ | Capability gating (file/shell/desktop OFF by default) + audit log + secret redaction |
 
 ## Integrations
