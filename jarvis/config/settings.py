@@ -126,6 +126,12 @@ class Settings(BaseSettings):
     #: Timeout (seconds) for shell commands.
     shell_timeout: float = 60.0
 
+    # --- Agents ---
+    #: Expose the run_agent tool (delegate multi-step tasks to a sub-agent).
+    agents_enabled: bool = True
+    #: Max steps an autonomous sub-agent may take.
+    max_agent_steps: int = Field(default=8, gt=0, le=30)
+
     # --- Goals ---
     #: Track goals/tasks and surface open ones to the assistant.
     goals_enabled: bool = True

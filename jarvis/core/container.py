@@ -167,6 +167,12 @@ class ServiceContainer:
             registry.register_many(
                 coding_skills(self.shell, self._settings.test_command)
             )
+        # Expose the run_agent tool (delegating to an autonomous sub-agent).
+        if self._settings.agents_enabled:
+            from jarvis.agents.tools import RunAgentSkill
+            registry.register(
+                RunAgentSkill(self.llm, registry, self._settings.max_agent_steps)
+            )
         # Expose configured integrations' actions as tools.
         if self.integrations is not None:
             self.integrations.install_tools(registry)

@@ -21,7 +21,7 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 | Memory | ✅ | Persistent history + semantic recall + facts; bounded, deduped, secret-redacted |
 | Tool Manager | ✅ | Skill/tool registry + integration & capability tools |
 | Goal System | ✅ | Per-session goals; LLM tools to add/list/complete/cancel; open goals surfaced in context |
-| Agent System | 🟡 | Agentic tool loop done; autonomous sub-agents planned |
+| Agent System | ✅ | Agentic tool loop + autonomous sub-agents via the run_agent tool (step-limited, delegated by the main assistant) |
 | AI Router | ✅ | Provider fallback + task→model-tier routing (fast/strong) with transparent heuristics; per-call model override |
 | File Manager | ✅ | Sandboxed read/list/search/write tools; write gated by security |
 | Coding Assistant | ✅ | Read/search/write code (file tools) + run_command / run_tests (shell gated by security) |
