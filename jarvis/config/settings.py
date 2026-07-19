@@ -110,6 +110,12 @@ class Settings(BaseSettings):
     # --- Files & coding ---
     #: Expose sandboxed file tools (read on; write gated by security).
     files_enabled: bool = True
+    #: Expose coding tools (run command/tests; shell gated by security).
+    coding_enabled: bool = True
+    #: Command used by the run_tests tool.
+    test_command: str = "pytest -q"
+    #: Timeout (seconds) for shell commands.
+    shell_timeout: float = 60.0
 
     # --- Goals ---
     #: Track goals/tasks and surface open ones to the assistant.

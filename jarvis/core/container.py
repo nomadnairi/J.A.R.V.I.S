@@ -94,6 +94,14 @@ class ServiceContainer:
         return FileManager(self._settings.workspace_root, self.security)
 
     @cached_property
+    def shell(self):
+        if not self._settings.coding_enabled:
+            return None
+        from jarvis.coding.runner import ShellRunner
+        return ShellRunner(self._settings.workspace_root, self.security,
+                        timeout=self._settings.shell_timeout)
+
+    @cached_property
     def goals(self) -> GoalManager | None:
         if not self._settings.goals_enabled:
             return None
@@ -148,6 +156,12 @@ class ServiceContainer:
         if self.files is not None:
             from jarvis.files.tools import file_skills
             registry.register_many(file_skills(self.files))
+        # Expose coding tools (run command/tests).
+        if self.shell is not None:
+            from jarvis.coding.tools import coding_skills
+            registry.register_many(
+                coding_skills(self.shell, self._settings.test_command)
+            )
         # Expose configured integrations' actions as tools.
         if self.integrations is not None:
             self.integrations.install_tools(registry)
