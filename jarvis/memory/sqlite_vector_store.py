@@ -61,12 +61,16 @@ class SQLiteVectorStore(BaseMemoryStore):
         min_score: float = 0.15,
         recency_weight: float = 0.15,
         recency_half_life_days: float = 7.0,
+        max_per_session: int = 0,
+        dedup_threshold: float = 0.0,
     ) -> None:
         self.embedder = embedder
         self.db_path = db_path
         self.min_score = min_score
         self.recency_weight = max(0.0, min(1.0, recency_weight))
         self.recency_half_life_s = recency_half_life_days * 86400.0
+        self.max_per_session = max_per_session
+        self.dedup_threshold = dedup_threshold
         self._lock = threading.Lock()
         if db_path != ":memory:":
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -81,6 +85,9 @@ class SQLiteVectorStore(BaseMemoryStore):
     def remember(self, record: MemoryRecord) -> None:
         embedding = self.embedder.embed(record.content)
         with self._lock:
+            if self._is_duplicate(record.session_id, embedding):
+                logger.debug("Skipping near-duplicate memory for %s", record.session_id)
+                return
             self._conn.execute(
                 "INSERT INTO memories (session_id, kind, content, embedding, "
                 "timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?)",
@@ -94,6 +101,37 @@ class SQLiteVectorStore(BaseMemoryStore):
                 ),
             )
             self._conn.commit()
+            self._evict(record.session_id)
+
+    def _is_duplicate(self, session_id: str, embedding: list[float]) -> bool:
+        """Whether an existing memory is similar enough to skip storing."""
+        if not (0.0 < self.dedup_threshold < 1.0):
+            return False
+        rows = self._conn.execute(
+            "SELECT embedding FROM memories WHERE session_id = ?", (session_id,)
+        ).fetchall()
+        return any(
+            cosine_similarity(embedding, _unpack(row["embedding"])) >= self.dedup_threshold
+            for row in rows
+        )
+
+    def _evict(self, session_id: str) -> None:
+        """Keep at most ``max_per_session`` memories, dropping the oldest."""
+        if self.max_per_session <= 0:
+            return
+        row = self._conn.execute(
+            "SELECT COUNT(*) AS n FROM memories WHERE session_id = ?", (session_id,)
+        ).fetchone()
+        excess = int(row["n"]) - self.max_per_session
+        if excess <= 0:
+            return
+        self._conn.execute(
+            "DELETE FROM memories WHERE id IN ("
+            "  SELECT id FROM memories WHERE session_id = ? ORDER BY id ASC LIMIT ?"
+            ")",
+            (session_id, excess),
+        )
+        self._conn.commit()
 
     # -- read ---------------------------------------------------------------
 

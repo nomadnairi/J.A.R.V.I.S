@@ -111,6 +111,20 @@ def test_sqlite_incremental_count():
     assert store.count() == 0
 
 
+def test_sqlite_eviction_caps_per_session():
+    store = _sqlite_store(max_per_session=3)
+    for i in range(6):
+        store.remember(MemoryRecord(content=f"unique memory number {i}", session_id="s"))
+    assert store.count("s") == 3
+
+
+def test_sqlite_dedup_skips_near_duplicates():
+    store = _sqlite_store(dedup_threshold=0.95)
+    store.remember(MemoryRecord(content="the user's dog is named Rex", session_id="s"))
+    store.remember(MemoryRecord(content="the user's dog is named Rex", session_id="s"))
+    assert store.count("s") == 1
+
+
 # -- conversation store -----------------------------------------------------
 
 
@@ -190,6 +204,25 @@ async def test_manager_forget():
     await mgr.forget("s")
     assert mgr.stats()["memories"] == 0
     assert mgr.stats()["stored_messages"] == 0
+
+
+@pytest.mark.asyncio
+async def test_manager_redacts_secrets_in_history():
+    mgr = _make_manager()  # redact_secrets defaults to True
+    await mgr.persist_turn(
+        "s", "my token is 1234567890:AAFfakefakefakefakefakefakefakefake00", "ok"
+    )
+    stored = mgr.load_conversation("s").messages[0].content
+    assert "1234567890" not in stored
+    assert "[REDACTED]" in stored
+
+
+@pytest.mark.asyncio
+async def test_manager_redacts_secrets_in_semantic_memory():
+    mgr = _make_manager()
+    await mgr.remember("s", "the api key is sk-abcdef0123456789abcdef")
+    recalled = await mgr.recall("api key", session_id="s")
+    assert all("sk-abcdef" not in r.content for r in recalled)
 
 
 # -- engine RAG integration -------------------------------------------------

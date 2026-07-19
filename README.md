@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-0.7.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-0.8.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **A modular personal AI assistant framework — inspired by Tony Stark's companion.**
@@ -44,6 +44,8 @@ capabilities.
   semantic recall (RAG): the LLM distils **durable facts** from each turn and
   recalls the relevant ones later. Async, SQLite-backed, with similarity
   threshold + recency weighting; pluggable embeddings (offline / local / OpenAI).
+  Bounded per user, deduplicated, and **secret-redacted** — pasted tokens, API
+  keys and card numbers are never stored.
 - **⚡ Streaming** — token-by-token streamed replies in the CLI.
 - **💬 Telegram bot** — chat with the assistant from Telegram; each user gets
   their own persistent session and memory. Localized UI (English / Russian /
@@ -193,9 +195,6 @@ current conversation), `/forget` (wipe everything remembered about you),
 `/help`. The command menu and interface are localized in **English, Russian and
 Uzbek**, and the assistant replies in the language each user picks. Access can
 be limited to specific user IDs via `TELEGRAM_ALLOWED_USERS`.
-
-> Keep your bot token in `.env` only — never commit it. If a token is ever
-> exposed, revoke it with `/revoke` in @BotFather and generate a new one.
 
 ---
 

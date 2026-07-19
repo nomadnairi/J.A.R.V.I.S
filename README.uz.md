@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-0.7.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-0.8.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **Modulli shaxsiy AI-yordamchi frameworki — Toni Starkning yordamchisidan ilhomlangan.**
@@ -198,10 +198,6 @@ Buyruqlar: `/language` (interfeys va javob tilini almashtirish), `/reset`
 narsani o'chirish), `/help`. Menyu va interfeys **ingliz, rus va o'zbek**
 tillarida, yordamchi foydalanuvchi tanlagan tilda javob beradi. Kirishni
 `TELEGRAM_ALLOWED_USERS` orqali muayyan user ID lar bilan cheklash mumkin.
-
-> Bot tokenini faqat `.env` da saqlang — hech qachon commit qilmang. Agar token
-> oshkor bo'lsa, uni @BotFather da `/revoke` bilan bekor qiling va yangisini
-> yarating.
 
 ---
 

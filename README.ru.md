@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-0.7.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-0.8.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **Модульный фреймворк персонального AI-ассистента — вдохновлён помощником Тони Старка.**
@@ -194,9 +194,6 @@ python -m jarvis.interfaces.telegram_bot     # или: jarvis-bot
 интерфейс локализованы на **английском, русском и узбекском**, ассистент
 отвечает на выбранном пользователем языке. Доступ можно ограничить конкретными
 user ID через `TELEGRAM_ALLOWED_USERS`.
-
-> Храните токен бота только в `.env` — никогда не коммитьте его. Если токен
-> засветился, отзовите его командой `/revoke` у @BotFather и создайте новый.
 
 ---
 

@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     memory_recency_weight: float = Field(default=0.15, ge=0.0, le=1.0)
     #: Extract durable facts via the LLM instead of storing raw transcripts.
     memory_fact_extraction: bool = True
+    #: Max semantic memories kept per session (0 = unlimited); oldest evicted.
+    memory_max_per_session: int = Field(default=200, ge=0)
+    #: Skip storing a new memory this similar to an existing one (0/1 = off).
+    memory_dedup_threshold: float = Field(default=0.95, ge=0.0, le=1.0)
+    #: Redact secrets (tokens, keys, card numbers) before storing memory.
+    memory_redact_secrets: bool = True
     #: SQLite file for persistent conversation history and vectors.
     memory_db_path: str = "data/jarvis.db"
     #: JSON file backing the "memory" vector backend (when selected).

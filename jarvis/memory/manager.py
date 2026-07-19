@@ -28,6 +28,7 @@ from jarvis.memory.embeddings import HashingEmbedder, LocalEmbedder, OpenAIEmbed
 from jarvis.memory.facts import FactExtractor
 from jarvis.models.message import Conversation, Message
 from jarvis.utils.logger import get_logger
+from jarvis.utils.redaction import redact_secrets
 
 logger = get_logger(__name__)
 
@@ -45,11 +46,17 @@ class MemoryManager:
         *,
         recall_limit: int = 4,
         fact_extractor: FactExtractor | None = None,
+        redact_secrets: bool = True,
     ) -> None:
         self.vectors = vector_store
         self.conversations = conversation_store
         self.recall_limit = recall_limit
         self.fact_extractor = fact_extractor
+        self.redact_secrets = redact_secrets
+
+    def _clean(self, text: str) -> str:
+        """Redact secrets from text before it is persisted, if enabled."""
+        return redact_secrets(text) if self.redact_secrets else text
 
     # -- construction -------------------------------------------------------
 
@@ -69,6 +76,7 @@ class MemoryManager:
             conversation_store,
             recall_limit=settings.memory_recall_limit,
             fact_extractor=fact_extractor,
+            redact_secrets=settings.memory_redact_secrets,
         )
 
     @staticmethod
@@ -100,6 +108,8 @@ class MemoryManager:
             db_path=settings.memory_db_path,
             min_score=settings.memory_min_score,
             recency_weight=settings.memory_recency_weight,
+            max_per_session=settings.memory_max_per_session,
+            dedup_threshold=settings.memory_dedup_threshold,
         )
 
     # -- persistence (history) ---------------------------------------------
@@ -114,7 +124,10 @@ class MemoryManager:
     async def persist_turn(self, session_id: str, user: str, assistant: str) -> None:
         """Persist a full turn (user + assistant) to the conversation store."""
         await asyncio.to_thread(
-            self.conversations.append_exchange, session_id, user, assistant
+            self.conversations.append_exchange,
+            session_id,
+            self._clean(user),
+            self._clean(assistant),
         )
 
     async def clear_history(self, session_id: str | None = "default") -> None:
@@ -125,8 +138,8 @@ class MemoryManager:
     async def remember(self, session_id: str, content: str, *, kind: str = "fact",
                     metadata: dict | None = None) -> None:
         """Store ``content`` in the semantic vector store."""
-        record = MemoryRecord(content=content, session_id=session_id, kind=kind,
-                            metadata=metadata or {})
+        record = MemoryRecord(content=self._clean(content), session_id=session_id,
+                            kind=kind, metadata=metadata or {})
         await asyncio.to_thread(self.vectors.remember, record)
 
     async def remember_turn(self, session_id: str, user: str,
@@ -136,6 +149,8 @@ class MemoryManager:
         With a fact extractor, stores extracted facts; otherwise falls back to
         storing the raw exchange.
         """
+        # Redact before the exchange reaches the LLM or the store.
+        user, assistant = self._clean(user), self._clean(assistant)
         if self.fact_extractor is not None:
             facts = await self.fact_extractor.extract(user, assistant)
             for fact in facts:

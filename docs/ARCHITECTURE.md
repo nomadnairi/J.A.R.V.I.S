@@ -102,6 +102,10 @@ Hardening:
   `LocalEmbedder` (semantic, via optional `fastembed`), or `OpenAIEmbedder`.
 * **Pluggable vector backend** — `SQLiteVectorStore` (default), `InMemoryVectorStore`,
   or `ChromaVectorStore`; all implement `BaseMemoryStore`.
+* **Bounded & deduplicated** — a per-session cap evicts the oldest memories, and
+  near-duplicate memories (above a similarity threshold) are skipped.
+* **Secret redaction** — tokens, API keys, and card-like numbers are stripped
+  (`[REDACTED]`) before anything is written to history or semantic memory.
 
 Memory is optional (`MEMORY_ENABLED`) and adds **no required dependencies**.
 
