@@ -53,6 +53,7 @@ def _print_help() -> None:
     table.add_row("[cyan]/memory[/cyan]", "show memory statistics")
     table.add_row("[cyan]/skills[/cyan]", "list locally-handled skills and tools")
     table.add_row("[cyan]/integrations[/cyan]", "show integration statuses")
+    table.add_row("[cyan]/goals[/cyan]", "show open goals")
     table.add_row("[cyan]/stats[/cyan]", "show session telemetry")
     table.add_row("[cyan]/state[/cyan]", "show current assistant state")
     table.add_row("[cyan]/help[/cyan]", "show this help")
@@ -85,6 +86,22 @@ def _print_integrations(engine: JarvisEngine) -> None:
         colour = {"connected": "green", "error": "red"}.get(status.state.value, "dim")
         table.add_row(status.name, f"[{colour}]{status.state.value}[/{colour}]",
                     status.detail)
+    console.print(table)
+
+
+async def _print_goals(engine: JarvisEngine) -> None:
+    if engine.goals is None:
+        console.print("[yellow]Goals are disabled.[/yellow]")
+        return
+    goals = await engine.goals.active(SESSION_ID)
+    if not goals:
+        console.print("[dim]No open goals.[/dim]")
+        return
+    table = Table(title="Open Goals")
+    table.add_column("#", justify="right", style="magenta")
+    table.add_column("Goal")
+    for goal in goals:
+        table.add_row(str(goal.id), goal.text)
     console.print(table)
 
 
@@ -130,6 +147,8 @@ async def _handle_command(cmd: str, engine: JarvisEngine) -> bool:
         _print_skills(engine)
     elif cmd == "/integrations":
         _print_integrations(engine)
+    elif cmd == "/goals":
+        await _print_goals(engine)
     elif cmd == "/stats":
         _print_stats(engine)
     elif cmd == "/state":

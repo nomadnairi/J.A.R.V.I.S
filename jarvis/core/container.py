@@ -13,6 +13,7 @@ from functools import cached_property
 
 from jarvis.config.settings import Settings, get_settings
 from jarvis.events.bus import EventBus
+from jarvis.goals.manager import GoalManager
 from jarvis.integrations.manager import IntegrationManager
 from jarvis.llm.client import LLMClient
 from jarvis.llm.prompts import PromptBuilder
@@ -81,6 +82,12 @@ class ServiceContainer:
         return MemoryManager.from_settings(self._settings, llm=self.llm)
 
     @cached_property
+    def goals(self) -> GoalManager | None:
+        if not self._settings.goals_enabled:
+            return None
+        return GoalManager.from_settings(self._settings)
+
+    @cached_property
     def integrations(self) -> IntegrationManager | None:
         if self._integrations_set:
             return self._integrations_override
@@ -121,6 +128,10 @@ class ServiceContainer:
         for skill in instances:
             if isinstance(skill, HelpSkill):
                 skill.registry = registry
+        # Expose goal tools.
+        if self.goals is not None:
+            from jarvis.goals.tools import goal_skills
+            registry.register_many(goal_skills(self.goals))
         # Expose configured integrations' actions as tools.
         if self.integrations is not None:
             self.integrations.install_tools(registry)

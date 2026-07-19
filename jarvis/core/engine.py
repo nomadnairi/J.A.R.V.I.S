@@ -28,6 +28,7 @@ from jarvis.core.pipeline import (
     NormalizeMiddleware,
     Pipeline,
 )
+from jarvis.core.runtime import set_session
 from jarvis.core.session import SessionManager
 from jarvis.core.state import StateMachine
 from jarvis.i18n import language_name
@@ -61,6 +62,7 @@ class JarvisEngine:
         self.prompts = self.container.prompts
         self.memory = self.container.memory  # None when memory is disabled
         self.integrations = self.container.integrations  # None when disabled
+        self.goals = self.container.goals  # None when goals are disabled
 
         # Per-engine state. When memory is on, new sessions reload their
         # persisted history transparently via the loader.
@@ -151,6 +153,7 @@ class JarvisEngine:
         not available on the streaming path — use :meth:`process` for that.
         """
         request.text = normalize(request.text)
+        set_session(request.session_id)
         session = self.sessions.get_or_create(request.session_id)
         await self.bus.emit(EventType.USER_INPUT, source="engine", text=request.text)
 
@@ -172,7 +175,7 @@ class JarvisEngine:
         # LLM streaming path.
         session.conversation.add_user(request.text)
         system = self.prompts.system_prompt(
-            extra_context=await self._recall(request.text, session.session_id),
+            extra_context=await self._context(request.text, session.session_id),
             language=self._language(session),
         )
         await self.state.transition(AssistantState.THINKING)
@@ -195,6 +198,7 @@ class JarvisEngine:
     # -- core handler (wrapped by the pipeline) ----------------------------
 
     async def _handle(self, request: Request) -> Response:
+        set_session(request.session_id)
         session = self.sessions.get_or_create(request.session_id)
         if not request.text:
             return Response.system_message("", request_id=request.request_id)
@@ -247,7 +251,7 @@ class JarvisEngine:
         session.conversation.add_user(request.text)
 
         system = self.prompts.system_prompt(
-            extra_context=await self._recall(request.text, session.session_id),
+            extra_context=await self._context(request.text, session.session_id),
             language=self._language(session),
         )
         tools = self.skills.tool_specs()
@@ -306,11 +310,19 @@ class JarvisEngine:
 
     # -- memory helpers -----------------------------------------------------
 
-    async def _recall(self, query: str, session_id: str) -> str | None:
-        """Recall relevant memories to enrich the system prompt (RAG)."""
-        if self.memory is None:
-            return None
-        return await self.memory.recall_context(query, session_id=session_id)
+    async def _context(self, query: str, session_id: str) -> str | None:
+        """Assemble extra system-prompt context: recalled memory + open goals."""
+        parts: list[str] = []
+        if self.memory is not None:
+            recalled = await self.memory.recall_context(query, session_id=session_id)
+            if recalled:
+                parts.append(recalled)
+        if self.goals is not None:
+            goals = await self.goals.active(session_id)
+            if goals:
+                listing = "\n".join(f"- #{g.id}: {g.text}" for g in goals)
+                parts.append(f"The user's open goals:\n{listing}")
+        return "\n\n".join(parts) if parts else None
 
     @staticmethod
     def _language(session: SessionContext) -> str | None:
@@ -358,6 +370,8 @@ class JarvisEngine:
         self.sessions.reset(session_id)
         if self.memory is not None:
             await self.memory.forget(session_id)
+        if self.goals is not None:
+            await self.goals.clear(session_id)
         await self.state.reset()
         logger.debug("Session %r fully forgotten.", session_id)
 

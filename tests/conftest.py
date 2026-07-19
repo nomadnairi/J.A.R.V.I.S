@@ -75,6 +75,7 @@ def settings() -> Settings:
         log_file="",  # no file handler in tests
         memory_enabled=False,  # keep the default engine off disk
         integrations_enabled=False,  # no network at construction
+        goals_enabled=False,  # no disk writes in the default engine
     )
 
 

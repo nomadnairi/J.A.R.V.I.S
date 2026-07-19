@@ -20,7 +20,7 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 | Voice Interface | 🟡 | In the bot (STT/TTS, pluggable, multilingual). Desktop mic/speaker + wake word planned |
 | Memory | ✅ | Persistent history + semantic recall + facts; bounded, deduped, secret-redacted |
 | Tool Manager | ✅ | Skill/tool registry + integration & capability tools |
-| Goal System | ⬜ | Track goals/tasks; work toward them |
+| Goal System | ✅ | Per-session goals; LLM tools to add/list/complete/cancel; open goals surfaced in context |
 | Agent System | 🟡 | Agentic tool loop done; autonomous sub-agents planned |
 | AI Router | 🟡 | Provider fallback done; task→model-tier routing planned |
 | File Manager | ⬜ | Sandboxed file read/write/search |

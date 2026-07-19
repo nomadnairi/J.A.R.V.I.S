@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     #: Whether the bot also replies with a spoken (TTS) voice/audio message.
     voice_replies: bool = True
 
+    # --- Goals ---
+    #: Track goals/tasks and surface open ones to the assistant.
+    goals_enabled: bool = True
+
     # --- Integrations ---
     #: Master switch for the integrations subsystem.
     integrations_enabled: bool = True
