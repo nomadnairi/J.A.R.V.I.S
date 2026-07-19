@@ -32,7 +32,11 @@ class HashingEmbedder(BaseEmbedder):
         self.dimensions = dimensions
 
     def _bucket(self, token: str) -> tuple[int, float]:
-        digest = hashlib.md5(token.encode("utf-8")).digest()  # noqa: S324 - not security
+        # Non-cryptographic: MD5 only buckets tokens into embedding dimensions.
+        # usedforsecurity=False makes that explicit for security scanners.
+        digest = hashlib.md5(  # noqa: S324
+            token.encode("utf-8"), usedforsecurity=False
+        ).digest()
         index = int.from_bytes(digest[:4], "big") % self.dimensions
         # Sign bit from a second byte keeps buckets from only ever accumulating.
         sign = 1.0 if digest[4] & 1 else -1.0

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import urllib.error
+import urllib.parse
 import urllib.request
 
 
@@ -27,7 +28,12 @@ class JarvisApiClient:
 
     def __init__(self, base_url: str, *, token: str = "",
                 timeout: float = 60.0) -> None:
-        self.base_url = base_url.rstrip("/")
+        base_url = base_url.rstrip("/")
+        scheme = urllib.parse.urlparse(base_url).scheme
+        if scheme not in ("http", "https"):
+            # Reject file:, ftp:, etc. so a bad config can't read local files.
+            raise ApiError(0, "Server URL must start with http:// or https://.")
+        self.base_url = base_url
         self.token = token
         self._timeout = timeout
 
@@ -42,7 +48,8 @@ class JarvisApiClient:
         if self.token:
             request.add_header("Authorization", f"Bearer {self.token}")
         try:
-            with urllib.request.urlopen(request, timeout=self._timeout) as resp:
+            # Scheme validated to http/https in __init__ (no file:/ SSRF).
+            with urllib.request.urlopen(request, timeout=self._timeout) as resp:  # noqa: S310  # nosec B310
                 raw = resp.read()
                 return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as exc:
@@ -105,7 +112,8 @@ class JarvisApiClient:
             request.add_header("Authorization", f"Bearer {self.token}")
         parts: list[str] = []
         try:
-            with urllib.request.urlopen(request, timeout=self._timeout) as resp:
+            # Scheme validated to http/https in __init__ (no file:/ SSRF).
+            with urllib.request.urlopen(request, timeout=self._timeout) as resp:  # noqa: S310  # nosec B310
                 while True:
                     chunk = resp.read(1024)
                     if not chunk:

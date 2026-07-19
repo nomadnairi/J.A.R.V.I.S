@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import urllib.error
+import urllib.parse
 import urllib.request
 
 
@@ -26,7 +27,10 @@ class JarvisApiClient:
 
     def __init__(self, base_url: str, *, token: str = "",
                 timeout: float = 60.0) -> None:
-        self.base_url = base_url.rstrip("/")
+        base_url = base_url.rstrip("/")
+        if urllib.parse.urlparse(base_url).scheme not in ("http", "https"):
+            raise ApiError(0, "Server URL must start with http:// or https://.")
+        self.base_url = base_url
         self.token = token
         self._timeout = timeout
 

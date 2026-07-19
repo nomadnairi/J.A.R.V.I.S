@@ -1,0 +1,16 @@
+# Bandit configuration for J.A.R.V.I.S.
+# Reviewed exclusions — each is a documented false positive or non-security use.
+skips:
+  # B101: assert_used — asserts guard internal invariants in retry/engine, not
+  #       untrusted input; acceptable (we do not ship with python -O).
+  - B101
+  # B104: 0.0.0.0 default bind — intentional for containers/servers; operators
+  #       restrict exposure via firewall / reverse proxy (see docs/DEPLOY.md).
+  - B104
+  # B105/B106/B107: "hardcoded password" false positives on UI label strings
+  #       ("Password", "Token") and empty default arguments — no secrets.
+  - B105
+  - B106
+  - B107
+exclude_dirs:
+  - tests

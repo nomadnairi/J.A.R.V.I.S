@@ -40,6 +40,10 @@ logger = get_logger(__name__)
 # Telegram hard-caps messages at 4096 characters.
 _TELEGRAM_MAX = 4096
 
+# Reconnect backoff for the always-on polling loop (seconds).
+_POLL_BACKOFF_INITIAL = 3.0
+_POLL_BACKOFF_MAX = 300.0
+
 # Labels for the language-picker buttons (shown in each language natively).
 _LANGUAGE_LABELS = {
     "en": "🇬🇧 English",
@@ -441,7 +445,25 @@ async def run(settings: Settings | None = None) -> None:
     await _set_commands()
     logger.info("Telegram bot starting (long-polling)…")
     try:
-        await dp.start_polling(bot)
+        # Keep the sales bot up 24/7: if polling dies (network drop, Telegram
+        # hiccup), reconnect with exponential backoff instead of exiting.
+        # aiogram already retries transient errors internally; this loop is
+        # the belt-and-braces layer on top, and systemd/Docker restart the
+        # whole process if even this fails.
+        backoff = _POLL_BACKOFF_INITIAL
+        while True:
+            try:
+                await dp.start_polling(bot)
+                break  # clean stop (SIGINT/SIGTERM handled by aiogram)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - keep the bot alive
+                logger.error("Polling crashed: %s — reconnecting in %.0fs",
+                            exc, backoff)
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, _POLL_BACKOFF_MAX)
+            else:  # pragma: no cover - defensive
+                break
     finally:
         await engine.shutdown()
         if license_service is not None:
