@@ -57,5 +57,5 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 | API layer (FastAPI + WebSocket) | ✅ |
 | Deployment: Docker + Compose + systemd | ✅ |
 | Desktop voice app | ⬜ |
-| Desktop (exe) & mobile (apk) clients | ⬜ |
+| Desktop (exe) & mobile (apk) clients | ✅ |
 | Web dashboard | ⬜ (later) |

@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-1.1.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-1.3.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Desktop%20Edition%20complete-brightgreen)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **A modular personal AI assistant framework — inspired by Tony Stark's companion.**
@@ -139,6 +139,8 @@ jarvis/
 ├── integrations/      # external connectors as tools (weather, Home Assistant)
 ├── voice/ · i18n/     # STT/TTS backends + localization (en/ru/uz)
 ├── interfaces/        # Telegram bot (CLI lives in __main__.py)
+├── desktop_app/       # PySide6 desktop app (jarvis-desktop)
+├── licensing/         # accounts, licenses, login tokens (jarvis-admin)
 ├── api/               # FastAPI + WebSocket server (jarvis-api)
 ├── events/ · telemetry/  # pub/sub bus + metrics
 ├── models/            # Message/Conversation, Request/Response
@@ -275,6 +277,23 @@ curl -s http://localhost:8000/chat \
 
 ---
 
+## Desktop & mobile clients
+
+- **Desktop app** (`jarvis-desktop`, PySide6 → .exe): tabs for Chat, LLM/API
+  keys, **granular PC access** (read/write files, shell, keyboard/mouse — each
+  a separate switch, all off by default), integrations, memory and logs;
+  EN/RU/UZ interface. Runs the engine locally (full PC control) or signs in to
+  a server account.
+- **Android app** (`clients/android`, Kivy → .apk): a thin client for the API —
+  sign in and chat from your phone; memory is shared with your other surfaces.
+- **Accounts & licenses**: issue a login/password after purchase with
+  `jarvis-admin`; login requires an active license, optionally confirmed via
+  Telegram (`/link CODE` to the bot).
+
+Details and build instructions (.exe / .apk): **[docs/CLIENTS.md](docs/CLIENTS.md)**.
+
+---
+
 ## Deploy on a server
 
 Run the API and the Telegram bot on a VPS with Docker:
@@ -304,7 +323,7 @@ TLS example, and a public-deployment security checklist are in
 | Desktop voice + Raspberry Pi (mic/speaker) | planned |
 | More integrations: calendar, email | planned |
 | Task automation: scheduler, workflows | planned |
-| Desktop (exe) & mobile (apk) clients | planned |
+| Desktop app (exe) & Android client (apk) + accounts/licenses | ✅ done |
 | Web dashboard | planned |
 
 ---
