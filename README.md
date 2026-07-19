@@ -88,7 +88,9 @@ Everything above runs locally; skill/tool commands work even without an API key.
    (pub/sub)           (metrics)         Integrations
 ```
 
-Full details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Full details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The north-star
+vision and component status live in [VISION.md](VISION.md) and
+[ROADMAP.md](ROADMAP.md).
 
 ---
 
