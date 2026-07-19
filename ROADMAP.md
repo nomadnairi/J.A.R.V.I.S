@@ -23,7 +23,7 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 | Goal System | ✅ | Per-session goals; LLM tools to add/list/complete/cancel; open goals surfaced in context |
 | Agent System | 🟡 | Agentic tool loop done; autonomous sub-agents planned |
 | AI Router | 🟡 | Provider fallback done; task→model-tier routing planned |
-| File Manager | ⬜ | Sandboxed file read/write/search |
+| File Manager | ✅ | Sandboxed read/list/search/write tools; write gated by security |
 | Coding Assistant | ⬜ | Read/write/run code |
 | Desktop Control | ⬜ | Apps, windows, keyboard/mouse (desktop-only) |
 | Security Module | ✅ | Capability gating (file/shell/desktop OFF by default) + audit log + secret redaction |

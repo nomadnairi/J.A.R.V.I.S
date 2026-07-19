@@ -87,6 +87,13 @@ class ServiceContainer:
         return SecurityManager.from_settings(self._settings)
 
     @cached_property
+    def files(self):
+        if not self._settings.files_enabled:
+            return None
+        from jarvis.files.manager import FileManager
+        return FileManager(self._settings.workspace_root, self.security)
+
+    @cached_property
     def goals(self) -> GoalManager | None:
         if not self._settings.goals_enabled:
             return None
@@ -137,6 +144,10 @@ class ServiceContainer:
         if self.goals is not None:
             from jarvis.goals.tools import goal_skills
             registry.register_many(goal_skills(self.goals))
+        # Expose file tools.
+        if self.files is not None:
+            from jarvis.files.tools import file_skills
+            registry.register_many(file_skills(self.files))
         # Expose configured integrations' actions as tools.
         if self.integrations is not None:
             self.integrations.install_tools(registry)

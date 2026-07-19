@@ -107,6 +107,10 @@ class Settings(BaseSettings):
     #: Audit log file for dangerous-capability attempts ("" disables it).
     audit_log_path: str = "logs/audit.log"
 
+    # --- Files & coding ---
+    #: Expose sandboxed file tools (read on; write gated by security).
+    files_enabled: bool = True
+
     # --- Goals ---
     #: Track goals/tasks and surface open ones to the assistant.
     goals_enabled: bool = True

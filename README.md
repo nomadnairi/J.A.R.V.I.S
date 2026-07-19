@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-0.13.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-0.14.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **A modular personal AI assistant framework — inspired by Tony Stark's companion.**
