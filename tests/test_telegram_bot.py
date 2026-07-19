@@ -64,3 +64,13 @@ async def test_generate_reply_uses_per_user_session(engine):
 async def test_generate_reply_sets_language_on_session(engine):
     await generate_reply(engine, user_id=5, text="privet", locale="ru")
     assert engine.session(session_id_for(5)).scratch["language"] == "ru"
+
+
+@pytest.mark.asyncio
+async def test_match_input_language_clears_forced_language(engine):
+    # A prior text turn forced Russian; a voice turn should reply in whatever
+    # language was spoken, so the forced language is cleared.
+    engine.session(session_id_for(9)).scratch["language"] = "ru"
+    await generate_reply(engine, user_id=9, text="hello in english",
+                        locale="ru", match_input_language=True)
+    assert "language" not in engine.session(session_id_for(9)).scratch

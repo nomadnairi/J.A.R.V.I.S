@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-0.8.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-0.9.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **Modulli shaxsiy AI-yordamchi frameworki — Toni Starkning yordamchisidan ilhomlangan.**
@@ -52,6 +52,9 @@ kengayishga mo'ljallangan qatlamli arxitektura.
   foydalanuvchi o'z doimiy sessiyasi va xotirasiga ega. Lokalizatsiyalangan
   interfeys (ingliz / rus / o'zbek), buyruqlar menyusi va til tanlash tugmalari
   bilan; yordamchi tanlangan tilda javob beradi.
+- **🎙 Ovoz (botda)** — ovozli xabar yuboring: u OpenAI Whisper API orqali
+  matnga o'giriladi, yordamchi javob beradi va (xohishga ko'ra) OpenAI TTS
+  bilan javobni ovozda aytadi. Ko'p tilli: siz gapirgan tilda javob beradi.
 - **👥 Ko'p sessiya** — sessiya menejeri orqali ko'plab mustaqil suhbatlar.
 - **📡 Hodisaga asoslangan** — ichki pub/sub shina va passiv telemetriya.
 - **🖥️ Interaktiv CLI** — suhbat, shuningdek `/skills`, `/stats`, `/state`, `/reset`.
@@ -208,7 +211,8 @@ tillarida, yordamchi foydalanuvchi tanlagan tilda javob beradi. Kirishni
 | Yadro: async-dvigatel, LLM, ko'nikma/tool, streaming, CLI, testlar, CI | ✅ tayyor |
 | Xotira: doimiy tarix + semantik recall | ✅ tayyor |
 | Telegram bot (foydalanuvchi bo'yicha sessiyalar + xotira) | ✅ tayyor |
-| Ovoz: nutqni tanish / nutq sintezi | reja |
+| Botda ovoz: nutqni tanish (Whisper API) / sintez (OpenAI), ko'p tilli | ✅ tayyor |
+| Desktop / Raspberry Pi ovoz (mikrofon va karnay) | reja |
 | Integratsiyalar: aqlli uy, taqvim, pochta | reja |
 | Vazifalarni avtomatlashtirish: rejalashtiruvchi, ssenariylar | reja |
 | API qatlami: FastAPI + WebSocket | reja |

@@ -33,6 +33,7 @@ from jarvis.i18n import (
 from jarvis.interfaces.user_prefs import UserPreferences
 from jarvis.utils.exceptions import ConfigError, JarvisError
 from jarvis.utils.logger import get_logger, setup_logging
+from jarvis.voice import VoiceService
 
 logger = get_logger(__name__)
 
@@ -74,13 +75,19 @@ def split_message(text: str, limit: int = _TELEGRAM_MAX) -> list[str]:
 
 
 async def generate_reply(engine: JarvisEngine, user_id: int, text: str,
-                        locale: str | None = None) -> str:
+                        locale: str | None = None, *,
+                        match_input_language: bool = False) -> str:
     """Produce the assistant's reply for a Telegram user (testable core).
 
-    When ``locale`` is given, the assistant is asked to reply in that language.
+    When ``locale`` is given (and ``match_input_language`` is False), the
+    assistant is asked to reply in that language. For voice, set
+    ``match_input_language=True`` so the reply matches the language the user
+    actually spoke, whatever it is.
     """
     session_id = session_id_for(user_id)
-    if locale:
+    if match_input_language:
+        engine.session(session_id).scratch.pop("language", None)
+    elif locale:
         engine.session(session_id).scratch["language"] = locale
     try:
         return await engine.ask(text, session_id=session_id)
@@ -120,6 +127,7 @@ async def run(settings: Settings | None = None) -> None:
         from aiogram.filters import Command, CommandStart
         from aiogram.types import (
             BotCommand,
+            BufferedInputFile,
             CallbackQuery,
             InlineKeyboardButton,
             InlineKeyboardMarkup,
@@ -134,6 +142,7 @@ async def run(settings: Settings | None = None) -> None:
     engine = JarvisEngine(settings)
     await engine.start()
     prefs = UserPreferences(settings.memory_db_path)
+    voice = VoiceService.from_settings(settings) if settings.voice_enabled else None
 
     bot = Bot(
         token=settings.telegram_bot_token,
@@ -216,6 +225,43 @@ async def run(settings: Settings | None = None) -> None:
         # LLM output is plain text — disable HTML parsing to avoid entity errors.
         for chunk in split_message(reply):
             await message.answer(chunk, parse_mode=None)
+
+    @dp.message(F.voice)
+    async def _voice(message: "Message") -> None:
+        locale = _resolve_locale(prefs, message.from_user)
+        if not await _guard(message, locale):
+            return
+        if voice is None or not voice.is_available():
+            await message.answer(t("voice_unavailable", locale))
+            return
+
+        await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
+        try:
+            file = await message.bot.get_file(message.voice.file_id)
+            buffer = await message.bot.download_file(file.file_path)
+            transcription = await voice.transcribe(buffer.read())
+        except Exception as exc:  # noqa: BLE001 - surface STT failures to the user
+            logger.error("Voice transcription failed: %s", exc)
+            await message.answer(t("error", locale, error=str(exc)), parse_mode=None)
+            return
+
+        if not transcription.text:
+            return
+
+        # Reply in whatever language the user actually spoke.
+        reply = await generate_reply(
+            engine, message.from_user.id, transcription.text, locale,
+            match_input_language=True,
+        )
+        for chunk in split_message(reply):
+            await message.answer(chunk, parse_mode=None)
+
+        if settings.voice_replies:
+            try:
+                audio = await voice.synthesize(reply)
+                await message.answer_voice(BufferedInputFile(audio, "reply.ogg"))
+            except Exception as exc:  # noqa: BLE001 - text reply already delivered
+                logger.warning("Voice synthesis failed: %s", exc)
 
     async def _set_commands() -> None:
         for loc in SUPPORTED_LOCALES:
