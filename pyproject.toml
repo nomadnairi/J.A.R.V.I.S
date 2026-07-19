@@ -46,3 +46,11 @@ include = ["jarvis*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_ignores = true
+# Advisory: run via `make typecheck`. Not a hard gate — the tree is large and
+# uses dynamic tool signatures.
+check_untyped_defs = false

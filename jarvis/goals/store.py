@@ -52,7 +52,7 @@ class SQLiteGoalStore:
                 goal.created_at.isoformat()),
             )
             self._conn.commit()
-            goal.id = int(cur.lastrowid)
+            goal.id = int(cur.lastrowid or 0)
         return goal
 
     def list(self, session_id: str,

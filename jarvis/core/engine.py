@@ -27,7 +27,9 @@ from jarvis.core.pipeline import (
     LoggingMiddleware,
     NormalizeMiddleware,
     Pipeline,
+    RateLimitMiddleware,
 )
+from jarvis.core.ratelimit import RateLimiter
 from jarvis.core.runtime import set_session
 from jarvis.core.session import SessionManager
 from jarvis.core.state import StateMachine
@@ -74,7 +76,14 @@ class JarvisEngine:
         self.sessions = SessionManager(
             max_sessions=self.settings.max_sessions, loader=loader
         )
-        self.pipeline = Pipeline([NormalizeMiddleware(), LoggingMiddleware()])
+        middleware = [NormalizeMiddleware(), LoggingMiddleware()]
+        if self.settings.rate_limit_enabled:
+            limiter = RateLimiter(
+                capacity=self.settings.rate_limit_capacity,
+                window_seconds=self.settings.rate_limit_window_seconds,
+            )
+            middleware.insert(0, RateLimitMiddleware(limiter))
+        self.pipeline = Pipeline(middleware)
 
         # Fire-and-forget background work (e.g. fact extraction after a reply).
         self._background: set[asyncio.Task] = set()

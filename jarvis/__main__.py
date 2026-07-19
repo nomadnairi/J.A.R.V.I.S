@@ -55,6 +55,7 @@ def _print_help() -> None:
     table.add_row("[cyan]/integrations[/cyan]", "show integration statuses")
     table.add_row("[cyan]/goals[/cyan]", "show open goals")
     table.add_row("[cyan]/tools[/cyan]", "list tools by category")
+    table.add_row("[cyan]/doctor[/cyan]", "run health diagnostics")
     table.add_row("[cyan]/stats[/cyan]", "show session telemetry")
     table.add_row("[cyan]/state[/cyan]", "show current assistant state")
     table.add_row("[cyan]/help[/cyan]", "show this help")
@@ -87,6 +88,19 @@ def _print_integrations(engine: JarvisEngine) -> None:
         colour = {"connected": "green", "error": "red"}.get(status.state.value, "dim")
         table.add_row(status.name, f"[{colour}]{status.state.value}[/{colour}]",
                     status.detail)
+    console.print(table)
+
+
+def _print_doctor(engine: JarvisEngine) -> None:
+    from jarvis.core.diagnostics import diagnose
+
+    table = Table(title="Diagnostics")
+    table.add_column("Check", style="cyan")
+    table.add_column("", justify="center")
+    table.add_column("Detail")
+    for check in diagnose(engine):
+        mark = "[green]✓[/green]" if check.ok else "[red]✗[/red]"
+        table.add_row(check.name, mark, check.detail)
     console.print(table)
 
 
@@ -161,6 +175,8 @@ async def _handle_command(cmd: str, engine: JarvisEngine) -> bool:
         await _print_goals(engine)
     elif cmd == "/tools":
         _print_tools(engine)
+    elif cmd == "/doctor":
+        _print_doctor(engine)
     elif cmd == "/stats":
         _print_stats(engine)
     elif cmd == "/state":

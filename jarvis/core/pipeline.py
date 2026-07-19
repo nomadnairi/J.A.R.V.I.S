@@ -42,6 +42,22 @@ class NormalizeMiddleware(Middleware):
         return await next_(request)
 
 
+class RateLimitMiddleware(Middleware):
+    """Reject requests from a session that exceeds its rate limit."""
+
+    def __init__(self, limiter, message: str = "You're sending requests too "
+                "quickly — please slow down a moment.") -> None:
+        self._limiter = limiter
+        self._message = message
+
+    async def process(self, request: Request, next_: Next) -> Response:
+        if not self._limiter.allow(request.session_id):
+            from jarvis.config.constants import ResponseType
+            return Response(text=self._message, request_id=request.request_id,
+                            type=ResponseType.SYSTEM, source="ratelimit")
+        return await next_(request)
+
+
 class LoggingMiddleware(Middleware):
     """Log each request/response pair at debug level."""
 

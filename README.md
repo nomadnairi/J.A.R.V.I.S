@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-1.0.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
+[![Version](https://img.shields.io/badge/Version-1.1.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
 [![Status](https://img.shields.io/badge/Status-Desktop%20Edition%20complete-brightgreen)](https://github.com/nomadnairi/J.A.R.V.I.S)
 
 **A modular personal AI assistant framework — inspired by Tony Stark's companion.**
@@ -127,10 +127,9 @@ until the feature that needs them is enabled.
 jarvis/
 ├── __main__.py        # interactive CLI (python -m jarvis)
 ├── config/            # typed settings & constants
-├── core/              # engine, DI container, pipeline, state, sessions
-├── llm/               # provider-agnostic client + Anthropic/OpenAI + tools
+├── core/              # engine, DI, pipeline, state, sessions, ratelimit, diagnostics
+├── llm/ · routing/    # provider-agnostic LLM client + model-tier AI router
 ├── skills/            # skill/tool system + built-ins + ToolManager facade
-├── llm/ · routing/    # LLM client + model-tier AI router
 ├── memory/            # persistent history + semantic recall (SQLite + vectors)
 ├── goals/ · agents/   # goal system + autonomous sub-agents
 ├── files/ · coding/   # sandboxed file tools + shell/coding tools

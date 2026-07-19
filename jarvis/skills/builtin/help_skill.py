@@ -30,7 +30,7 @@ class HelpSkill(BaseSkill):
         if _TRIGGERS & tokens:
             return True
         # "what can you do"
-        return {"what"} <= tokens and {"do", "can"} & tokens
+        return {"what"} <= tokens and bool({"do", "can"} & tokens)
 
     async def handle(self, text: str, context: dict | None = None) -> SkillResult:
         lines = ["Here's what I can handle directly, Sir:"]

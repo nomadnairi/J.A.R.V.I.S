@@ -78,6 +78,7 @@ def settings() -> Settings:
         memory_enabled=False,  # keep the default engine off disk
         integrations_enabled=False,  # no network at construction
         goals_enabled=False,  # no disk writes in the default engine
+        rate_limit_enabled=False,  # deterministic tests
     )
 
 

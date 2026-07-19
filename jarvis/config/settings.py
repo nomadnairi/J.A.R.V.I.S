@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     #: Max concurrent sessions kept in memory (LRU-evicted beyond this).
     max_sessions: int = Field(default=1000, gt=0)
 
+    # --- Rate limiting (per session) ---
+    rate_limit_enabled: bool = True
+    rate_limit_capacity: int = Field(default=20, gt=0)
+    rate_limit_window_seconds: float = Field(default=60.0, gt=0)
+
     # --- Assistant persona ---
     assistant_name: str = "J.A.R.V.I.S."
     user_name: str = "Sir"
