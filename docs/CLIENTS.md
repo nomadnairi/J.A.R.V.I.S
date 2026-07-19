@@ -45,13 +45,41 @@ messages and publish channel posts through the same bot token when you enable
 **Integrations → allow sending** (tools `telegram_send` / `telegram_post`).
 Example: "запость в канал новость о релизе" from the desktop chat.
 
-### Build the .exe (Windows)
+### Build a binary yourself
 
 ```powershell
 pip install ".[gui]" pyinstaller
 pyinstaller deploy/desktop/jarvis-desktop.spec
-# → dist\JARVIS.exe
+# → dist\JARVIS.exe (Windows) / dist/JARVIS (Linux, macOS)
 ```
+
+The one-file binary bundles Python, Qt and the whole engine, so expect
+**roughly 100–180 MB** — that's normal for a self-contained desktop AI app.
+PyInstaller builds for the OS/architecture it runs on; it cannot cross-compile.
+
+### Prebuilt binaries for every platform (CI)
+
+The **Desktop builds** GitHub Actions workflow builds all targets natively:
+
+| Target | Runner | Status |
+|--------|--------|--------|
+| `JARVIS-windows-amd64.exe` | windows-latest | ✅ |
+| `JARVIS-windows-arm64.exe` | windows-11-arm | experimental |
+| `JARVIS-linux-amd64` | ubuntu-latest | ✅ |
+| `JARVIS-linux-arm64` | ubuntu-24.04-arm | ✅ |
+| `JARVIS-macos-amd64` | macos-13 (Intel) | ✅ |
+| `JARVIS-macos-arm64` | macos-latest (Apple Silicon) | ✅ |
+
+How to get them:
+
+- **Any time:** GitHub → Actions → *Desktop builds* → **Run workflow**; when it
+  finishes, download the artifacts from the run page.
+- **On release:** push a version tag (`git tag v1.3.0 && git push --tags`) —
+  the binaries are attached to the GitHub Release automatically.
+
+> **32-bit Windows (x86)?** Not possible: Qt 6 / PySide6 are 64-bit only.
+> All modern Windows installs are 64-bit (amd64 or arm64), so this covers
+> real users.
 
 ---
 
