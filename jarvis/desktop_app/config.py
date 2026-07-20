@@ -34,6 +34,16 @@ class AppConfig:
     language: str = "en"
     #: Visual theme key (see jarvis.desktop_app.theme.THEMES).
     theme: str = "arc"
+
+    # -- desktop behaviour ----------------------------------------------------
+    #: Hide to the system tray on close instead of quitting.
+    minimize_to_tray: bool = True
+    #: Launch J.A.R.V.I.S. when the operating system starts.
+    start_on_boot: bool = False
+    #: Show a desktop notification when a reply arrives while hidden.
+    notifications: bool = True
+    #: Set once the first-run onboarding has been shown.
+    onboarded: bool = False
     #: "local" (engine runs on this PC) or "remote" (talk to a server API).
     mode: str = "local"
 

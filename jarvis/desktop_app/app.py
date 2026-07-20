@@ -171,6 +171,7 @@ def run_app() -> int:
             tabs.addTab(self._capabilities_tab(), tr("tab_capabilities", loc))
             tabs.addTab(self._integrations_tab(), tr("tab_integrations", loc))
             tabs.addTab(self._memory_tab(), tr("tab_memory", loc))
+            tabs.addTab(self._general_tab(), tr("tab_general", loc))
             tabs.addTab(self._logs_tab(), tr("tab_logs", loc))
 
             container = QWidget()
@@ -186,9 +187,62 @@ def run_app() -> int:
             self.setCentralWidget(container)
 
             self.voice_controller = None
+            self._force_quit = False
+            self.tray = None
+            self._build_tray()
             if config.mode == "local":
                 self._start_local_engine()
                 self._init_voice()
+
+        # -- system tray ------------------------------------------------------
+
+        def _tray_icon(self):
+            from PySide6.QtCore import Qt
+            from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPixmap
+            from jarvis.desktop_app.theme import THEMES
+            accent = THEMES.get(config.theme, THEMES["arc"])["accent"]
+            pix = QPixmap(64, 64)
+            pix.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(pix)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            painter.setBrush(QBrush(QColor(accent)))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(8, 8, 48, 48)
+            painter.setBrush(QBrush(QColor("#0b0f14")))
+            painter.drawEllipse(24, 24, 16, 16)
+            painter.end()
+            return QIcon(pix)
+
+        def _build_tray(self) -> None:
+            from PySide6.QtWidgets import QMenu, QSystemTrayIcon
+            if not QSystemTrayIcon.isSystemTrayAvailable():
+                return
+            loc = config.language
+            self.tray = QSystemTrayIcon(self._tray_icon(), self)
+            self.tray.setToolTip("J.A.R.V.I.S.")
+            menu = QMenu()
+            show = menu.addAction(tr("tray_show", loc))
+            show.triggered.connect(self._restore)
+            quit_action = menu.addAction(tr("tray_quit", loc))
+            quit_action.triggered.connect(self._quit)
+            self.tray.setContextMenu(menu)
+            self.tray.activated.connect(self._tray_activated)
+            self.tray.show()
+            self.setWindowIcon(self._tray_icon())
+
+        def _tray_activated(self, reason) -> None:
+            from PySide6.QtWidgets import QSystemTrayIcon
+            if reason == QSystemTrayIcon.ActivationReason.Trigger:
+                self._restore()
+
+        def _restore(self) -> None:
+            self.showNormal()
+            self.raise_()
+            self.activateWindow()
+
+        def _quit(self) -> None:
+            self._force_quit = True
+            self.close()
 
         def _header(self) -> "QWidget":
             bar = QWidget()
@@ -384,6 +438,10 @@ def run_app() -> int:
             elif reply and not was_streaming:
                 self._messages.append(("assistant", reply))
                 self._render_chat()
+            # Toast when a reply finishes and the window isn't focused.
+            if not error:
+                last = self._messages[-1][1] if self._messages else ""
+                self._notify(reply or last)
 
         # -- voice tab -----------------------------------------------------
 
@@ -753,6 +811,46 @@ def run_app() -> int:
                 return
             self.memory_status.setText(tr("link_code_info", loc, code=code))
 
+        # -- general tab ------------------------------------------------------
+
+        def _general_tab(self) -> "QWidget":
+            loc = config.language
+            widget = QWidget()
+            layout = QVBoxLayout(widget)
+
+            self.opt_tray = QCheckBox(tr("opt_tray", loc))
+            self.opt_tray.setChecked(config.minimize_to_tray)
+            self.opt_boot = QCheckBox(tr("opt_boot", loc))
+            self.opt_boot.setChecked(config.start_on_boot)
+            self.opt_notify = QCheckBox(tr("opt_notify", loc))
+            self.opt_notify.setChecked(config.notifications)
+            for box in (self.opt_tray, self.opt_boot, self.opt_notify):
+                layout.addWidget(box)
+
+            save = QPushButton(tr("save", loc))
+            save.setObjectName("Primary")
+            save.setMinimumHeight(40)
+            save.clicked.connect(self._save_general)
+            layout.addWidget(save)
+            layout.addStretch(1)
+            return widget
+
+        def _save_general(self) -> None:
+            config.minimize_to_tray = self.opt_tray.isChecked()
+            config.start_on_boot = self.opt_boot.isChecked()
+            config.notifications = self.opt_notify.isChecked()
+            config.save()
+            try:
+                import sys
+
+                from jarvis.desktop_app import autostart
+                autostart.set_enabled(config.start_on_boot,
+                                    f'"{sys.executable}"')
+            except Exception as exc:  # noqa: BLE001 - shown to the user
+                logger.warning("Autostart update failed: %s", exc)
+            QMessageBox.information(self, "J.A.R.V.I.S.",
+                                    tr("saved", config.language))
+
         # -- logs tab ---------------------------------------------------------
 
         def _logs_tab(self) -> "QWidget":
@@ -779,11 +877,39 @@ def run_app() -> int:
                     return
             self.log_view.setPlainText("(no logs yet)")
 
+        # -- onboarding + notifications ---------------------------------------
+
+        def maybe_onboard(self) -> None:
+            if config.onboarded:
+                return
+            loc = config.language
+            QMessageBox.information(self, tr("welcome_title", loc),
+                                    tr("welcome_body", loc))
+            config.onboarded = True
+            config.save()
+
+        def _notify(self, text: str) -> None:
+            if (self.tray is not None and config.notifications
+                    and not self.isActiveWindow()):
+                from PySide6.QtWidgets import QSystemTrayIcon
+                self.tray.showMessage(
+                    tr("notify_reply", config.language), text[:140],
+                    QSystemTrayIcon.MessageIcon.Information, 4000)
+
         # -- shutdown -------------------------------------------------------
 
         def closeEvent(self, event) -> None:  # noqa: N802 - Qt naming
+            if (not self._force_quit and self.tray is not None
+                    and config.minimize_to_tray):
+                event.ignore()
+                self.hide()
+                self.tray.showMessage(
+                    "J.A.R.V.I.S.", tr("tray_running", config.language))
+                return
             if self.engine_thread is not None:
                 self.engine_thread.stop()
+            if self.tray is not None:
+                self.tray.hide()
             event.accept()
 
     from PySide6.QtGui import QFont
@@ -815,4 +941,5 @@ def run_app() -> int:
 
     window = MainWindow(client)
     window.show()
+    window.maybe_onboard()
     return app.exec()

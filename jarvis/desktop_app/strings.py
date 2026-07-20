@@ -4,6 +4,18 @@ from __future__ import annotations
 
 STRINGS: dict[str, dict[str, str]] = {
     "en": {
+        "tab_general": "General",
+        "opt_tray": "Minimize to tray instead of quitting",
+        "opt_boot": "Start with the system",
+        "opt_notify": "Notify me when a reply arrives",
+        "tray_show": "Open J.A.R.V.I.S.",
+        "tray_quit": "Quit",
+        "tray_running": "Still running in the tray.",
+        "notify_reply": "J.A.R.V.I.S. replied",
+        "welcome_title": "Welcome to J.A.R.V.I.S.",
+        "welcome_body": (
+            "Set your AI keys in the Assistant tab, grant PC access under PC Access, and pick a theme in the Chat tab. Enjoy, Sir."
+        ),
         "theme": "Theme",
         "voice_settings": "Voice settings",
         "stt_backend": "Speech-to-text",
@@ -71,6 +83,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "error": "Error: {error}",
     },
     "ru": {
+        "tab_general": "Общие",
+        "opt_tray": "Сворачивать в трей вместо выхода",
+        "opt_boot": "Запускать при старте системы",
+        "opt_notify": "Уведомлять о готовом ответе",
+        "tray_show": "Открыть J.A.R.V.I.S.",
+        "tray_quit": "Выход",
+        "tray_running": "Работаю в трее.",
+        "notify_reply": "J.A.R.V.I.S. ответил",
+        "welcome_title": "Добро пожаловать в J.A.R.V.I.S.",
+        "welcome_body": (
+            "Укажите ключи ИИ во вкладке «Ассистент», выдайте доступ к ПК во вкладке «Доступ к ПК», выберите тему во вкладке «Чат». Приятной работы."
+        ),
         "theme": "Тема",
         "voice_settings": "Настройки голоса",
         "stt_backend": "Распознавание речи",
@@ -138,6 +162,18 @@ STRINGS: dict[str, dict[str, str]] = {
         "error": "Ошибка: {error}",
     },
     "uz": {
+        "tab_general": "Umumiy",
+        "opt_tray": "Chiqish o'rniga trega yig'ish",
+        "opt_boot": "Tizim ishga tushganda ochilsin",
+        "opt_notify": "Javob kelganda xabar berish",
+        "tray_show": "J.A.R.V.I.S. ni ochish",
+        "tray_quit": "Chiqish",
+        "tray_running": "Trede ishlayapman.",
+        "notify_reply": "J.A.R.V.I.S. javob berdi",
+        "welcome_title": "J.A.R.V.I.S. ga xush kelibsiz",
+        "welcome_body": (
+            "«Yordamchi» bo'limida AI kalitlarini kiriting, «Kompyuterga ruxsat»da ruxsat bering, «Suhbat»da mavzu tanlang. Yoqimli foydalanish."
+        ),
         "theme": "Mavzu",
         "voice_settings": "Ovoz sozlamalari",
         "stt_backend": "Nutqni aniqlash",
