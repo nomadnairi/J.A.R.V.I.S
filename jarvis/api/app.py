@@ -37,6 +37,10 @@ logger = get_logger(__name__)
 class ChatIn(BaseModel):
     message: str
     session_id: str = "default"
+    #: Optional model profile to pin this turn to (see GET /models).
+    model: str | None = None
+    #: Optional reply language hint (e.g. "en", "ru", "uz").
+    language: str | None = None
 
 
 class ChatOut(BaseModel):
@@ -90,6 +94,16 @@ def create_app(engine: JarvisEngine | None = None,
         """Namespace a session by its owner so users never share memory."""
         return f"{principal}::{session_id}"
 
+    def _apply_prefs(scoped: str, body: ChatIn) -> None:
+        """Apply per-request model / language onto the session before a turn."""
+        if not body.model and not body.language:
+            return
+        scratch = engine.session(scoped).scratch
+        if body.model:
+            scratch["model_profile"] = body.model
+        if body.language:
+            scratch["language"] = body.language
+
     async def require_principal(
         authorization: str | None = Header(default=None),
         x_api_key: str | None = Header(default=None),
@@ -124,12 +138,16 @@ def create_app(engine: JarvisEngine | None = None,
                     for c in checks],
         }
 
+    @app.get("/models")
+    async def models(_: str = Depends(require_principal)) -> dict:
+        return {"models": engine.llm.list_profiles()}
+
     @app.post("/chat", response_model=ChatOut)
     async def chat(body: ChatIn,
                 principal: str = Depends(require_principal)) -> ChatOut:
-        reply = await engine.ask(
-            body.message, session_id=_scoped(principal, body.session_id)
-        )
+        scoped = _scoped(principal, body.session_id)
+        _apply_prefs(scoped, body)
+        reply = await engine.ask(body.message, session_id=scoped)
         return ChatOut(reply=reply, session_id=body.session_id)
 
     @app.post("/chat/stream")
@@ -143,6 +161,7 @@ def create_app(engine: JarvisEngine | None = None,
         from fastapi.responses import StreamingResponse
 
         scoped = _scoped(principal, body.session_id)
+        _apply_prefs(scoped, body)
 
         async def _generate():
             async for chunk in engine.stream(

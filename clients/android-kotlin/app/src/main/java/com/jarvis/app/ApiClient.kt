@@ -73,6 +73,17 @@ class ApiClient(baseUrl: String, var token: String = "") {
         try { request("POST", "/auth/logout", null) } finally { token = "" }
     }
 
+    /** Available model profiles the user can switch between (may be empty). */
+    suspend fun models(): List<String> {
+        val arr = request("GET", "/models", null).optJSONArray("models")
+            ?: return emptyList()
+        return (0 until arr.length()).map { arr.getString(it) }
+    }
+
+    /** Get a pairing code to link this account's Telegram (send /link CODE). */
+    suspend fun pairingCode(): String =
+        request("POST", "/auth/pairing-code", null).getString("code")
+
     /**
      * Stream a reply from /chat/stream, invoking [onChunk] on the IO thread for
      * each text piece. Returns the full reply.
@@ -80,11 +91,15 @@ class ApiClient(baseUrl: String, var token: String = "") {
     suspend fun chatStream(
         message: String,
         sessionId: String = "android",
+        model: String? = null,
+        language: String? = null,
         onChunk: (String) -> Unit,
     ): String = withContext(Dispatchers.IO) {
         val conn = open("POST", "/chat/stream")
         conn.doOutput = true
         val body = JSONObject().put("message", message).put("session_id", sessionId)
+        if (!model.isNullOrEmpty()) body.put("model", model)
+        if (!language.isNullOrEmpty()) body.put("language", language)
         conn.outputStream.use { it.write(body.toString().toByteArray()) }
         try {
             val code = conn.responseCode

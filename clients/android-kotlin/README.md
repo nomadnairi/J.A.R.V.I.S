@@ -10,8 +10,13 @@ This is the modern native alternative to the Kivy client in `../android`.
 ## Features
 
 - Login screen (server URL + username/password), token saved on device.
-- Streaming chat (reads `/chat/stream` incrementally).
-- Material 3 dark/light theme with the JARVIS cyan accent.
+- **Multiple conversations** with a navigation drawer — new chat, switch,
+  auto-titled from the first message; history stored on the device.
+- Streaming chat (reads `/chat/stream` incrementally), long-press a bubble to
+  copy it, empty-state welcome.
+- **Settings**: switch the AI model (from `GET /models`), reply language,
+  theme (System / Dark / Light), link Telegram (pairing code), sign out.
+- Material 3 theme with the JARVIS cyan accent; follows system dark/light.
 - No third-party HTTP dependency — standard `HttpURLConnection` + `org.json`.
 
 ## Build

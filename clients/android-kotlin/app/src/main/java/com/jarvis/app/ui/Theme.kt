@@ -25,13 +25,24 @@ private val DarkColors = darkColorScheme(
 )
 
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF0EA5E9),
+    primary = Color(0xFF0891B2),
+    onPrimary = Color(0xFFFFFFFF),
     background = Color(0xFFF4F6FB),
+    onBackground = Color(0xFF1A2230),
     surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF1A2230),
+    surfaceVariant = Color(0xFFEEF1F7),
+    outline = Color(0xFFD3DAE6),
 )
 
+/** themeMode: "system" | "dark" | "light". */
 @Composable
-fun JarvisTheme(content: @Composable () -> Unit) {
-    val colors = if (isSystemInDarkTheme()) DarkColors else LightColors
-    MaterialTheme(colorScheme = colors, content = content)
+fun JarvisTheme(themeMode: String, content: @Composable () -> Unit) {
+    val dark = when (themeMode) {
+        "dark" -> true
+        "light" -> false
+        else -> isSystemInDarkTheme()
+    }
+    MaterialTheme(colorScheme = if (dark) DarkColors else LightColors,
+        content = content)
 }
