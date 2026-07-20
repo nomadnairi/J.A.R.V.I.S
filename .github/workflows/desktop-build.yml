@@ -1,17 +1,29 @@
 name: Desktop builds
 
-# Builds the desktop app for every supported platform/architecture.
+# Builds the desktop app for supported platforms/architectures.
 # PyInstaller cannot cross-compile, so each target runs on a native runner.
 #
 # Triggers:
-#   - manually (workflow_dispatch) → artifacts downloadable from the run page;
-#   - on a version tag (v*)        → binaries attached to the GitHub Release.
+#   - manually (workflow_dispatch) → pick which platforms to build; artifacts
+#     are downloadable from the run page. Defaults to Windows only, which is
+#     the fastest (macOS runners in particular can queue for a long time).
+#   - on a version tag (v*)        → always builds every platform and attaches
+#     the binaries to the GitHub Release.
 #
 # Note: 32-bit Windows (x86) is not possible — Qt 6 / PySide6 ship 64-bit
 # packages only.
 
 on:
   workflow_dispatch:
+    inputs:
+      targets:
+        description: "Platforms to build"
+        type: choice
+        default: windows
+        options:
+          - windows   # windows-amd64 only (fastest)
+          - fast      # windows-amd64 + linux-amd64
+          - all       # every platform + arch (slow: includes macOS/arm)
   push:
     tags: ["v*"]
 
@@ -20,32 +32,39 @@ permissions:
   contents: write
 
 jobs:
+  # Choose the build matrix. A tag push always builds everything; a manual run
+  # builds only what you asked for, so grabbing a Windows exe doesn't wait on
+  # the slow macOS/arm runners.
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - id: pick
+        shell: bash
+        run: |
+          windows='{"include":[{"os":"windows-latest","target":"windows-amd64","experimental":false}]}'
+          fast='{"include":[{"os":"windows-latest","target":"windows-amd64","experimental":false},{"os":"ubuntu-latest","target":"linux-amd64","experimental":false}]}'
+          all='{"include":[{"os":"windows-latest","target":"windows-amd64","experimental":false},{"os":"windows-11-arm","target":"windows-arm64","experimental":true},{"os":"ubuntu-latest","target":"linux-amd64","experimental":false},{"os":"ubuntu-24.04-arm","target":"linux-arm64","experimental":false},{"os":"macos-13","target":"macos-amd64","experimental":false},{"os":"macos-latest","target":"macos-arm64","experimental":false}]}'
+          if [ "${{ github.event_name }}" = "push" ]; then
+            sel="$all"
+          else
+            case "${{ inputs.targets }}" in
+              all)  sel="$all" ;;
+              fast) sel="$fast" ;;
+              *)    sel="$windows" ;;
+            esac
+          fi
+          echo "matrix=$sel" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: setup
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            target: windows-amd64
-            experimental: false
-          - os: windows-11-arm
-            target: windows-arm64
-            experimental: true
-          - os: ubuntu-latest
-            target: linux-amd64
-            experimental: false
-          - os: ubuntu-24.04-arm
-            target: linux-arm64
-            experimental: false
-          - os: macos-13
-            target: macos-amd64
-            experimental: false
-          - os: macos-latest
-            target: macos-arm64
-            experimental: false
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v4
