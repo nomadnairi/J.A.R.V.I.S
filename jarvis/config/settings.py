@@ -31,6 +31,9 @@ class Settings(BaseSettings):
 
     llm_provider: Literal["anthropic", "openai"] = "anthropic"
     llm_model: str = "claude-sonnet-4-20250514"
+    #: Custom OpenAI-compatible endpoint (e.g. OpenRouter:
+    #: https://openrouter.ai/api/v1). Empty = the official OpenAI API.
+    openai_base_url: str = ""
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     llm_max_tokens: int = Field(default=2048, gt=0)
 

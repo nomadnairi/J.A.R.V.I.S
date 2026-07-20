@@ -50,11 +50,13 @@ class LLMProvider(ABC):
     name: str = "base"
 
     def __init__(self, api_key: str, model: str, *, temperature: float = 0.7,
-                max_tokens: int = 2048) -> None:
+                max_tokens: int = 2048, base_url: str = "") -> None:
         self.api_key = api_key
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
+        #: Optional custom API endpoint (e.g. OpenRouter, a local gateway).
+        self.base_url = base_url
         self._client: object | None = None
 
     @abstractmethod

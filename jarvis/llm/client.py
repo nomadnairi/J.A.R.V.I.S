@@ -78,11 +78,13 @@ class LLMClient:
         from jarvis.config.constants import DEFAULT_MODELS
         key = (settings.anthropic_api_key if name == "anthropic"
             else settings.openai_api_key)
+        base_url = settings.openai_base_url if name == "openai" else ""
         return provider_cls(
             api_key=key,
             model=model or DEFAULT_MODELS.get(name, ""),
             temperature=settings.llm_temperature,
             max_tokens=settings.llm_max_tokens,
+            base_url=base_url,
         )
 
     # -- completion ---------------------------------------------------------

@@ -24,7 +24,12 @@ class OpenAIProvider(LLMProvider):
             raise LLMConfigError(
                 "The 'openai' package is not installed. Run: pip install openai"
             ) from exc
-        self._client = AsyncOpenAI(api_key=self.api_key)
+        # base_url lets this provider target any OpenAI-compatible gateway
+        # (OpenRouter, Together, a local proxy, …) with the same code path.
+        self._client = AsyncOpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url or None,
+        )
         return self._client
 
     @staticmethod
