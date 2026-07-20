@@ -7,12 +7,15 @@ import time
 import pytest
 
 from jarvis.interfaces.bot_menu import (
+    channel_url,
+    gate_screen,
     profile_text,
     screen_language,
     screen_main,
     screen_memory,
     screen_model,
     screen_settings,
+    screen_voice,
     subscription_text,
     usage_text,
 )
@@ -102,6 +105,36 @@ def test_settings_hides_model_when_single():
     _t, rows = screen_settings("en", multi_model=False)
     assert "m:model" not in _flat(rows)
     assert "m:language" in _flat(rows)
+
+
+def test_channel_url_forms():
+    assert channel_url("@jar_v1_s") == "https://t.me/jar_v1_s"
+    assert channel_url("jar_v1_s") == "https://t.me/jar_v1_s"
+    assert channel_url("https://t.me/x") == "https://t.me/x"
+
+
+def test_gate_screen_has_subscribe_and_check():
+    text, rows = gate_screen("ru", "@jar_v1_s")
+    flat = _flat(rows)
+    assert "https://t.me/jar_v1_s" in flat   # subscribe link button
+    assert "m:checksub" in flat               # check button
+    assert "Подпишитесь" in text
+
+
+def test_main_menu_voice_and_channel_buttons():
+    _t, rows = screen_main("en", voice_on=True, channel="@jar_v1_s")
+    flat = _flat(rows)
+    assert "m:voice" in flat
+    assert "https://t.me/jar_v1_s" in flat    # channel link button
+    # Without voice/channel they are absent.
+    _t2, rows2 = screen_main("en")
+    assert "m:voice" not in _flat(rows2)
+
+
+def test_screen_voice_has_back():
+    text, rows = screen_voice("en")
+    assert "Voice" in text
+    assert "m:main" in _flat(rows)
 
 
 # -- text builders ------------------------------------------------------------

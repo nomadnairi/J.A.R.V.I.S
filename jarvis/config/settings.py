@@ -201,6 +201,9 @@ class Settings(BaseSettings):
     telegram_send_enabled: bool = False
     #: Default channel (@channelusername or chat id) for the telegram_post tool.
     telegram_channel: str = ""
+    #: If set (e.g. "@jar_v1_s"), users must join this channel before they can
+    #: use the bot — a subscription gate checked on every interaction.
+    telegram_required_channel: str = ""
 
     def telegram_allowlist(self) -> set[int]:
         """Parsed set of allowed Telegram user IDs (empty = everyone)."""

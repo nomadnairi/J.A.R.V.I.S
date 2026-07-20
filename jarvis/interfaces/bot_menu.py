@@ -48,7 +48,8 @@ def _fmt_num(n: int) -> str:
 
 def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False,
                 accounts_on: bool = False, multi_model: bool = False,
-                name: str = "Sir") -> tuple[str, Rows]:
+                voice_on: bool = False, channel: str = "", name: str = "Sir",
+                ) -> tuple[str, Rows]:
     text = (
         f"🤖 <b>J.A.R.V.I.S.</b>\n"
         f"<i>{t('menu_greeting', locale, name=name)}</i>\n\n"
@@ -60,14 +61,44 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
         [_b(t("menu_settings", locale), "settings"),
         _b(t("menu_memory", locale), "memory")],
     ]
+    third = [_b(t("menu_language", locale), "language")]
+    if voice_on:
+        third.insert(0, _b(t("menu_voice", locale), "voice"))
+    rows.append(third)
     if billing_on:
         rows.append([_b(t("menu_subscription", locale), "subscription"),
                     _b(t("menu_buy", locale), "buy")])
     if accounts_on:
         rows.append([_b(t("menu_link", locale), "link")])
-    rows.append([_b(t("menu_help", locale), "help")])
+    last = [_b(t("menu_help", locale), "help")]
+    if channel:
+        last.append((t("menu_channel", locale), channel_url(channel)))
+    rows.append(last)
     if is_admin:
         rows.append([_b(t("menu_admin", locale), "admin")])
+    return text, rows
+
+
+def channel_url(channel: str) -> str:
+    """Turn '@name' / 'name' / a full link into a t.me URL (used as a button)."""
+    channel = channel.strip()
+    if channel.startswith("http"):
+        return channel
+    return f"https://t.me/{channel.lstrip('@')}"
+
+
+def screen_voice(locale: str) -> tuple[str, Rows]:
+    text = f"🎙 <b>{t('voice_title', locale)}</b>\n\n{t('voice_body', locale)}"
+    return text, [_back(locale)]
+
+
+def gate_screen(locale: str, channel: str) -> tuple[str, Rows]:
+    """The subscription gate shown until the user joins the channel."""
+    text = f"{t('gate_title', locale)}\n\n{t('gate_body', locale)}"
+    rows: Rows = [
+        [(t("gate_subscribe", locale), channel_url(channel))],
+        [_b(t("gate_check", locale), "checksub")],
+    ]
     return text, rows
 
 

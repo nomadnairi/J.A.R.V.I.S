@@ -230,11 +230,15 @@ async def run(settings: Settings | None = None) -> None:
             for loc in SUPPORTED_LOCALES
         ]])
 
+    def _button(label: str, data: str) -> "InlineKeyboardButton":
+        # A "data" that looks like a URL becomes a link button, else a callback.
+        if data.startswith("http"):
+            return InlineKeyboardButton(text=label, url=data)
+        return InlineKeyboardButton(text=label, callback_data=data)
+
     def _markup(rows) -> "InlineKeyboardMarkup":
         return InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=label, callback_data=data)
-            for label, data in row]
-            for row in rows
+            [_button(label, data) for label, data in row] for row in rows
         ])
 
     def _main_screen(user_id: int, locale: str):
@@ -245,8 +249,27 @@ async def run(settings: Settings | None = None) -> None:
             billing_on=billing is not None,
             accounts_on=license_service is not None,
             multi_model=len(engine.llm.list_profiles()) > 1,
+            voice_on=voice is not None and voice.stt_available(),
+            channel=settings.telegram_channel,
             name=settings.user_name,
         )
+
+    async def _is_subscribed(user_id: int) -> bool:
+        """True if the user is in the required channel (or none is configured)."""
+        channel = settings.telegram_required_channel
+        if not channel:
+            return True
+        try:
+            member = await bot.get_chat_member(channel, user_id)
+            return member.status not in ("left", "kicked")
+        except Exception as exc:  # noqa: BLE001 - treat lookup errors as blocked
+            logger.debug("Subscription check failed for %s: %s", user_id, exc)
+            return False
+
+    async def _show_gate(message: "Message", locale: str) -> None:
+        from jarvis.interfaces.bot_menu import gate_screen
+        text, rows = gate_screen(locale, settings.telegram_required_channel)
+        await message.answer(text, reply_markup=_markup(rows))
 
     async def _guard(message: "Message", locale: str) -> bool:
         if _is_allowed(settings, message.from_user.id):
@@ -263,18 +286,14 @@ async def run(settings: Settings | None = None) -> None:
         locale = _resolve_locale(prefs, message.from_user)
         if not await _guard(message, locale):
             return
+        if not await _is_subscribed(message.from_user.id):
+            await _show_gate(message, locale)
+            return
         if prefs.get_language(message.from_user.id) is None:
             await message.answer(t("choose_language", locale),
                                 reply_markup=_language_keyboard())
         else:
             await _open_menu(message, message.from_user.id, locale)
-
-    @dp.message(Command("menu"))
-    async def _menu(message: "Message") -> None:
-        locale = _resolve_locale(prefs, message.from_user)
-        if not await _guard(message, locale):
-            return
-        await _open_menu(message, message.from_user.id, locale)
 
     def _profile_message(user, locale: str) -> str:
         from jarvis.interfaces.bot_menu import profile_text
@@ -308,9 +327,19 @@ async def run(settings: Settings | None = None) -> None:
         await callback.answer()
         back = [[(t("menu_back", locale), "m:main")]]
 
+        if action == "checksub":
+            if await _is_subscribed(user.id):
+                text, rows = _main_screen(user.id, locale)
+                await _edit(callback, text, rows)
+            else:
+                await callback.answer(t("gate_not_yet", locale), show_alert=True)
+            return
+
         if action == "main":
             text, rows = _main_screen(user.id, locale)
             await _edit(callback, text, rows)
+        elif action == "voice":
+            await _edit(callback, *bm.screen_voice(locale))
         elif action == "settings":
             text, rows = bm.screen_settings(
                 locale, multi_model=len(engine.llm.list_profiles()) > 1)
@@ -529,6 +558,9 @@ async def run(settings: Settings | None = None) -> None:
         locale = _resolve_locale(prefs, message.from_user)
         if not await _guard(message, locale):
             return
+        if not await _is_subscribed(message.from_user.id):
+            await _show_gate(message, locale)
+            return
         await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
         reply = await generate_reply(
             engine, message.from_user.id, message.text, locale,
@@ -543,6 +575,9 @@ async def run(settings: Settings | None = None) -> None:
     async def _voice(message: "Message") -> None:
         locale = _resolve_locale(prefs, message.from_user)
         if not await _guard(message, locale):
+            return
+        if not await _is_subscribed(message.from_user.id):
+            await _show_gate(message, locale)
             return
         if voice is None or not voice.stt_available():
             await message.answer(t("voice_unavailable", locale))
@@ -583,14 +618,9 @@ async def run(settings: Settings | None = None) -> None:
                 logger.warning("Voice synthesis failed: %s", exc)
 
     async def _set_commands() -> None:
-        # Everything is button-driven — the command list stays tiny: just an
-        # entry point to open the menu.
-        for loc in SUPPORTED_LOCALES:
-            commands = [BotCommand(command="menu", description=t("cmd_menu", loc))]
-            if loc == DEFAULT_LOCALE:
-                await bot.set_my_commands(commands)
-            else:
-                await bot.set_my_commands(commands, language_code=loc)
+        # Fully button-driven — no user commands at all. /start is implicit and
+        # opens the menu; everything else is inline buttons.
+        await bot.set_my_commands([])
 
         # Admins additionally see the owner commands — only in their own chat.
         from aiogram.types import BotCommandScopeChat
@@ -599,9 +629,7 @@ async def run(settings: Settings | None = None) -> None:
             BotCommand(command="admin_sales",
                     description=t("cmd_admin_sales", DEFAULT_LOCALE)),
         ]
-        base = [
-            BotCommand(command="menu", description=t("cmd_menu", DEFAULT_LOCALE)),
-        ]
+        base: list = []
         for admin_id in admins:
             try:
                 await bot.set_my_commands(
