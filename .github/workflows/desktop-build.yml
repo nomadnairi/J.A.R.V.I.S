@@ -15,6 +15,10 @@ on:
   push:
     tags: ["v*"]
 
+# Needed so the build can attach binaries to the GitHub Release.
+permissions:
+  contents: write
+
 jobs:
   build:
     name: ${{ matrix.target }}
