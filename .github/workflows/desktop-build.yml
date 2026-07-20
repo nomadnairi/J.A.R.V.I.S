@@ -25,7 +25,9 @@ on:
           - fast      # windows-amd64 + linux-amd64
           - all       # every platform + arch (slow: includes macOS/arm)
   push:
-    tags: ["v*"]
+    # Accept both "v1.6.1" and a bare "1.6.1" so a missing 'v' doesn't
+    # silently skip the release build.
+    tags: ["v*", "[0-9]*"]
 
 # Needed so the build can attach binaries to the GitHub Release.
 permissions:
