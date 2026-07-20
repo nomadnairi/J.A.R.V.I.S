@@ -89,15 +89,18 @@ def split_message(text: str, limit: int = _TELEGRAM_MAX) -> list[str]:
 async def generate_reply(engine: JarvisEngine, user_id: int, text: str,
                         locale: str | None = None, *,
                         match_input_language: bool = False,
-                        model_profile: str | None = None) -> str:
+                        model_profile: str | None = None,
+                        usage=None) -> str:
     """Produce the assistant's reply for a Telegram user (testable core).
 
     When ``locale`` is given (and ``match_input_language`` is False), the
     assistant is asked to reply in that language. For voice, set
     ``match_input_language=True`` so the reply matches the language the user
     actually spoke, whatever it is. ``model_profile`` picks the user's chosen
-    AI (Claude / GPT / OpenRouter).
+    AI. If a ``usage`` store is given, the turn's token count is recorded.
     """
+    from jarvis.models.response import Request
+
     session_id = session_id_for(user_id)
     session = engine.session(session_id)
     if match_input_language:
@@ -107,7 +110,10 @@ async def generate_reply(engine: JarvisEngine, user_id: int, text: str,
     if model_profile:
         session.scratch["model_profile"] = model_profile
     try:
-        return await engine.ask(text, session_id=session_id)
+        response = await engine.process(Request(text=text, session_id=session_id))
+        if usage is not None:
+            usage.record(user_id, tokens=response.tokens)
+        return response.text
     except JarvisError as exc:
         logger.error("Reply failed for user %s: %s", user_id, exc)
         return t("error", locale, error=str(exc))
@@ -209,6 +215,8 @@ async def run(settings: Settings | None = None) -> None:
     if settings.billing_enabled and license_service is not None:
         from jarvis.billing import BillingService
         billing = BillingService(license_service, settings.auth_db_path)
+    from jarvis.interfaces.usage import UsageStore
+    usage = UsageStore(settings.memory_db_path)
 
     bot = Bot(
         token=settings.telegram_bot_token,
@@ -221,6 +229,21 @@ async def run(settings: Settings | None = None) -> None:
             InlineKeyboardButton(text=_LANGUAGE_LABELS[loc], callback_data=f"lang:{loc}")
             for loc in SUPPORTED_LOCALES
         ]])
+
+    def _menu_keyboard(user_id: int, locale: str) -> "InlineKeyboardMarkup":
+        from jarvis.interfaces.bot_menu import main_menu
+        rows = main_menu(
+            locale,
+            is_admin=user_id in settings.telegram_admins(),
+            billing_on=billing is not None,
+            accounts_on=license_service is not None,
+            multi_model=len(engine.llm.list_profiles()) > 1,
+        )
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=label, callback_data=data)
+            for label, data in row]
+            for row in rows
+        ])
 
     async def _guard(message: "Message", locale: str) -> bool:
         if _is_allowed(settings, message.from_user.id):
@@ -238,6 +261,9 @@ async def run(settings: Settings | None = None) -> None:
                                 reply_markup=_language_keyboard())
         else:
             await message.answer(t("welcome", locale, name=settings.assistant_name))
+            await message.answer(t("menu_title", locale),
+                                reply_markup=_menu_keyboard(
+                                    message.from_user.id, locale))
 
     @dp.message(Command("help"))
     async def _help(message: "Message") -> None:
@@ -245,6 +271,78 @@ async def run(settings: Settings | None = None) -> None:
         if not await _guard(message, locale):
             return
         await message.answer(t("welcome", locale, name=settings.assistant_name))
+
+    @dp.message(Command("menu"))
+    async def _menu(message: "Message") -> None:
+        locale = _resolve_locale(prefs, message.from_user)
+        if not await _guard(message, locale):
+            return
+        await message.answer(t("menu_title", locale),
+                            reply_markup=_menu_keyboard(
+                                message.from_user.id, locale))
+
+    def _profile_message(user, locale: str) -> str:
+        from jarvis.interfaces.bot_menu import profile_text
+        account = None
+        verified = False
+        if license_service is not None:
+            acc = license_service.get_account_by_telegram(user.id)
+            if acc is not None:
+                account, verified = acc.username, acc.telegram_verified
+        return profile_text(
+            locale, telegram_id=user.id,
+            name=user.full_name or user.username or "—",
+            language=locale, model=prefs.get_model(user.id) or "",
+            account=account, telegram_verified=verified,
+            stats=usage.stats(user.id),
+        )
+
+    @dp.callback_query(F.data.startswith("m:"))
+    async def _menu_cb(callback: "CallbackQuery") -> None:
+        user = callback.from_user
+        locale = _resolve_locale(prefs, user)
+        action = callback.data.split(":", 1)[1]
+        await callback.answer()
+        if action == "profile":
+            await callback.message.answer(_profile_message(user, locale))
+        elif action == "usage":
+            from jarvis.interfaces.bot_menu import usage_text
+            await callback.message.answer(usage_text(locale, usage.stats(user.id)))
+        elif action == "subscription":
+            from jarvis.interfaces.bot_menu import subscription_text
+            account, lics = None, []
+            if license_service is not None:
+                acc = license_service.get_account_by_telegram(user.id)
+                if acc is not None:
+                    account = acc.username
+                    lics = license_service.list_licenses(acc.id)
+            await callback.message.answer(
+                subscription_text(locale, account=account, licenses=lics))
+        elif action == "model":
+            if engine.llm.list_profiles():
+                await callback.message.answer(
+                    t("model_choose", locale),
+                    reply_markup=_model_keyboard(prefs.get_model(user.id)))
+            else:
+                await callback.message.answer(t("model_none", locale))
+        elif action == "language":
+            await callback.message.answer(t("choose_language", locale),
+                                        reply_markup=_language_keyboard())
+        elif action == "buy":
+            await callback.message.answer("/buy")
+        elif action == "link":
+            await callback.message.answer(t("link_usage", locale))
+        elif action == "reset":
+            await engine.reset(session_id_for(user.id))
+            await callback.message.answer(t("reset_done", locale))
+        elif action == "forget":
+            await engine.forget(session_id_for(user.id))
+            await callback.message.answer(t("forget_done", locale))
+        elif action == "help":
+            await callback.message.answer(
+                t("welcome", locale, name=settings.assistant_name))
+        elif action == "admin":
+            await callback.message.answer("/admin")
 
     @dp.message(Command("language"))
     async def _language(message: "Message") -> None:
@@ -408,6 +506,7 @@ async def run(settings: Settings | None = None) -> None:
         reply = await generate_reply(
             engine, message.from_user.id, message.text, locale,
             model_profile=prefs.get_model(message.from_user.id),
+            usage=usage,
         )
         # LLM output is plain text — disable HTML parsing to avoid entity errors.
         for chunk in split_message(reply):
@@ -440,6 +539,7 @@ async def run(settings: Settings | None = None) -> None:
             engine, message.from_user.id, transcription.text, locale,
             match_input_language=True,
             model_profile=prefs.get_model(message.from_user.id),
+            usage=usage,
         )
         for chunk in split_message(reply):
             await message.answer(chunk, parse_mode=None)
@@ -458,6 +558,7 @@ async def run(settings: Settings | None = None) -> None:
     async def _set_commands() -> None:
         for loc in SUPPORTED_LOCALES:
             commands = [
+                BotCommand(command="menu", description=t("cmd_menu", loc)),
                 BotCommand(command="help", description=t("cmd_help", loc)),
                 BotCommand(command="language", description=t("cmd_language", loc)),
                 BotCommand(command="reset", description=t("cmd_reset", loc)),
@@ -530,6 +631,7 @@ async def run(settings: Settings | None = None) -> None:
         await engine.shutdown()
         if license_service is not None:
             license_service.close()
+        usage.close()
         await bot.session.close()
 
 
