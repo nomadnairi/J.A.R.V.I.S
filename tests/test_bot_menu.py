@@ -7,9 +7,12 @@ import time
 import pytest
 
 from jarvis.interfaces.bot_menu import (
+    card_rows,
     channel_url,
     gate_screen,
     profile_text,
+    screen_admin,
+    screen_confirm,
     screen_language,
     screen_main,
     screen_memory,
@@ -137,6 +140,43 @@ def test_screen_voice_has_back():
     assert "m:main" in _flat(rows)
 
 
+def test_memory_buttons_lead_to_confirmation():
+    # The memory screen must route to the *confirm* step, not wipe directly.
+    _t, rows = screen_memory("en")
+    flat = _flat(rows)
+    assert "m:reset" in flat and "m:forget" in flat
+
+
+@pytest.mark.parametrize("kind,expect_body", [
+    ("reset", "clears"),
+    ("forget", "wipes"),
+])
+def test_screen_confirm(kind, expect_body):
+    text, rows = screen_confirm("en", kind)
+    flat = _flat(rows)
+    assert "Are you sure?" in text and expect_body in text
+    # A confirm-yes button that performs the action, and a Back to memory.
+    assert f"m:{kind}_do" in flat
+    assert "m:memory" in flat
+
+
+def test_screen_admin_toggles_sales_with_billing():
+    _t, rows = screen_admin("en", billing_on=True)
+    flat = _flat(rows)
+    assert "m:adminpanel" in flat and "m:adminsales" in flat
+    assert "m:main" in flat
+    _t2, rows2 = screen_admin("en", billing_on=False)
+    flat2 = _flat(rows2)
+    assert "m:adminpanel" in flat2 and "m:adminsales" not in flat2
+
+
+def test_card_rows_have_refresh_and_back():
+    rows = card_rows("en", "profile")
+    flat = _flat(rows)
+    assert "m:profile" in flat   # refresh re-opens the same screen
+    assert "m:main" in flat      # back
+
+
 # -- text builders ------------------------------------------------------------
 
 
@@ -178,7 +218,7 @@ def test_subscription_text_states():
                                         or self.expires_at > now)
 
     now = time.time()
-    assert "no account" in subscription_text("en", account=None, licenses=[],
+    assert "license yet" in subscription_text("en", account=None, licenses=[],
                                             now=now).lower()
     active = subscription_text("en", account="tony",
                             licenses=[Lic("pro", now + 10 * 86400)], now=now)

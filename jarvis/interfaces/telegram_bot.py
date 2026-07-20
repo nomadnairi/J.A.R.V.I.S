@@ -51,14 +51,6 @@ _LANGUAGE_LABELS = {
     "uz": "🇺🇿 O'zbek",
 }
 
-# Labels for the model/AI-picker buttons.
-_MODEL_LABELS = {
-    "claude": "🧠 Claude (Anthropic)",
-    "gpt": "💬 ChatGPT (OpenAI)",
-    "openrouter": "🌐 OpenRouter",
-    "auto": "⚙️ Auto",
-}
-
 
 def session_id_for(user_id: int) -> str:
     """Stable per-user session id."""
@@ -109,6 +101,8 @@ async def generate_reply(engine: JarvisEngine, user_id: int, text: str,
         session.scratch["language"] = locale
     if model_profile:
         session.scratch["model_profile"] = model_profile
+    elif model_profile == "":  # explicit "Auto" — unpin any earlier model
+        session.scratch.pop("model_profile", None)
     try:
         response = await engine.process(Request(text=text, session_id=session_id))
         if usage is not None:
@@ -324,26 +318,46 @@ async def run(settings: Settings | None = None) -> None:
         locale = _resolve_locale(prefs, user)
         parts = callback.data.split(":")
         action = parts[1]
-        await callback.answer()
         back = [[(t("menu_back", locale), "m:main")]]
 
+        # The subscription "I subscribed" button needs its own answer (an alert
+        # when the user still isn't in the channel), so it can't share the
+        # blanket answer() below — Telegram honours only the first answer.
         if action == "checksub":
             if await _is_subscribed(user.id):
-                text, rows = _main_screen(user.id, locale)
-                await _edit(callback, text, rows)
+                await callback.answer()
+                await _edit(callback, *_main_screen(user.id, locale))
             else:
                 await callback.answer(t("gate_not_yet", locale), show_alert=True)
             return
 
+        await callback.answer()
+
+        # Admin-only actions: never trust the callback — re-check the caller.
+        if action in ("admin", "adminpanel", "adminsales"):
+            if user.id not in settings.telegram_admins():
+                return
+            if action == "admin":
+                await _edit(callback, *bm.screen_admin(
+                    locale, billing_on=billing is not None))
+            elif license_service is None:
+                await _edit(callback, t("admin_needs_auth", locale), back)
+            else:
+                from jarvis.interfaces.admin_panel import (
+                    panel_text, sales_report_text)
+                body = (panel_text(license_service, billing)
+                        if action == "adminpanel"
+                        else sales_report_text(license_service, billing))
+                await _edit(callback, body, back)
+            return
+
         if action == "main":
-            text, rows = _main_screen(user.id, locale)
-            await _edit(callback, text, rows)
+            await _edit(callback, *_main_screen(user.id, locale))
         elif action == "voice":
             await _edit(callback, *bm.screen_voice(locale))
         elif action == "settings":
-            text, rows = bm.screen_settings(
-                locale, multi_model=len(engine.llm.list_profiles()) > 1)
-            await _edit(callback, text, rows)
+            await _edit(callback, *bm.screen_settings(
+                locale, multi_model=len(engine.llm.list_profiles()) > 1))
         elif action == "memory":
             await _edit(callback, *bm.screen_memory(locale))
         elif action == "help":
@@ -356,9 +370,11 @@ async def run(settings: Settings | None = None) -> None:
         elif action == "language":
             await _edit(callback, *bm.screen_language(locale, locale))
         elif action == "profile":
-            await _edit(callback, _profile_message(user, locale), back)
+            await _edit(callback, _profile_message(user, locale),
+                        bm.card_rows(locale, "profile"))
         elif action == "usage":
-            await _edit(callback, bm.usage_text(locale, usage.stats(user.id)), back)
+            await _edit(callback, bm.usage_text(locale, usage.stats(user.id)),
+                        bm.card_rows(locale, "usage"))
         elif action == "subscription":
             account, lics = None, []
             if license_service is not None:
@@ -366,13 +382,17 @@ async def run(settings: Settings | None = None) -> None:
                 if acc is not None:
                     account, lics = acc.username, license_service.list_licenses(acc.id)
             await _edit(callback, bm.subscription_text(
-                locale, account=account, licenses=lics), back)
+                locale, account=account, licenses=lics),
+                bm.card_rows(locale, "subscription"))
         elif action == "setmodel":
             choice = parts[2]
+            session = engine.session(session_id_for(user.id))
             if choice == "auto":
                 prefs.set_model(user.id, "")
+                session.scratch.pop("model_profile", None)  # unpin now
             else:
                 prefs.set_model(user.id, choice)
+                session.scratch["model_profile"] = choice
             await _edit(callback, *bm.screen_settings(
                 locale, multi_model=len(engine.llm.list_profiles()) > 1))
         elif action == "setlang":
@@ -381,16 +401,19 @@ async def run(settings: Settings | None = None) -> None:
             engine.session(session_id_for(user.id)).scratch["language"] = new_locale
             await _edit(callback, *bm.screen_settings(
                 new_locale, multi_model=len(engine.llm.list_profiles()) > 1))
-        elif action == "reset":
+        elif action in ("reset", "forget"):
+            # Ask before wiping — these are destructive.
+            await _edit(callback, *bm.screen_confirm(locale, action))
+        elif action == "reset_do":
             await engine.reset(session_id_for(user.id))
-            await _edit(callback, "🧹 " + t("reset_done", locale), back)
-        elif action == "forget":
+            await _edit(callback, "🧹 " + t("reset_done", locale),
+                        [[(t("menu_back", locale), "m:memory")]])
+        elif action == "forget_do":
             await engine.forget(session_id_for(user.id))
-            await _edit(callback, "🗑 " + t("forget_done", locale), back)
+            await _edit(callback, "🗑 " + t("forget_done", locale),
+                        [[(t("menu_back", locale), "m:memory")]])
         elif action == "buy":
             await _send_invoice(callback.message, locale)
-        elif action == "admin":
-            await callback.message.answer("🛠 /admin  ·  /admin_sales")
 
     async def _send_invoice(message: "Message", locale: str) -> None:
         if billing is None:
@@ -419,66 +442,6 @@ async def run(settings: Settings | None = None) -> None:
         except Exception:  # noqa: BLE001
             await callback.message.answer(text, reply_markup=_markup(rows))
 
-    def _model_keyboard(current: str | None) -> "InlineKeyboardMarkup":
-        rows = []
-        for name in engine.llm.list_profiles():
-            mark = "✅ " if name == current else ""
-            rows.append([InlineKeyboardButton(
-                text=f"{mark}{_MODEL_LABELS.get(name, name)}",
-                callback_data=f"model:{name}")])
-        # "Auto" clears the pin → provider default + fallback chain.
-        auto_mark = "✅ " if not current else ""
-        rows.append([InlineKeyboardButton(
-            text=f"{auto_mark}{_MODEL_LABELS['auto']}", callback_data="model:auto")])
-        return InlineKeyboardMarkup(inline_keyboard=rows)
-
-    @dp.message(Command("model"))
-    async def _model(message: "Message") -> None:
-        locale = _resolve_locale(prefs, message.from_user)
-        if not await _guard(message, locale):
-            return
-        if not engine.llm.list_profiles():
-            await message.answer(t("model_none", locale))
-            return
-        current = prefs.get_model(message.from_user.id)
-        await message.answer(t("model_choose", locale),
-                            reply_markup=_model_keyboard(current))
-
-    @dp.callback_query(F.data.startswith("model:"))
-    async def _pick_model(callback: "CallbackQuery") -> None:
-        locale = _resolve_locale(prefs, callback.from_user)
-        choice = callback.data.split(":", 1)[1]
-        session = engine.session(session_id_for(callback.from_user.id))
-        if choice == "auto":
-            prefs.set_model(callback.from_user.id, "")
-            session.scratch.pop("model_profile", None)
-            label = _MODEL_LABELS["auto"]
-        else:
-            prefs.set_model(callback.from_user.id, choice)
-            session.scratch["model_profile"] = choice
-            label = _MODEL_LABELS.get(choice, choice)
-        await callback.message.answer(t("model_set", locale, model=label))
-        await callback.answer()
-
-    @dp.message(Command("buy"))
-    async def _buy(message: "Message") -> None:
-        locale = _resolve_locale(prefs, message.from_user)
-        if not await _guard(message, locale):
-            return
-        if billing is None:
-            await message.answer(t("buy_disabled", locale))
-            return
-        from aiogram.types import LabeledPrice
-        await message.bot.send_invoice(
-            chat_id=message.chat.id,
-            title=t("buy_invoice_title", locale),
-            description=t("buy_invoice_desc", locale),
-            payload="jarvis-license",
-            currency="XTR",  # Telegram Stars
-            prices=[LabeledPrice(label=t("buy_invoice_title", locale),
-                                amount=settings.billing_price_stars)],
-        )
-
     @dp.pre_checkout_query()
     async def _pre_checkout(query) -> None:
         await query.answer(ok=billing is not None)
@@ -504,22 +467,6 @@ async def run(settings: Settings | None = None) -> None:
         reply = handle_link(license_service, message.text or "",
                             message.from_user.id, locale)
         await message.answer(reply)
-
-    @dp.message(Command("reset"))
-    async def _reset(message: "Message") -> None:
-        locale = _resolve_locale(prefs, message.from_user)
-        if not await _guard(message, locale):
-            return
-        await engine.reset(session_id_for(message.from_user.id))
-        await message.answer(t("reset_done", locale))
-
-    @dp.message(Command("forget"))
-    async def _forget(message: "Message") -> None:
-        locale = _resolve_locale(prefs, message.from_user)
-        if not await _guard(message, locale):
-            return
-        await engine.forget(session_id_for(message.from_user.id))
-        await message.answer(t("forget_done", locale))
 
     admins = settings.telegram_admins()
 
@@ -552,6 +499,20 @@ async def run(settings: Settings | None = None) -> None:
         reply = handle_admin_command(license_service, billing, text)
         await message.answer(reply if reply is not None
                             else t("admin_unknown", locale))
+
+    @dp.message(F.text.startswith("/"))
+    async def _stray_command(message: "Message") -> None:
+        # The bot is fully button-driven: any leftover slash command (from an
+        # old client menu or a habit) just re-opens the menu instead of being
+        # treated as chat. /start, /link and the /admin* commands are matched
+        # by their own handlers above, so they never reach here.
+        locale = _resolve_locale(prefs, message.from_user)
+        if not await _guard(message, locale):
+            return
+        if not await _is_subscribed(message.from_user.id):
+            await _show_gate(message, locale)
+            return
+        await _open_menu(message, message.from_user.id, locale)
 
     @dp.message(F.text)
     async def _chat(message: "Message") -> None:

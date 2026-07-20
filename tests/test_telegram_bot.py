@@ -67,6 +67,14 @@ async def test_generate_reply_sets_language_on_session(engine):
 
 
 @pytest.mark.asyncio
+async def test_empty_model_profile_unpins_session(engine):
+    # A pinned model, then an explicit "Auto" (empty profile) clears the pin.
+    engine.session(session_id_for(3)).scratch["model_profile"] = "gpt"
+    await generate_reply(engine, user_id=3, text="hi", model_profile="")
+    assert "model_profile" not in engine.session(session_id_for(3)).scratch
+
+
+@pytest.mark.asyncio
 async def test_match_input_language_clears_forced_language(engine):
     # A prior text turn forced Russian; a voice turn should reply in whatever
     # language was spoken, so the forced language is cleared.

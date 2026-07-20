@@ -40,6 +40,18 @@ def _back(locale: str) -> list[tuple[str, str]]:
     return [_b(t("menu_back", locale), "main")]
 
 
+def card_rows(locale: str, refresh_action: str) -> Rows:
+    """Buttons for an info card: a Refresh (re-open the same screen) + Back.
+
+    ``refresh_action`` is a bare action name (e.g. ``"profile"``); the ``m:``
+    prefix is added here.
+    """
+    return [
+        [_b(t("menu_refresh", locale), refresh_action)],
+        _back(locale),
+    ]
+
+
 def _fmt_num(n: int) -> str:
     return f"{n:,}".replace(",", " ")
 
@@ -119,6 +131,26 @@ def screen_memory(locale: str) -> tuple[str, Rows]:
         [_b(t("menu_forget", locale), "forget")],
         _back(locale),
     ]
+    return text, rows
+
+
+def screen_confirm(locale: str, kind: str) -> tuple[str, Rows]:
+    """Confirmation step for a destructive action ('reset' or 'forget')."""
+    text = f"⚠️ <b>{t('confirm_title', locale)}</b>\n\n{t(f'confirm_{kind}', locale)}"
+    rows: Rows = [
+        [_b(t("confirm_yes", locale), f"{kind}_do")],
+        [_b(t("menu_back", locale), "memory")],
+    ]
+    return text, rows
+
+
+def screen_admin(locale: str, *, billing_on: bool = False) -> tuple[str, Rows]:
+    """Owner admin hub — opens the full panel and the sales report inline."""
+    text = f"🛠 <b>{t('admin_title', locale)}</b>\n\n{t('admin_hint', locale)}"
+    rows: Rows = [[_b(t("admin_open_panel", locale), "adminpanel")]]
+    if billing_on:
+        rows.append([_b(t("admin_open_sales", locale), "adminsales")])
+    rows.append(_back(locale))
     return text, rows
 
 
