@@ -4,6 +4,13 @@ from __future__ import annotations
 
 STRINGS: dict[str, dict[str, str]] = {
     "en": {
+        "theme": "Theme",
+        "voice_settings": "Voice settings",
+        "stt_backend": "Speech-to-text",
+        "tts_backend": "Text-to-speech",
+        "tts_voice": "Voice (OpenAI)",
+        "voice_replies_opt": "Reply with voice",
+        "whisper_model": "Local Whisper model",
         "tab_voice": "Voice",
         "voice_record": "🎙 Record",
         "voice_stop": "⏹ Stop",
@@ -64,6 +71,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "error": "Error: {error}",
     },
     "ru": {
+        "theme": "Тема",
+        "voice_settings": "Настройки голоса",
+        "stt_backend": "Распознавание речи",
+        "tts_backend": "Синтез речи",
+        "tts_voice": "Голос (OpenAI)",
+        "voice_replies_opt": "Отвечать голосом",
+        "whisper_model": "Локальная модель Whisper",
         "tab_voice": "Голос",
         "voice_record": "🎙 Запись",
         "voice_stop": "⏹ Стоп",
@@ -124,6 +138,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "error": "Ошибка: {error}",
     },
     "uz": {
+        "theme": "Mavzu",
+        "voice_settings": "Ovoz sozlamalari",
+        "stt_backend": "Nutqni aniqlash",
+        "tts_backend": "Nutq sintezi",
+        "tts_voice": "Ovoz (OpenAI)",
+        "voice_replies_opt": "Ovoz bilan javob",
+        "whisper_model": "Lokal Whisper modeli",
         "tab_voice": "Ovoz",
         "voice_record": "🎙 Yozish",
         "voice_stop": "⏹ To'xtatish",

@@ -21,13 +21,29 @@ from tests.conftest import FakeProvider
 
 def test_config_roundtrip(tmp_path):
     config = AppConfig(language="ru", mode="remote", server_url="http://x",
-                    allow_shell=True)
+                    allow_shell=True, theme="nebula", tts_voice="nova",
+                    tts_backend="edge")
     path = config.save(tmp_path)
     assert path.exists()
     loaded = AppConfig.load(tmp_path)
     assert loaded.language == "ru"
     assert loaded.mode == "remote"
     assert loaded.allow_shell is True
+    assert loaded.theme == "nebula"
+    assert loaded.tts_voice == "nova"
+    assert loaded.tts_backend == "edge"
+
+
+def test_voice_settings_map_to_engine():
+    config = AppConfig(tts_backend="edge", stt_backend="local",
+                    tts_voice="nova", local_whisper_model="small",
+                    voice_replies=False)
+    overrides = config.to_settings_overrides()
+    assert overrides["tts_backend"] == "edge"
+    assert overrides["stt_backend"] == "local"
+    assert overrides["tts_voice"] == "nova"
+    assert overrides["local_whisper_model"] == "small"
+    assert overrides["voice_replies"] is False
 
 
 def test_config_defaults_when_missing(tmp_path):

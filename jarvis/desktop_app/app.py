@@ -261,6 +261,18 @@ def run_app() -> int:
                     self.lang_box.setCurrentIndex(self.lang_box.count() - 1)
             self.lang_box.currentIndexChanged.connect(self._change_language)
             top.addWidget(self.lang_box)
+
+            top.addSpacing(16)
+            top.addWidget(QLabel(tr("theme", loc)))
+            from jarvis.desktop_app.theme import theme_names
+            self.theme_box = QComboBox()
+            for key, label in theme_names():
+                self.theme_box.addItem(label, key)
+                if key == config.theme:
+                    self.theme_box.setCurrentIndex(self.theme_box.count() - 1)
+            self.theme_box.currentIndexChanged.connect(self._change_theme)
+            top.addWidget(self.theme_box)
+
             top.addStretch(1)
             layout.addLayout(top)
 
@@ -288,9 +300,10 @@ def run_app() -> int:
 
         def _render_chat(self) -> None:
             from jarvis.desktop_app.theme import bubble_html
-            html = "".join(bubble_html(r, t) for r, t in self._messages)
+            th = config.theme
+            html = "".join(bubble_html(r, t, th) for r, t in self._messages)
             if self._pending:
-                html += bubble_html("system", tr("thinking", config.language))
+                html += bubble_html("system", tr("thinking", config.language), th)
             self.transcript.setHtml(html)
             bar = self.transcript.verticalScrollBar()
             bar.setValue(bar.maximum())
@@ -305,6 +318,15 @@ def run_app() -> int:
             if self.engine_thread is not None:
                 session = self.engine_thread.engine.session("desktop")
                 session.scratch["language"] = config.language
+
+        def _change_theme(self) -> None:
+            from jarvis.desktop_app.theme import stylesheet
+            config.theme = self.theme_box.currentData()
+            config.save()
+            inst = QApplication.instance()
+            if inst is not None:
+                inst.setStyleSheet(stylesheet(config.theme))
+            self._render_chat()  # re-colour bubbles to the new palette
 
         def _send(self) -> None:
             text = self.input.text().strip()
@@ -385,6 +407,34 @@ def run_app() -> int:
             self.voice_speak.setChecked(True)
             layout.addWidget(self.voice_speak)
 
+            # -- voice engine settings --
+            settings_form = QFormLayout()
+            self.stt_box = QComboBox()
+            self.stt_box.addItems(["openai", "local"])
+            self.stt_box.setCurrentText(config.stt_backend)
+            self.tts_box = QComboBox()
+            self.tts_box.addItems(["openai", "edge", "gtts"])
+            self.tts_box.setCurrentText(config.tts_backend)
+            self.tts_voice_edit = QLineEdit(config.tts_voice)
+            self.whisper_box = QComboBox()
+            self.whisper_box.addItems(["tiny", "base", "small", "medium", "large"])
+            self.whisper_box.setCurrentText(config.local_whisper_model)
+            settings_form.addRow(tr("stt_backend", loc), self.stt_box)
+            settings_form.addRow(tr("tts_backend", loc), self.tts_box)
+            settings_form.addRow(tr("tts_voice", loc), self.tts_voice_edit)
+            settings_form.addRow(tr("whisper_model", loc), self.whisper_box)
+            layout.addLayout(settings_form)
+
+            self.voice_enable = QCheckBox(tr("voice_replies_opt", loc))
+            self.voice_enable.setChecked(config.voice_replies)
+            layout.addWidget(self.voice_enable)
+
+            save_voice = QPushButton(tr("save", loc))
+            save_voice.setObjectName("Primary")
+            save_voice.setMinimumHeight(40)
+            save_voice.clicked.connect(self._save_voice)
+            layout.addWidget(save_voice)
+
             self.voice_output = QTextEdit()
             self.voice_output.setReadOnly(True)
             layout.addWidget(self.voice_output, stretch=1)
@@ -398,6 +448,17 @@ def run_app() -> int:
             self._voice_file = ""
             self.bridge.voice.connect(self._on_voice_result)
             return widget
+
+        def _save_voice(self) -> None:
+            config.stt_backend = self.stt_box.currentText()
+            config.tts_backend = self.tts_box.currentText()
+            config.tts_voice = self.tts_voice_edit.text().strip() or "alloy"
+            config.local_whisper_model = self.whisper_box.currentText()
+            config.voice_replies = self.voice_enable.isChecked()
+            config.voice_enabled = True
+            config.save()
+            QMessageBox.information(self, "J.A.R.V.I.S.",
+                                    tr("saved", config.language))
 
         def _update_voice_ui(self) -> None:
             loc = config.language
@@ -733,7 +794,7 @@ def run_app() -> int:
     app.setApplicationName("JARVIS")
     app.setStyle("Fusion")
     app.setFont(QFont("Segoe UI", 10))
-    app.setStyleSheet(stylesheet())
+    app.setStyleSheet(stylesheet(config.theme))
 
     client: JarvisApiClient | None = None
     if config.mode == "remote" and config.auth_token and config.server_url:

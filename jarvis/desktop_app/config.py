@@ -32,6 +32,8 @@ class AppConfig:
 
     #: UI + assistant language: en | ru | uz.
     language: str = "en"
+    #: Visual theme key (see jarvis.desktop_app.theme.THEMES).
+    theme: str = "arc"
     #: "local" (engine runs on this PC) or "remote" (talk to a server API).
     mode: str = "local"
 
@@ -66,6 +68,9 @@ class AppConfig:
     voice_enabled: bool = False
     stt_backend: str = "openai"
     tts_backend: str = "openai"
+    tts_voice: str = "alloy"
+    local_whisper_model: str = "base"
+    voice_replies: bool = True
 
     extra: dict = field(default_factory=dict)
 
@@ -119,6 +124,9 @@ class AppConfig:
             "voice_enabled": self.voice_enabled,
             "stt_backend": self.stt_backend,
             "tts_backend": self.tts_backend,
+            "tts_voice": self.tts_voice,
+            "local_whisper_model": self.local_whisper_model,
+            "voice_replies": self.voice_replies,
         }
         if self.llm_model:
             overrides["llm_model"] = self.llm_model
