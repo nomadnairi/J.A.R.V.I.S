@@ -7,8 +7,12 @@ import time
 import pytest
 
 from jarvis.interfaces.bot_menu import (
-    main_menu,
     profile_text,
+    screen_language,
+    screen_main,
+    screen_memory,
+    screen_model,
+    screen_settings,
     subscription_text,
     usage_text,
 )
@@ -53,25 +57,51 @@ def test_usage_time_windows(usage):
 # -- menu layout --------------------------------------------------------------
 
 
+def _flat(rows):
+    return [data for row in rows for _, data in row]
+
+
 def test_main_menu_minimal():
-    rows = main_menu("en")
-    flat = [data for row in rows for _, data in row]
+    text, rows = screen_main("en")
+    assert "J.A.R.V.I.S." in text
+    flat = _flat(rows)
     assert "m:profile" in flat and "m:usage" in flat
-    assert "m:language" in flat
-    assert "m:reset" in flat and "m:forget" in flat
+    assert "m:settings" in flat and "m:memory" in flat
     assert "m:help" in flat
-    # Admin / billing / model absent by default.
+    # Admin / billing absent by default.
     assert "m:admin" not in flat
     assert "m:buy" not in flat
-    assert "m:model" not in flat
 
 
 def test_main_menu_full():
-    rows = main_menu("ru", is_admin=True, billing_on=True,
-                    accounts_on=True, multi_model=True)
-    flat = [data for row in rows for _, data in row]
-    for expected in ("m:model", "m:subscription", "m:buy", "m:link", "m:admin"):
+    _text, rows = screen_main("ru", is_admin=True, billing_on=True,
+                            accounts_on=True, multi_model=True)
+    flat = _flat(rows)
+    for expected in ("m:subscription", "m:buy", "m:link", "m:admin"):
         assert expected in flat
+
+
+def test_settings_and_submenus_have_back():
+    _t, srows = screen_settings("en", multi_model=True)
+    assert "m:model" in _flat(srows)
+    assert "m:main" in _flat(srows)  # back button
+    _t, mrows = screen_memory("en")
+    assert "m:reset" in _flat(mrows) and "m:forget" in _flat(mrows)
+    assert "m:main" in _flat(mrows)
+    _t, mdl = screen_model("en", ["claude", "gpt"], "gpt")
+    flat = _flat(mdl)
+    assert "m:setmodel:claude" in flat and "m:setmodel:auto" in flat
+    assert "m:settings" in flat  # back to settings
+    _t, lang = screen_language("en", "ru")
+    flat = _flat(lang)
+    assert "m:setlang:ru" in flat and "m:setlang:en" in flat
+    assert "m:settings" in flat
+
+
+def test_settings_hides_model_when_single():
+    _t, rows = screen_settings("en", multi_model=False)
+    assert "m:model" not in _flat(rows)
+    assert "m:language" in _flat(rows)
 
 
 # -- text builders ------------------------------------------------------------
@@ -83,7 +113,7 @@ def test_profile_text_contains_fields():
         "en", telegram_id=42, name="Tony", language="en", model="claude",
         account="tony", telegram_verified=True, stats=stats)
     assert "42" in text and "Tony" in text and "tony" in text
-    assert "claude" in text
+    assert "Claude" in text  # model label
     assert "34 567" in text  # thousands formatted with a space
 
 
@@ -93,7 +123,7 @@ def test_profile_text_no_account():
         "ru", telegram_id=1, name="X", language="ru", model="",
         account=None, telegram_verified=False, stats=stats)
     assert "не привязан" in text
-    assert "auto" in text
+    assert "Auto" in text
 
 
 def test_usage_text():

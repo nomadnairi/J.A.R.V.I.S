@@ -1,10 +1,16 @@
 """
 Inline-menu content for the Telegram bot (aiogram-free, testable).
 
-Builds the main menu layout as plain data — a list of button rows, each button
-a ``(label, callback_data)`` pair — plus the text for the profile, token-usage
-and subscription screens. The bot layer turns the rows into an
-``InlineKeyboardMarkup`` and sends the text.
+The bot is fully button-driven — users never type commands. Every screen is
+returned here as ``(text, rows)`` where ``rows`` is a list of button rows and
+each button is a ``(label, callback_data)`` pair. The bot layer turns rows into
+an ``InlineKeyboardMarkup`` and edits the same message in place, so navigating
+feels like a little app.
+
+Callback scheme (kept short — Telegram caps callback_data at 64 bytes):
+    m:main  m:profile  m:usage  m:subscription  m:settings  m:memory
+    m:model  m:language  m:help  m:link  m:buy  m:reset  m:forget  m:admin
+    m:setmodel:<name|auto>   m:setlang:<locale>
 """
 
 from __future__ import annotations
@@ -14,112 +20,172 @@ from datetime import datetime, timezone
 
 from jarvis.i18n import t
 
-# Callback data prefixes (kept short — Telegram caps callback_data at 64 bytes).
-CB = "m"  # e.g. "m:profile", "m:usage", "m:model", …
+CB = "m"
+
+Rows = list[list[tuple[str, str]]]
+
+# AI-picker labels.
+MODEL_LABELS = {
+    "claude": "🧠 Claude", "gpt": "💬 ChatGPT", "openrouter": "🌐 OpenRouter",
+    "auto": "⚙️ Auto",
+}
+LANG_LABELS = {"en": "🇬🇧 English", "ru": "🇷🇺 Русский", "uz": "🇺🇿 O'zbek"}
 
 
-def _btn(label_key: str, action: str, locale: str) -> tuple[str, str]:
-    return (t(label_key, locale), f"{CB}:{action}")
+def _b(label: str, action: str) -> tuple[str, str]:
+    return (label, f"{CB}:{action}")
 
 
-def main_menu(locale: str, *, is_admin: bool = False,
-            billing_on: bool = False, accounts_on: bool = False,
-            multi_model: bool = False) -> list[list[tuple[str, str]]]:
-    """Return the main-menu keyboard as rows of (label, callback_data)."""
-    rows: list[list[tuple[str, str]]] = [
-        [_btn("menu_profile", "profile", locale),
-        _btn("menu_usage", "usage", locale)],
-    ]
-    row2: list[tuple[str, str]] = []
-    if multi_model:
-        row2.append(_btn("cmd_model", "model", locale))
-    row2.append(_btn("cmd_language", "language", locale))
-    rows.append(row2)
-    if billing_on:
-        rows.append([_btn("menu_subscription", "subscription", locale),
-                    _btn("cmd_buy", "buy", locale)])
-    if accounts_on:
-        rows.append([_btn("cmd_link", "link", locale)])
-    rows.append([_btn("mem_reset", "reset", locale),
-                _btn("mem_forget", "forget", locale)])
-    rows.append([_btn("menu_help", "help", locale)])
-    if is_admin:
-        rows.append([_btn("cmd_admin", "admin", locale)])
-    return rows
+def _back(locale: str) -> list[tuple[str, str]]:
+    return [_b(t("menu_back", locale), "main")]
 
 
 def _fmt_num(n: int) -> str:
     return f"{n:,}".replace(",", " ")
 
 
-def profile_text(locale: str, *, telegram_id: int, name: str,
-                language: str, model: str, account: str | None,
-                telegram_verified: bool, stats: dict) -> str:
-    """Detailed, nicely formatted profile card."""
-    model_label = model or "auto"
+# -- screens ------------------------------------------------------------------
+
+def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False,
+                accounts_on: bool = False, multi_model: bool = False,
+                name: str = "Sir") -> tuple[str, Rows]:
+    text = (
+        f"🤖 <b>J.A.R.V.I.S.</b>\n"
+        f"<i>{t('menu_greeting', locale, name=name)}</i>\n\n"
+        f"{t('menu_pick', locale)}"
+    )
+    rows: Rows = [
+        [_b(t("menu_profile", locale), "profile"),
+        _b(t("menu_usage", locale), "usage")],
+        [_b(t("menu_settings", locale), "settings"),
+        _b(t("menu_memory", locale), "memory")],
+    ]
+    if billing_on:
+        rows.append([_b(t("menu_subscription", locale), "subscription"),
+                    _b(t("menu_buy", locale), "buy")])
+    if accounts_on:
+        rows.append([_b(t("menu_link", locale), "link")])
+    rows.append([_b(t("menu_help", locale), "help")])
+    if is_admin:
+        rows.append([_b(t("menu_admin", locale), "admin")])
+    return text, rows
+
+
+def screen_settings(locale: str, *, multi_model: bool) -> tuple[str, Rows]:
+    text = f"⚙️ <b>{t('settings_title', locale)}</b>\n\n{t('settings_hint', locale)}"
+    rows: Rows = []
+    if multi_model:
+        rows.append([_b(t("menu_model", locale), "model")])
+    rows.append([_b(t("menu_language", locale), "language")])
+    rows.append(_back(locale))
+    return text, rows
+
+
+def screen_memory(locale: str) -> tuple[str, Rows]:
+    text = f"🧠 <b>{t('memory_title', locale)}</b>\n\n{t('memory_hint', locale)}"
+    rows: Rows = [
+        [_b(t("menu_reset", locale), "reset")],
+        [_b(t("menu_forget", locale), "forget")],
+        _back(locale),
+    ]
+    return text, rows
+
+
+def screen_model(locale: str, profiles: list[str], current: str) -> tuple[str, Rows]:
+    text = f"🤖 <b>{t('menu_model', locale)}</b>\n\n{t('model_choose', locale)}"
+    rows: Rows = []
+    for name in profiles:
+        mark = "✅ " if name == current else ""
+        rows.append([_b(mark + MODEL_LABELS.get(name, name), f"setmodel:{name}")])
+    mark = "✅ " if not current else ""
+    rows.append([_b(mark + MODEL_LABELS["auto"], "setmodel:auto")])
+    rows.append([_b(t("menu_back", locale), "settings")])
+    return text, rows
+
+
+def screen_language(locale: str, current: str) -> tuple[str, Rows]:
+    text = f"🌐 <b>{t('menu_language', locale)}</b>\n\n{t('choose_language', locale)}"
+    rows: Rows = []
+    for loc, label in LANG_LABELS.items():
+        mark = "✅ " if loc == current else ""
+        rows.append([_b(mark + label, f"setlang:{loc}")])
+    rows.append([_b(t("menu_back", locale), "settings")])
+    return text, rows
+
+
+def screen_help(locale: str) -> tuple[str, Rows]:
+    text = f"❓ <b>{t('help_title', locale)}</b>\n\n{t('help_body', locale)}"
+    return text, [_back(locale)]
+
+
+def screen_link(locale: str) -> tuple[str, Rows]:
+    text = f"🔗 <b>{t('menu_link', locale)}</b>\n\n{t('link_usage', locale)}"
+    return text, [_back(locale)]
+
+
+# -- info cards (text only; the bot appends a Back button) --------------------
+
+def profile_text(locale: str, *, telegram_id: int, name: str, language: str,
+                model: str, account: str | None, telegram_verified: bool,
+                stats: dict) -> str:
+    model_label = MODEL_LABELS.get(model, model) if model else "⚙️ Auto"
     account_line = (f"🔓 <b>{account}</b>" if account
                     else t("profile_no_account", locale))
     verified = "✅" if telegram_verified else "—"
+    lang_label = LANG_LABELS.get(language, language)
     return "\n".join([
         f"👤 <b>{t('profile_title', locale)}</b>",
-        "",
-        f"🆔 ID: <code>{telegram_id}</code>",
-        f"📛 {t('profile_name', locale)}: {name}",
+        "━━━━━━━━━━━━━━",
+        f"🆔 <code>{telegram_id}</code>",
+        f"📛 {t('profile_name', locale)}: <b>{name}</b>",
         f"🔗 {t('profile_account', locale)}: {account_line}",
         f"✔️ {t('profile_verified', locale)}: {verified}",
-        f"🌐 {t('profile_language', locale)}: {language}",
+        f"🌐 {t('profile_language', locale)}: {lang_label}",
         f"🤖 {t('profile_model', locale)}: {model_label}",
-        "",
-        f"💬 {t('profile_messages', locale)}: {_fmt_num(stats['messages'])}",
-        f"🔢 {t('profile_tokens', locale)}: {_fmt_num(stats['tokens'])}",
+        "━━━━━━━━━━━━━━",
+        f"💬 {t('profile_messages', locale)}: <b>{_fmt_num(stats['messages'])}</b>",
+        f"🔢 {t('profile_tokens', locale)}: <b>{_fmt_num(stats['tokens'])}</b>",
     ])
 
 
 def usage_text(locale: str, stats: dict) -> str:
-    """Detailed token/message report (today / 30 days / all time)."""
+    tok = t("usage_tokens", locale)
     return "\n".join([
         f"📊 <b>{t('usage_title', locale)}</b>",
+        "━━━━━━━━━━━━━━",
+        f"📅 {t('usage_today', locale)}",
+        f"    💬 {_fmt_num(stats['messages_today'])}   "
+        f"🔢 {_fmt_num(stats['tokens_today'])} {tok}",
         "",
-        f"📅 {t('usage_today', locale)}:",
-        f"   💬 {_fmt_num(stats['messages_today'])}  ·  "
-        f"🔢 {_fmt_num(stats['tokens_today'])} {t('usage_tokens', locale)}",
+        f"🗓 {t('usage_month', locale)}",
+        f"    💬 {_fmt_num(stats['messages_month'])}   "
+        f"🔢 {_fmt_num(stats['tokens_month'])} {tok}",
         "",
-        f"🗓 {t('usage_month', locale)}:",
-        f"   💬 {_fmt_num(stats['messages_month'])}  ·  "
-        f"🔢 {_fmt_num(stats['tokens_month'])} {t('usage_tokens', locale)}",
-        "",
-        f"♾ {t('usage_all', locale)}:",
-        f"   💬 {_fmt_num(stats['messages'])}  ·  "
-        f"🔢 {_fmt_num(stats['tokens'])} {t('usage_tokens', locale)}",
+        f"♾ {t('usage_all', locale)}",
+        f"    💬 {_fmt_num(stats['messages'])}   "
+        f"🔢 {_fmt_num(stats['tokens'])} {tok}",
     ])
 
 
-def subscription_text(locale: str, *, account: str | None,
-                    licenses: list, now: float | None = None) -> str:
-    """Subscription / license status card."""
+def subscription_text(locale: str, *, account: str | None, licenses: list,
+                    now: float | None = None) -> str:
     now = time.time() if now is None else now
     if account is None:
-        return "\n".join([
-            f"💳 <b>{t('sub_title', locale)}</b>", "",
-            t("sub_none", locale),
-        ])
-    active = None
-    for lic in licenses:
-        if lic.is_valid(now=now):
-            active = lic
-            break
-    lines = [f"💳 <b>{t('sub_title', locale)}</b>", "",
+        return "\n".join([f"💳 <b>{t('sub_title', locale)}</b>",
+                        "━━━━━━━━━━━━━━", t("sub_none", locale)])
+    active = next((lic for lic in licenses if lic.is_valid(now=now)), None)
+    lines = [f"💳 <b>{t('sub_title', locale)}</b>", "━━━━━━━━━━━━━━",
             f"🔓 {t('profile_account', locale)}: <b>{account}</b>"]
     if active is None:
         lines.append(f"⚠️ {t('sub_inactive', locale)}")
     else:
-        lines.append(f"✅ {t('sub_active', locale)}: {active.plan}")
+        lines.append(f"✅ {t('sub_active', locale)}: <b>{active.plan}</b>")
         if active.expires_at is None:
             lines.append(f"♾ {t('sub_perpetual', locale)}")
         else:
             days = max(0, int((active.expires_at - now) // 86400))
             until = datetime.fromtimestamp(
                 active.expires_at, tz=timezone.utc).strftime("%d.%m.%Y")
-            lines.append(f"⏳ {t('sub_until', locale)}: {until} ({days} "
-                        f"{t('sub_days', locale)})")
+            lines.append(f"⏳ {t('sub_until', locale)}: <b>{until}</b> "
+                        f"({days} {t('sub_days', locale)})")
     return "\n".join(lines)

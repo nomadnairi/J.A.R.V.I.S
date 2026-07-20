@@ -230,26 +230,33 @@ async def run(settings: Settings | None = None) -> None:
             for loc in SUPPORTED_LOCALES
         ]])
 
-    def _menu_keyboard(user_id: int, locale: str) -> "InlineKeyboardMarkup":
-        from jarvis.interfaces.bot_menu import main_menu
-        rows = main_menu(
-            locale,
-            is_admin=user_id in settings.telegram_admins(),
-            billing_on=billing is not None,
-            accounts_on=license_service is not None,
-            multi_model=len(engine.llm.list_profiles()) > 1,
-        )
+    def _markup(rows) -> "InlineKeyboardMarkup":
         return InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text=label, callback_data=data)
             for label, data in row]
             for row in rows
         ])
 
+    def _main_screen(user_id: int, locale: str):
+        from jarvis.interfaces.bot_menu import screen_main
+        return screen_main(
+            locale,
+            is_admin=user_id in settings.telegram_admins(),
+            billing_on=billing is not None,
+            accounts_on=license_service is not None,
+            multi_model=len(engine.llm.list_profiles()) > 1,
+            name=settings.user_name,
+        )
+
     async def _guard(message: "Message", locale: str) -> bool:
         if _is_allowed(settings, message.from_user.id):
             return True
         await message.answer(t("not_authorized", locale))
         return False
+
+    async def _open_menu(message: "Message", user_id: int, locale: str) -> None:
+        text, rows = _main_screen(user_id, locale)
+        await message.answer(text, reply_markup=_markup(rows))
 
     @dp.message(CommandStart())
     async def _start(message: "Message") -> None:
@@ -260,31 +267,18 @@ async def run(settings: Settings | None = None) -> None:
             await message.answer(t("choose_language", locale),
                                 reply_markup=_language_keyboard())
         else:
-            await message.answer(t("welcome", locale, name=settings.assistant_name))
-            await message.answer(t("menu_title", locale),
-                                reply_markup=_menu_keyboard(
-                                    message.from_user.id, locale))
-
-    @dp.message(Command("help"))
-    async def _help(message: "Message") -> None:
-        locale = _resolve_locale(prefs, message.from_user)
-        if not await _guard(message, locale):
-            return
-        await message.answer(t("welcome", locale, name=settings.assistant_name))
+            await _open_menu(message, message.from_user.id, locale)
 
     @dp.message(Command("menu"))
     async def _menu(message: "Message") -> None:
         locale = _resolve_locale(prefs, message.from_user)
         if not await _guard(message, locale):
             return
-        await message.answer(t("menu_title", locale),
-                            reply_markup=_menu_keyboard(
-                                message.from_user.id, locale))
+        await _open_menu(message, message.from_user.id, locale)
 
     def _profile_message(user, locale: str) -> str:
         from jarvis.interfaces.bot_menu import profile_text
-        account = None
-        verified = False
+        account, verified = None, False
         if license_service is not None:
             acc = license_service.get_account_by_telegram(user.id)
             if acc is not None:
@@ -297,71 +291,104 @@ async def run(settings: Settings | None = None) -> None:
             stats=usage.stats(user.id),
         )
 
+    async def _edit(callback: "CallbackQuery", text: str, rows) -> None:
+        """Edit the menu message in place (fall back to a new message)."""
+        try:
+            await callback.message.edit_text(text, reply_markup=_markup(rows))
+        except Exception:  # noqa: BLE001 - message unchanged / too old
+            await callback.message.answer(text, reply_markup=_markup(rows))
+
     @dp.callback_query(F.data.startswith("m:"))
     async def _menu_cb(callback: "CallbackQuery") -> None:
+        import jarvis.interfaces.bot_menu as bm
         user = callback.from_user
         locale = _resolve_locale(prefs, user)
-        action = callback.data.split(":", 1)[1]
+        parts = callback.data.split(":")
+        action = parts[1]
         await callback.answer()
-        if action == "profile":
-            await callback.message.answer(_profile_message(user, locale))
+        back = [[(t("menu_back", locale), "m:main")]]
+
+        if action == "main":
+            text, rows = _main_screen(user.id, locale)
+            await _edit(callback, text, rows)
+        elif action == "settings":
+            text, rows = bm.screen_settings(
+                locale, multi_model=len(engine.llm.list_profiles()) > 1)
+            await _edit(callback, text, rows)
+        elif action == "memory":
+            await _edit(callback, *bm.screen_memory(locale))
+        elif action == "help":
+            await _edit(callback, *bm.screen_help(locale))
+        elif action == "link":
+            await _edit(callback, *bm.screen_link(locale))
+        elif action == "model":
+            await _edit(callback, *bm.screen_model(
+                locale, engine.llm.list_profiles(), prefs.get_model(user.id) or ""))
+        elif action == "language":
+            await _edit(callback, *bm.screen_language(locale, locale))
+        elif action == "profile":
+            await _edit(callback, _profile_message(user, locale), back)
         elif action == "usage":
-            from jarvis.interfaces.bot_menu import usage_text
-            await callback.message.answer(usage_text(locale, usage.stats(user.id)))
+            await _edit(callback, bm.usage_text(locale, usage.stats(user.id)), back)
         elif action == "subscription":
-            from jarvis.interfaces.bot_menu import subscription_text
             account, lics = None, []
             if license_service is not None:
                 acc = license_service.get_account_by_telegram(user.id)
                 if acc is not None:
-                    account = acc.username
-                    lics = license_service.list_licenses(acc.id)
-            await callback.message.answer(
-                subscription_text(locale, account=account, licenses=lics))
-        elif action == "model":
-            if engine.llm.list_profiles():
-                await callback.message.answer(
-                    t("model_choose", locale),
-                    reply_markup=_model_keyboard(prefs.get_model(user.id)))
+                    account, lics = acc.username, license_service.list_licenses(acc.id)
+            await _edit(callback, bm.subscription_text(
+                locale, account=account, licenses=lics), back)
+        elif action == "setmodel":
+            choice = parts[2]
+            if choice == "auto":
+                prefs.set_model(user.id, "")
             else:
-                await callback.message.answer(t("model_none", locale))
-        elif action == "language":
-            await callback.message.answer(t("choose_language", locale),
-                                        reply_markup=_language_keyboard())
-        elif action == "buy":
-            await callback.message.answer("/buy")
-        elif action == "link":
-            await callback.message.answer(t("link_usage", locale))
+                prefs.set_model(user.id, choice)
+            await _edit(callback, *bm.screen_settings(
+                locale, multi_model=len(engine.llm.list_profiles()) > 1))
+        elif action == "setlang":
+            new_locale = normalize_locale(parts[2])
+            prefs.set_language(user.id, new_locale)
+            engine.session(session_id_for(user.id)).scratch["language"] = new_locale
+            await _edit(callback, *bm.screen_settings(
+                new_locale, multi_model=len(engine.llm.list_profiles()) > 1))
         elif action == "reset":
             await engine.reset(session_id_for(user.id))
-            await callback.message.answer(t("reset_done", locale))
+            await _edit(callback, "🧹 " + t("reset_done", locale), back)
         elif action == "forget":
             await engine.forget(session_id_for(user.id))
-            await callback.message.answer(t("forget_done", locale))
-        elif action == "help":
-            await callback.message.answer(
-                t("welcome", locale, name=settings.assistant_name))
+            await _edit(callback, "🗑 " + t("forget_done", locale), back)
+        elif action == "buy":
+            await _send_invoice(callback.message, locale)
         elif action == "admin":
-            await callback.message.answer("/admin")
+            await callback.message.answer("🛠 /admin  ·  /admin_sales")
 
-    @dp.message(Command("language"))
-    async def _language(message: "Message") -> None:
-        locale = _resolve_locale(prefs, message.from_user)
-        if not await _guard(message, locale):
+    async def _send_invoice(message: "Message", locale: str) -> None:
+        if billing is None:
+            await message.answer(t("buy_disabled", locale))
             return
-        await message.answer(t("choose_language", locale),
-                            reply_markup=_language_keyboard())
+        from aiogram.types import LabeledPrice
+        await message.bot.send_invoice(
+            chat_id=message.chat.id,
+            title=t("buy_invoice_title", locale),
+            description=t("buy_invoice_desc", locale),
+            payload="jarvis-license",
+            currency="XTR",
+            prices=[LabeledPrice(label=t("buy_invoice_title", locale),
+                                amount=settings.billing_price_stars)],
+        )
 
     @dp.callback_query(F.data.startswith("lang:"))
     async def _pick_language(callback: "CallbackQuery") -> None:
         locale = normalize_locale(callback.data.split(":", 1)[1])
         prefs.set_language(callback.from_user.id, locale)
         engine.session(session_id_for(callback.from_user.id)).scratch["language"] = locale
-        await callback.message.answer(t("language_set", locale))
-        await callback.message.answer(
-            t("welcome", locale, name=settings.assistant_name)
-        )
         await callback.answer()
+        text, rows = _main_screen(callback.from_user.id, locale)
+        try:
+            await callback.message.edit_text(text, reply_markup=_markup(rows))
+        except Exception:  # noqa: BLE001
+            await callback.message.answer(text, reply_markup=_markup(rows))
 
     def _model_keyboard(current: str | None) -> "InlineKeyboardMarkup":
         rows = []
@@ -556,32 +583,16 @@ async def run(settings: Settings | None = None) -> None:
                 logger.warning("Voice synthesis failed: %s", exc)
 
     async def _set_commands() -> None:
+        # Everything is button-driven — the command list stays tiny: just an
+        # entry point to open the menu.
         for loc in SUPPORTED_LOCALES:
-            commands = [
-                BotCommand(command="menu", description=t("cmd_menu", loc)),
-                BotCommand(command="help", description=t("cmd_help", loc)),
-                BotCommand(command="language", description=t("cmd_language", loc)),
-                BotCommand(command="reset", description=t("cmd_reset", loc)),
-                BotCommand(command="forget", description=t("cmd_forget", loc)),
-            ]
-            if len(engine.llm.list_profiles()) > 1:
-                commands.append(
-                    BotCommand(command="model", description=t("cmd_model", loc))
-                )
-            if license_service is not None:
-                commands.append(
-                    BotCommand(command="link", description=t("cmd_link", loc))
-                )
-            if billing is not None:
-                commands.append(
-                    BotCommand(command="buy", description=t("cmd_buy", loc))
-                )
+            commands = [BotCommand(command="menu", description=t("cmd_menu", loc))]
             if loc == DEFAULT_LOCALE:
                 await bot.set_my_commands(commands)
             else:
                 await bot.set_my_commands(commands, language_code=loc)
 
-        # Admins see an extended menu — only in their own chat.
+        # Admins additionally see the owner commands — only in their own chat.
         from aiogram.types import BotCommandScopeChat
         admin_extra = [
             BotCommand(command="admin", description=t("cmd_admin", DEFAULT_LOCALE)),
@@ -589,12 +600,7 @@ async def run(settings: Settings | None = None) -> None:
                     description=t("cmd_admin_sales", DEFAULT_LOCALE)),
         ]
         base = [
-            BotCommand(command="help", description=t("cmd_help", DEFAULT_LOCALE)),
-            BotCommand(command="language",
-                    description=t("cmd_language", DEFAULT_LOCALE)),
-            BotCommand(command="reset", description=t("cmd_reset", DEFAULT_LOCALE)),
-            BotCommand(command="forget",
-                    description=t("cmd_forget", DEFAULT_LOCALE)),
+            BotCommand(command="menu", description=t("cmd_menu", DEFAULT_LOCALE)),
         ]
         for admin_id in admins:
             try:
