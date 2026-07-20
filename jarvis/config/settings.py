@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     #: Custom OpenAI-compatible endpoint (e.g. OpenRouter:
     #: https://openrouter.ai/api/v1). Empty = the official OpenAI API.
     openai_base_url: str = ""
+    #: OpenRouter API key — enables a separate "openrouter" model profile so
+    #: users can switch between Claude / GPT / OpenRouter at runtime.
+    openrouter_api_key: str = ""
+    #: Default model used for the OpenRouter profile.
+    openrouter_model: str = "anthropic/claude-3.7-sonnet"
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     llm_max_tokens: int = Field(default=2048, gt=0)
 

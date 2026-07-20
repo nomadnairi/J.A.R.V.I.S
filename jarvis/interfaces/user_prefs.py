@@ -31,6 +31,12 @@ class UserPreferences:
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(_SCHEMA)
+        # Add the model-profile column to databases created before it existed.
+        columns = {row["name"] for row in
+                self._conn.execute("PRAGMA table_info(user_prefs)")}
+        if "model_profile" not in columns:
+            self._conn.execute(
+                "ALTER TABLE user_prefs ADD COLUMN model_profile TEXT")
         self._conn.commit()
 
     def get_language(self, user_id: int | str) -> str | None:
@@ -47,6 +53,24 @@ class UserPreferences:
                 "INSERT INTO user_prefs (user_id, language) VALUES (?, ?) "
                 "ON CONFLICT(user_id) DO UPDATE SET language = excluded.language",
                 (str(user_id), language),
+            )
+            self._conn.commit()
+
+    def get_model(self, user_id: int | str) -> str | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT model_profile FROM user_prefs WHERE user_id = ?",
+                (str(user_id),),
+            ).fetchone()
+        return row["model_profile"] if row and row["model_profile"] else None
+
+    def set_model(self, user_id: int | str, profile: str) -> None:
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO user_prefs (user_id, model_profile) VALUES (?, ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET "
+                "model_profile = excluded.model_profile",
+                (str(user_id), profile),
             )
             self._conn.commit()
 

@@ -40,10 +40,23 @@ class LLMClient:
         fallbacks: list[LLMProvider] | None = None,
         *,
         retry_attempts: int = 3,
+        profiles: "dict[str, LLMProvider] | None" = None,
     ) -> None:
         self.primary = primary
         self.fallbacks = fallbacks or []
         self._retry_attempts = retry_attempts
+        #: Named, switchable providers (e.g. "claude", "gpt", "openrouter").
+        self.profiles: dict[str, LLMProvider] = profiles or {}
+
+    def list_profiles(self) -> list[str]:
+        """Names of the configured, switchable model profiles."""
+        return list(self.profiles)
+
+    def _select(self, profile: str | None) -> LLMProvider | None:
+        """Return the provider for a profile name, or ``None`` to use the chain."""
+        if profile and profile in self.profiles:
+            return self.profiles[profile]
+        return None
 
     # -- construction from settings ----------------------------------------
 
@@ -66,7 +79,45 @@ class LLMClient:
             if key:
                 fallbacks.append(cls._make_provider(settings, name))
 
-        return cls(primary, fallbacks)
+        return cls(primary, fallbacks,
+                profiles=cls._build_profiles(settings))
+
+    @staticmethod
+    def _build_profiles(settings: Settings) -> dict[str, LLMProvider]:
+        """One switchable profile per configured provider/key.
+
+        - ``claude``     — Anthropic (needs ANTHROPIC_API_KEY)
+        - ``gpt``        — OpenAI (needs OPENAI_API_KEY)
+        - ``openrouter`` — OpenAI-compatible via OpenRouter (OPENROUTER_API_KEY)
+        """
+        from jarvis.config.constants import DEFAULT_MODELS
+        from jarvis.llm.providers.openai_provider import OpenAIProvider
+
+        profiles: dict[str, LLMProvider] = {}
+        if settings.anthropic_api_key:
+            profiles["claude"] = PROVIDER_REGISTRY["anthropic"](
+                api_key=settings.anthropic_api_key,
+                model=DEFAULT_MODELS.get("anthropic", ""),
+                temperature=settings.llm_temperature,
+                max_tokens=settings.llm_max_tokens,
+            )
+        if settings.openai_api_key:
+            profiles["gpt"] = OpenAIProvider(
+                api_key=settings.openai_api_key,
+                model=DEFAULT_MODELS.get("openai", ""),
+                temperature=settings.llm_temperature,
+                max_tokens=settings.llm_max_tokens,
+                base_url=settings.openai_base_url,
+            )
+        if settings.openrouter_api_key:
+            profiles["openrouter"] = OpenAIProvider(
+                api_key=settings.openrouter_api_key,
+                model=settings.openrouter_model,
+                temperature=settings.llm_temperature,
+                max_tokens=settings.llm_max_tokens,
+                base_url="https://openrouter.ai/api/v1",
+            )
+        return profiles
 
     @staticmethod
     def _make_provider(settings: Settings, name: str,
@@ -95,12 +146,21 @@ class LLMClient:
         system: str | None = None,
         tools: list[ToolSpec] | None = None,
         model: str | None = None,
+        profile: str | None = None,
     ) -> LLMResult:
         """Complete ``messages``, retrying and falling back as needed.
 
         ``model`` optionally overrides the provider's default model for this
-        call (used by the AI router to pick a tier).
+        call (used by the AI router to pick a tier). ``profile`` pins the call
+        to one configured provider (user's chosen AI); it still retries but
+        does not fall back to other providers.
         """
+        selected = self._select(profile)
+        if selected is not None:
+            return await self._complete_with_retry(
+                selected, messages, system, tools, model
+            )
+
         errors: list[str] = []
         for provider in self._chain():
             if not provider.is_available():
@@ -140,12 +200,20 @@ class LLMClient:
         self,
         messages: list[dict],
         system: str | None = None,
+        profile: str | None = None,
     ) -> AsyncIterator[str]:
         """Stream a completion, falling back before the first chunk only.
 
         Once a provider has produced its first chunk we are committed to it;
-        mid-stream fallback is not possible.
+        mid-stream fallback is not possible. ``profile`` pins the stream to one
+        configured provider (the user's chosen AI).
         """
+        selected = self._select(profile)
+        if selected is not None:
+            async for chunk in selected.stream(messages, system):
+                yield chunk
+            return
+
         errors: list[str] = []
         for provider in self._chain():
             if not provider.is_available():

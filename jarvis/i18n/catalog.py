@@ -15,6 +15,10 @@ LANGUAGE_NAMES = {
 
 CATALOG: dict[str, dict[str, str]] = {
     "en": {
+        "cmd_model": "Switch the AI model",
+        "model_choose": "🤖 Choose the AI to chat with:",
+        "model_set": "✅ Switched to {model}.",
+        "model_none": "ℹ️ Only one AI is configured on this server.",
         "cmd_admin_sales": "Sales report (owner)",
         "cmd_admin": "Admin panel (owner)",
         "admin_needs_auth": "⚙️ The admin panel needs AUTH_ENABLED=true on the server.",
@@ -70,6 +74,10 @@ CATALOG: dict[str, dict[str, str]] = {
         "link_disabled": "ℹ️ Account linking is not enabled on this server.",
     },
     "ru": {
+        "cmd_model": "Сменить ИИ-модель",
+        "model_choose": "🤖 Выберите ИИ для общения:",
+        "model_set": "✅ Переключено на {model}.",
+        "model_none": "ℹ️ На этом сервере настроен только один ИИ.",
         "cmd_admin_sales": "Отчёт продаж (владелец)",
         "cmd_admin": "Админ-панель (владелец)",
         "admin_needs_auth": "⚙️ Для админ-панели нужен AUTH_ENABLED=true на сервере.",
@@ -125,6 +133,10 @@ CATALOG: dict[str, dict[str, str]] = {
         "link_disabled": "ℹ️ Привязка аккаунтов на этом сервере не включена.",
     },
     "uz": {
+        "cmd_model": "AI modelini almashtirish",
+        "model_choose": "🤖 Suhbat uchun AIni tanlang:",
+        "model_set": "✅ {model} ga o'tkazildi.",
+        "model_none": "ℹ️ Bu serverda faqat bitta AI sozlangan.",
         "cmd_admin_sales": "Sotuvlar hisoboti (egasi)",
         "cmd_admin": "Admin panel (egasi)",
         "admin_needs_auth": "⚙️ Admin panel uchun serverda AUTH_ENABLED=true kerak.",

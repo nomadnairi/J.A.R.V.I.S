@@ -51,6 +51,14 @@ _LANGUAGE_LABELS = {
     "uz": "🇺🇿 O'zbek",
 }
 
+# Labels for the model/AI-picker buttons.
+_MODEL_LABELS = {
+    "claude": "🧠 Claude (Anthropic)",
+    "gpt": "💬 ChatGPT (OpenAI)",
+    "openrouter": "🌐 OpenRouter",
+    "auto": "⚙️ Auto",
+}
+
 
 def session_id_for(user_id: int) -> str:
     """Stable per-user session id."""
@@ -80,19 +88,24 @@ def split_message(text: str, limit: int = _TELEGRAM_MAX) -> list[str]:
 
 async def generate_reply(engine: JarvisEngine, user_id: int, text: str,
                         locale: str | None = None, *,
-                        match_input_language: bool = False) -> str:
+                        match_input_language: bool = False,
+                        model_profile: str | None = None) -> str:
     """Produce the assistant's reply for a Telegram user (testable core).
 
     When ``locale`` is given (and ``match_input_language`` is False), the
     assistant is asked to reply in that language. For voice, set
     ``match_input_language=True`` so the reply matches the language the user
-    actually spoke, whatever it is.
+    actually spoke, whatever it is. ``model_profile`` picks the user's chosen
+    AI (Claude / GPT / OpenRouter).
     """
     session_id = session_id_for(user_id)
+    session = engine.session(session_id)
     if match_input_language:
-        engine.session(session_id).scratch.pop("language", None)
+        session.scratch.pop("language", None)
     elif locale:
-        engine.session(session_id).scratch["language"] = locale
+        session.scratch["language"] = locale
+    if model_profile:
+        session.scratch["model_profile"] = model_profile
     try:
         return await engine.ask(text, session_id=session_id)
     except JarvisError as exc:
@@ -252,6 +265,47 @@ async def run(settings: Settings | None = None) -> None:
         )
         await callback.answer()
 
+    def _model_keyboard(current: str | None) -> "InlineKeyboardMarkup":
+        rows = []
+        for name in engine.llm.list_profiles():
+            mark = "✅ " if name == current else ""
+            rows.append([InlineKeyboardButton(
+                text=f"{mark}{_MODEL_LABELS.get(name, name)}",
+                callback_data=f"model:{name}")])
+        # "Auto" clears the pin → provider default + fallback chain.
+        auto_mark = "✅ " if not current else ""
+        rows.append([InlineKeyboardButton(
+            text=f"{auto_mark}{_MODEL_LABELS['auto']}", callback_data="model:auto")])
+        return InlineKeyboardMarkup(inline_keyboard=rows)
+
+    @dp.message(Command("model"))
+    async def _model(message: "Message") -> None:
+        locale = _resolve_locale(prefs, message.from_user)
+        if not await _guard(message, locale):
+            return
+        if not engine.llm.list_profiles():
+            await message.answer(t("model_none", locale))
+            return
+        current = prefs.get_model(message.from_user.id)
+        await message.answer(t("model_choose", locale),
+                            reply_markup=_model_keyboard(current))
+
+    @dp.callback_query(F.data.startswith("model:"))
+    async def _pick_model(callback: "CallbackQuery") -> None:
+        locale = _resolve_locale(prefs, callback.from_user)
+        choice = callback.data.split(":", 1)[1]
+        session = engine.session(session_id_for(callback.from_user.id))
+        if choice == "auto":
+            prefs.set_model(callback.from_user.id, "")
+            session.scratch.pop("model_profile", None)
+            label = _MODEL_LABELS["auto"]
+        else:
+            prefs.set_model(callback.from_user.id, choice)
+            session.scratch["model_profile"] = choice
+            label = _MODEL_LABELS.get(choice, choice)
+        await callback.message.answer(t("model_set", locale, model=label))
+        await callback.answer()
+
     @dp.message(Command("buy"))
     async def _buy(message: "Message") -> None:
         locale = _resolve_locale(prefs, message.from_user)
@@ -351,7 +405,10 @@ async def run(settings: Settings | None = None) -> None:
         if not await _guard(message, locale):
             return
         await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
-        reply = await generate_reply(engine, message.from_user.id, message.text, locale)
+        reply = await generate_reply(
+            engine, message.from_user.id, message.text, locale,
+            model_profile=prefs.get_model(message.from_user.id),
+        )
         # LLM output is plain text — disable HTML parsing to avoid entity errors.
         for chunk in split_message(reply):
             await message.answer(chunk, parse_mode=None)
@@ -382,6 +439,7 @@ async def run(settings: Settings | None = None) -> None:
         reply = await generate_reply(
             engine, message.from_user.id, transcription.text, locale,
             match_input_language=True,
+            model_profile=prefs.get_model(message.from_user.id),
         )
         for chunk in split_message(reply):
             await message.answer(chunk, parse_mode=None)
@@ -405,6 +463,10 @@ async def run(settings: Settings | None = None) -> None:
                 BotCommand(command="reset", description=t("cmd_reset", loc)),
                 BotCommand(command="forget", description=t("cmd_forget", loc)),
             ]
+            if len(engine.llm.list_profiles()) > 1:
+                commands.append(
+                    BotCommand(command="model", description=t("cmd_model", loc))
+                )
             if license_service is not None:
                 commands.append(
                     BotCommand(command="link", description=t("cmd_link", loc))

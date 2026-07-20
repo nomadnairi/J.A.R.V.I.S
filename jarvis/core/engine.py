@@ -195,7 +195,8 @@ class JarvisEngine:
 
         chunks: list[str] = []
         async for chunk in self.llm.stream(
-            session.conversation.to_provider_format(), system=system
+            session.conversation.to_provider_format(), system=system,
+            profile=session.scratch.get("model_profile"),
         ):
             chunks.append(chunk)
             yield chunk
@@ -275,8 +276,10 @@ class JarvisEngine:
         with measure() as sw:
             await self.bus.emit(EventType.LLM_REQUEST, source=self.settings.llm_provider)
             for _ in range(self.settings.max_tool_rounds):
-                result = await self.llm.complete(messages, system=system,
-                                                tools=tools, model=model)
+                result = await self.llm.complete(
+                    messages, system=system, tools=tools, model=model,
+                    profile=session.scratch.get("model_profile"),
+                )
                 total_tokens += result.total_tokens
 
                 if not result.wants_tools:
