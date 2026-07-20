@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- A Compose app only needs a base Material theme with no action bar;
+         all real styling is done in Compose (ui/Theme.kt). -->
+    <style name="Theme.Jarvis" parent="android:Theme.Material.NoActionBar" />
+</resources>

@@ -100,9 +100,15 @@ How to get them:
 
 ## Android app
 
-See [clients/android/README.md](../clients/android/README.md) — a Kivy client
-built with buildozer. It needs a deployed server (`docs/DEPLOY.md`) with
-`AUTH_ENABLED=true`.
+Two options, both talk to the same API and need a deployed server
+(`docs/DEPLOY.md`) with `AUTH_ENABLED=true`:
+
+- **Native (recommended)** — Kotlin + Jetpack Compose, Material 3, streaming
+  chat, matches the desktop theme. Open `clients/android-kotlin` in Android
+  Studio and build the APK. See
+  [clients/android-kotlin/README.md](../clients/android-kotlin/README.md).
+- **Kivy** — a lighter Python client built with buildozer. See
+  [clients/android/README.md](../clients/android/README.md).
 
 ---
 
