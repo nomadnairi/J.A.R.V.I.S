@@ -57,6 +57,21 @@ The one-file binary bundles Python, Qt and the whole engine, so expect
 **roughly 100–180 MB** — that's normal for a self-contained desktop AI app.
 PyInstaller builds for the OS/architecture it runs on; it cannot cross-compile.
 
+### Memory footprint
+
+The desktop app is deliberately light on RAM:
+
+- **Account mode** (talks to a server) doesn't load the engine at all — only
+  the UI + a tiny HTTP client, so idle RAM is mostly Qt (~80–120 MB, which is
+  the baseline for any Qt desktop app).
+- **Local mode** additionally loads the engine; memory grows only if you enable
+  heavy options — local Whisper STT or local (fastembed) embeddings. With the
+  default cloud/hashing backends it stays small.
+- Chat history is capped in memory (last 400 messages kept, last 150 painted),
+  so long sessions don't leak.
+- The build excludes unused Qt modules (WebEngine, Quick/QML, 3D, Charts, …),
+  trimming both the binary size and import-time memory.
+
 ### Prebuilt binaries for every platform (CI)
 
 The **Desktop builds** GitHub Actions workflow builds all targets natively:

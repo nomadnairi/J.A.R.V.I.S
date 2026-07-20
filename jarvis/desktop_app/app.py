@@ -16,6 +16,10 @@ logger = get_logger(__name__)
 
 _LANGS = [("en", "English"), ("ru", "Русский"), ("uz", "O'zbek")]
 
+# Chat memory caps — keep RAM bounded on long sessions.
+_MAX_RENDER = 150   # messages painted into the transcript widget
+_MAX_STORE = 400    # messages kept in memory
+
 
 def run_app() -> int:
     """Create the Qt application and run the main loop."""
@@ -355,7 +359,10 @@ def run_app() -> int:
         def _render_chat(self) -> None:
             from jarvis.desktop_app.theme import bubble_html
             th = config.theme
-            html = "".join(bubble_html(r, t, th) for r, t in self._messages)
+            # Render only the most recent messages so a long session doesn't
+            # grow the widget (and RAM) without bound.
+            visible = self._messages[-_MAX_RENDER:]
+            html = "".join(bubble_html(r, t, th) for r, t in visible)
             if self._pending:
                 html += bubble_html("system", tr("thinking", config.language), th)
             self.transcript.setHtml(html)
@@ -389,6 +396,9 @@ def run_app() -> int:
             loc = config.language
             self.input.clear()
             self._messages.append(("user", text))
+            # Cap stored history so memory stays bounded on long sessions.
+            if len(self._messages) > _MAX_STORE:
+                self._messages = self._messages[-_MAX_STORE:]
             self._pending = True
             self._render_chat()
 
