@@ -1,10 +1,18 @@
-# J.A.R.V.I.S. — API + Telegram bot on one host.
+# J.A.R.V.I.S. — API + the public (sales/user) Telegram bot on one host.
 #
-#   cp .env.example .env      # then fill in your keys (ANTHROPIC_API_KEY, API_KEY, ...)
+#   cp .env.example .env      # keys, TELEGRAM_BOT_TOKEN (public bot), etc.
 #   docker compose up -d --build
 #
-# The two services share the same image and the same data/ + logs/ volumes, so
-# memory persists whether you talk to J.A.R.V.I.S. over the API or the bot.
+# Optional SECOND bot — your own private J.A.R.V.I.S. — same image, a different
+# token and its own memory. It lives behind the "personal" profile so it only
+# starts when you ask for it:
+#
+#   cp .env.example .env.personal   # personal bot token, TELEGRAM_ADMIN_USERS=you,
+#                                   # no channel gate, BILLING_ENABLED=false
+#   docker compose --profile personal up -d bot-personal
+#
+# The api + public bot share the data/ + logs/ volumes; the personal bot keeps
+# its own memory so the two never mix.
 
 services:
   api:
@@ -29,6 +37,7 @@ services:
       retries: 3
       start_period: 20s
 
+  # Public bot — sales + user features (subscription gate, /buy, profiles).
   bot:
     build: .
     image: jarvis-assistant:latest
@@ -41,6 +50,19 @@ services:
       - jarvis-data:/app/data
       - jarvis-logs:/app/logs
 
+  # Personal bot — your own private J.A.R.V.I.S. (opt-in: --profile personal).
+  bot-personal:
+    build: .
+    image: jarvis-assistant:latest
+    command: python -m jarvis.interfaces.telegram_bot
+    restart: unless-stopped
+    profiles: ["personal"]
+    env_file: .env.personal
+    volumes:
+      - jarvis-personal-data:/app/data
+      - jarvis-logs:/app/logs
+
 volumes:
   jarvis-data:
+  jarvis-personal-data:
   jarvis-logs:

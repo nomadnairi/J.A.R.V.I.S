@@ -71,6 +71,28 @@ docker compose down -v            # also deletes data + logs volumes
 > **Only want the API** (no Telegram bot)? Leave `TELEGRAM_BOT_TOKEN` empty and
 > run just that service: `docker compose up -d --build api`.
 
+### Two bots: public (sales) + personal (yours)
+
+The same image runs as many bots as you like — you just give each a different
+token and env file. A common setup is **two**:
+
+- **Public bot** — your sales/user bot (the default `bot` service): subscription
+  gate on, `/buy` enabled, customers use it, and you manage them via the admin
+  panel. Configured in `.env`.
+- **Personal bot** — your own private J.A.R.V.I.S. with a **separate token** and
+  its own memory: no gate, no sales, just you.
+
+```bash
+cp .env.personal.example .env.personal   # second @BotFather token, your id
+docker compose --profile personal up -d bot-personal
+```
+
+Both are the same code, isolated by token and by data volume — the public bot's
+customers and your personal chats never mix. Anyone who clones the repo only
+gets the **code**: your tokens, database and admin id live in your `.env` files
+(never committed), so they can only run their own empty instance, never touch
+yours.
+
 ### Build options
 
 - **Smaller image without voice:** `ffmpeg` is only needed for local Whisper
