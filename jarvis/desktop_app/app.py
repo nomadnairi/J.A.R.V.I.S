@@ -62,36 +62,67 @@ def run_app() -> int:
             self.client: JarvisApiClient | None = None
             loc = config.language
             self.setWindowTitle(tr("login_title", loc))
-            self.setMinimumWidth(420)
+            self.setMinimumWidth(460)
 
-            layout = QVBoxLayout(self)
+            outer = QVBoxLayout(self)
+            outer.setContentsMargins(28, 28, 28, 28)
+
+            card = QWidget()
+            card.setObjectName("Card")
+            layout = QVBoxLayout(card)
+            layout.setContentsMargins(28, 26, 28, 26)
+            layout.setSpacing(12)
+            outer.addWidget(card)
+
+            wordmark = QLabel("J.A.R.V.I.S.")
+            wordmark.setObjectName("Wordmark")
+            title = QLabel(tr("login_title", loc))
+            title.setObjectName("Title")
+            layout.addWidget(wordmark)
+            layout.addWidget(title)
+            layout.addSpacing(6)
 
             self.local_radio = QRadioButton(tr("mode_local", loc))
             self.remote_radio = QRadioButton(tr("mode_remote", loc))
             (self.remote_radio if config.mode == "remote"
              else self.local_radio).setChecked(True)
             layout.addWidget(self.local_radio)
-            layout.addWidget(QLabel(tr("login_local_hint", loc)))
+            local_hint = QLabel(tr("login_local_hint", loc))
+            local_hint.setObjectName("Hint")
+            local_hint.setWordWrap(True)
+            layout.addWidget(local_hint)
             layout.addWidget(self.remote_radio)
-            layout.addWidget(QLabel(tr("login_remote_hint", loc)))
+            remote_hint = QLabel(tr("login_remote_hint", loc))
+            remote_hint.setObjectName("Hint")
+            remote_hint.setWordWrap(True)
+            layout.addWidget(remote_hint)
 
             form = QFormLayout()
+            form.setSpacing(10)
             self.server = QLineEdit(config.server_url or "http://localhost:8000")
             self.user = QLineEdit(config.username)
             self.password = QLineEdit()
             self.password.setEchoMode(QLineEdit.EchoMode.Password)
+            for field in (self.server, self.user, self.password):
+                field.setMinimumHeight(40)
             form.addRow(tr("server_url", loc), self.server)
             form.addRow(tr("username", loc), self.user)
             form.addRow(tr("password", loc), self.password)
+            layout.addSpacing(6)
             layout.addLayout(form)
+            layout.addSpacing(8)
 
             buttons = QHBoxLayout()
+            buttons.setSpacing(10)
             sign_in = QPushButton(tr("sign_in", loc))
+            sign_in.setObjectName("Primary")
+            sign_in.setMinimumHeight(44)
             local = QPushButton(tr("continue_local", loc))
+            local.setMinimumHeight(44)
             sign_in.clicked.connect(self._sign_in)
             local.clicked.connect(self._local)
-            buttons.addWidget(sign_in)
-            buttons.addWidget(local)
+            buttons.addWidget(sign_in, stretch=1)
+            buttons.addWidget(local, stretch=1)
             layout.addLayout(buttons)
 
         def _local(self) -> None:
@@ -130,7 +161,8 @@ def run_app() -> int:
             loc = config.language
 
             self.setWindowTitle(tr("app_title", loc))
-            self.resize(980, 680)
+            self.resize(1040, 720)
+            self.setMinimumSize(880, 600)
 
             tabs = QTabWidget()
             tabs.addTab(self._chat_tab(), tr("tab_chat", loc))
@@ -140,12 +172,47 @@ def run_app() -> int:
             tabs.addTab(self._integrations_tab(), tr("tab_integrations", loc))
             tabs.addTab(self._memory_tab(), tr("tab_memory", loc))
             tabs.addTab(self._logs_tab(), tr("tab_logs", loc))
-            self.setCentralWidget(tabs)
+
+            container = QWidget()
+            root = QVBoxLayout(container)
+            root.setContentsMargins(0, 0, 0, 0)
+            root.setSpacing(0)
+            root.addWidget(self._header())
+            body = QWidget()
+            body_layout = QVBoxLayout(body)
+            body_layout.setContentsMargins(18, 8, 18, 18)
+            body_layout.addWidget(tabs)
+            root.addWidget(body, stretch=1)
+            self.setCentralWidget(container)
 
             self.voice_controller = None
             if config.mode == "local":
                 self._start_local_engine()
                 self._init_voice()
+
+        def _header(self) -> "QWidget":
+            bar = QWidget()
+            bar.setObjectName("Header")
+            bar.setFixedHeight(64)
+            row = QHBoxLayout(bar)
+            row.setContentsMargins(20, 0, 20, 0)
+
+            wordmark = QLabel("J.A.R.V.I.S.")
+            wordmark.setObjectName("Wordmark")
+            row.addWidget(wordmark)
+
+            mode_text = ("● local" if config.mode == "local"
+                        else f"● {config.username or 'account'}")
+            mode = QLabel(mode_text)
+            mode.setObjectName("Subtle")
+            row.addSpacing(14)
+            row.addWidget(mode)
+
+            row.addStretch(1)
+            status = QLabel("● online")
+            status.setObjectName("StatusDot")
+            row.addWidget(status)
+            return bar
 
         # -- engine -----------------------------------------------------------
 
@@ -199,20 +266,38 @@ def run_app() -> int:
 
             self.transcript = QTextEdit()
             self.transcript.setReadOnly(True)
+            self.transcript.setFrameStyle(0)
             layout.addWidget(self.transcript, stretch=1)
+            self._messages: list[tuple[str, str]] = []
+            self._pending = False
 
             row = QHBoxLayout()
+            row.setSpacing(10)
             self.input = QLineEdit()
+            self.input.setPlaceholderText("Message J.A.R.V.I.S. …")
+            self.input.setMinimumHeight(44)
             self.input.returnPressed.connect(self._send)
             send = QPushButton(tr("send", loc))
+            send.setObjectName("Primary")
+            send.setMinimumHeight(44)
             send.clicked.connect(self._send)
             row.addWidget(self.input, stretch=1)
             row.addWidget(send)
             layout.addLayout(row)
             return widget
 
+        def _render_chat(self) -> None:
+            from jarvis.desktop_app.theme import bubble_html
+            html = "".join(bubble_html(r, t) for r, t in self._messages)
+            if self._pending:
+                html += bubble_html("system", tr("thinking", config.language))
+            self.transcript.setHtml(html)
+            bar = self.transcript.verticalScrollBar()
+            bar.setValue(bar.maximum())
+
         def _append_system(self, text: str) -> None:
-            self.transcript.append(f"<i>{text}</i>")
+            self._messages.append(("system", text))
+            self._render_chat()
 
         def _change_language(self) -> None:
             config.language = self.lang_box.currentData()
@@ -227,8 +312,9 @@ def run_app() -> int:
                 return
             loc = config.language
             self.input.clear()
-            self.transcript.append(f"<b>{tr('you', loc)}:</b> {text}")
-            self._append_system(tr("thinking", loc))
+            self._messages.append(("user", text))
+            self._pending = True
+            self._render_chat()
 
             self._streaming = False
             if config.mode == "remote" and self.client is not None:
@@ -257,33 +343,25 @@ def run_app() -> int:
             else:
                 self.bridge.done.emit("", tr("not_signed_in", loc))
 
-        def _drop_thinking_line(self) -> None:
-            loc = config.language
-            cursor = self.transcript.textCursor()
-            cursor.movePosition(cursor.MoveOperation.End)
-            cursor.select(cursor.SelectionType.BlockUnderCursor)
-            if tr("thinking", loc) in cursor.selectedText():
-                cursor.removeSelectedText()
-
         def _on_chunk(self, text: str) -> None:
             if not self._streaming:
                 self._streaming = True
-                self._drop_thinking_line()
-                self.transcript.append("<b>J.A.R.V.I.S.:</b> ")
-            cursor = self.transcript.textCursor()
-            cursor.movePosition(cursor.MoveOperation.End)
-            cursor.insertText(text)
-            self.transcript.setTextCursor(cursor)
+                self._pending = False
+                self._messages.append(("assistant", ""))
+            role, prev = self._messages[-1]
+            self._messages[-1] = ("assistant", prev + text)
+            self._render_chat()
 
         def _on_reply(self, reply: str, error: str) -> None:
             loc = config.language
-            if not self._streaming:
-                self._drop_thinking_line()
+            self._pending = False
+            was_streaming = self._streaming
             self._streaming = False
             if error:
                 self._append_system(tr("error", loc, error=error))
-            elif reply:
-                self.transcript.append(f"<b>J.A.R.V.I.S.:</b> {reply}")
+            elif reply and not was_streaming:
+                self._messages.append(("assistant", reply))
+                self._render_chat()
 
         # -- voice tab -----------------------------------------------------
 
@@ -297,6 +375,7 @@ def run_app() -> int:
             layout.addWidget(self.voice_status)
 
             self.voice_button = QPushButton(tr("voice_record", loc))
+            self.voice_button.setObjectName("Record")
             self.voice_button.setEnabled(False)
             self.voice_button.setMinimumHeight(64)
             self.voice_button.clicked.connect(self._toggle_recording)
@@ -421,9 +500,10 @@ def run_app() -> int:
             self.voice_output.append(
                 f"<b>{tr('voice_you_said', loc)}:</b> {transcript}")
             self.voice_output.append(f"<b>J.A.R.V.I.S.:</b> {reply}")
-            self.transcript.append(
-                f"<b>{tr('you', loc)}:</b> 🎙 {transcript}")
-            self.transcript.append(f"<b>J.A.R.V.I.S.:</b> {reply}")
+            # Mirror the exchange into the chat transcript.
+            self._messages.append(("user", f"🎙 {transcript}"))
+            self._messages.append(("assistant", reply))
+            self._render_chat()
             if audio_path:
                 self._play_audio(audio_path)
 
@@ -461,6 +541,8 @@ def run_app() -> int:
             form.addRow(tr("openai_key", loc), self.openai_edit)
 
             save = QPushButton(tr("save", loc))
+            save.setObjectName("Primary")
+            save.setMinimumHeight(40)
             save.clicked.connect(self._save_assistant)
             form.addRow(save)
             return widget
@@ -502,6 +584,8 @@ def run_app() -> int:
             layout.addLayout(form)
 
             save = QPushButton(tr("save", loc))
+            save.setObjectName("Primary")
+            save.setMinimumHeight(40)
             save.clicked.connect(self._save_capabilities)
             layout.addWidget(save)
             layout.addStretch(1)
@@ -546,6 +630,8 @@ def run_app() -> int:
             layout.addWidget(self.tg_send)
 
             save = QPushButton(tr("save", loc))
+            save.setObjectName("Primary")
+            save.setMinimumHeight(40)
             save.clicked.connect(self._save_integrations)
             layout.addWidget(save)
             layout.addStretch(1)
@@ -639,8 +725,15 @@ def run_app() -> int:
                 self.engine_thread.stop()
             event.accept()
 
+    from PySide6.QtGui import QFont
+
+    from jarvis.desktop_app.theme import stylesheet
+
     app = QApplication([])
     app.setApplicationName("JARVIS")
+    app.setStyle("Fusion")
+    app.setFont(QFont("Segoe UI", 10))
+    app.setStyleSheet(stylesheet())
 
     client: JarvisApiClient | None = None
     if config.mode == "remote" and config.auth_token and config.server_url:
