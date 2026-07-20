@@ -579,28 +579,81 @@ async def run(settings: Settings | None = None) -> None:
                 logger.warning("Voice synthesis failed: %s", exc)
 
     async def _set_commands() -> None:
-        # Fully button-driven — no user commands at all. /start is implicit and
-        # opens the menu; everything else is inline buttons.
-        await bot.set_my_commands([])
+        # Fully button-driven — no user commands at all. Telegram caches the
+        # blue "menu" button per client, and older deployments (or a manual
+        # @BotFather /setcommands) may have populated it, so clear it
+        # explicitly for every public scope, not just the default one.
+        from aiogram.types import (
+            BotCommandScopeAllGroupChats,
+            BotCommandScopeAllPrivateChats,
+            BotCommandScopeChat,
+            BotCommandScopeDefault,
+        )
+        for scope in (BotCommandScopeDefault(),
+                    BotCommandScopeAllPrivateChats(),
+                    BotCommandScopeAllGroupChats()):
+            try:
+                await bot.delete_my_commands(scope=scope)
+            except Exception as exc:  # noqa: BLE001 - non-fatal
+                logger.debug("Clearing commands for %s failed: %s", scope, exc)
 
         # Admins additionally see the owner commands — only in their own chat.
-        from aiogram.types import BotCommandScopeChat
         admin_extra = [
             BotCommand(command="admin", description=t("cmd_admin", DEFAULT_LOCALE)),
             BotCommand(command="admin_sales",
                     description=t("cmd_admin_sales", DEFAULT_LOCALE)),
         ]
-        base: list = []
         for admin_id in admins:
             try:
                 await bot.set_my_commands(
-                    base + admin_extra,
-                    scope=BotCommandScopeChat(chat_id=admin_id),
-                )
+                    admin_extra, scope=BotCommandScopeChat(chat_id=admin_id))
             except Exception as exc:  # noqa: BLE001 - admin hasn't /start-ed yet
                 logger.debug("Admin menu for %s skipped: %s", admin_id, exc)
 
+    async def _startup_report() -> None:
+        """Log exactly what this process is running, so the deployed state is
+        never a guess: version, whether the subscription gate is active, and —
+        if it is — whether the bot can actually check membership."""
+        from jarvis import __version__
+        try:
+            me = await bot.get_me()
+            who = f"@{me.username}"
+        except Exception as exc:  # noqa: BLE001
+            who = f"<unknown: {exc}>"
+        logger.info("J.A.R.V.I.S. bot %s starting as %s", __version__, who)
+        logger.info("Mode: button-only (no user commands). "
+                    "billing=%s auth=%s voice=%s",
+                    billing is not None, license_service is not None,
+                    voice is not None)
+
+        channel = settings.telegram_required_channel
+        if not channel:
+            logger.warning(
+                "SUBSCRIPTION GATE: OFF — TELEGRAM_REQUIRED_CHANNEL is not set, "
+                "so everyone can use the bot. Set it in .env (e.g. @your_channel) "
+                "and make the bot an admin of that channel to enable the gate.")
+            return
+        logger.info("SUBSCRIPTION GATE: ON — required channel %s", channel)
+        try:
+            # If the bot isn't an admin of the channel, get_chat_member for
+            # arbitrary users fails and the gate would block everyone — surface
+            # that now instead of at first use.
+            member = await bot.get_chat_member(channel, (await bot.get_me()).id)
+            if member.status not in ("administrator", "creator"):
+                logger.warning(
+                    "SUBSCRIPTION GATE: the bot is NOT an admin of %s "
+                    "(status=%s). Membership checks will fail and block users. "
+                    "Add the bot as a channel admin.", channel, member.status)
+            else:
+                logger.info("SUBSCRIPTION GATE: verified — bot is admin of %s.",
+                            channel)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "SUBSCRIPTION GATE: could not verify channel %s (%s). Ensure the "
+                "channel exists and the bot is an admin of it.", channel, exc)
+
     await _set_commands()
+    await _startup_report()
     logger.info("Telegram bot starting (long-polling)…")
     try:
         # Keep the sales bot up 24/7: if polling dies (network drop, Telegram

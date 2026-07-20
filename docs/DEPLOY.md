@@ -61,6 +61,21 @@ git pull
 docker compose up -d --build
 ```
 
+> **Changes not showing up?** A stale image or a container that was never
+> recreated is the usual cause. Use the bulletproof redeploy script — it pulls,
+> rebuilds with **no cache**, force-recreates the containers, and prints the
+> bot's startup report (version + whether the subscription gate is ON):
+>
+> ```bash
+> bash deploy/redeploy.sh
+> ```
+>
+> On startup the bot logs a line beginning `SUBSCRIPTION GATE:` — `ON` with the
+> channel name if `TELEGRAM_REQUIRED_CHANNEL` is set and the bot is a channel
+> admin, or `OFF` if the gate isn't configured. If it says OFF, the gate simply
+> isn't enabled in the environment that's running — no code change turns it on
+> until that variable is set.
+
 Stop / remove:
 
 ```bash
