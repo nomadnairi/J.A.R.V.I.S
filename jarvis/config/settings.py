@@ -205,6 +205,16 @@ class Settings(BaseSettings):
     plan_plus_price_stars: int = Field(default=2500, gt=0)
     plan_pro_price_stars: int = Field(default=8000, gt=0)
 
+    # --- Image generation (Plus/Pro feature) ---
+    #: Enable the bot's image mode (needs an OpenAI-compatible Images API key).
+    image_enabled: bool = False
+    #: Image model, size, and optional dedicated key/endpoint. The key/endpoint
+    #: fall back to the OpenAI ones when left blank.
+    image_model: str = "dall-e-3"
+    image_size: str = "1024x1024"
+    image_api_key: str = ""
+    image_base_url: str = ""
+
     # --- Telegram bot ---
     telegram_bot_token: str = Field(default="", description="Bot token from @BotFather.")
     #: Optional comma-separated allowlist of Telegram user IDs (empty = open).

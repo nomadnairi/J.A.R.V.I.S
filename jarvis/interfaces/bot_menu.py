@@ -77,7 +77,8 @@ def plan_status(locale: str, plan, used_today: int) -> str:
 def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False,
                 accounts_on: bool = False, multi_model: bool = False,
                 voice_on: bool = False, channel: str = "", name: str = "Sir",
-                plan=None, used_today: int = 0) -> tuple[str, Rows]:
+                plan=None, used_today: int = 0,
+                image_on: bool = False) -> tuple[str, Rows]:
     header = (
         f"🤖 <b>J.A.R.V.I.S.</b>\n"
         f"<i>{t('menu_greeting', locale, name=name)}</i>"
@@ -94,6 +95,8 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
     third = [_b(t("menu_language", locale), "language")]
     if voice_on:
         third.insert(0, _b(t("menu_voice", locale), "voice"))
+    if image_on:
+        third.insert(0, _b(t("menu_image", locale), "image"))
     rows.append(third)
     if billing_on:
         rows.append([_b(t("menu_plans", locale), "plans"),

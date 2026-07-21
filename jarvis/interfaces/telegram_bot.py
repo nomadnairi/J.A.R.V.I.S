@@ -213,6 +213,12 @@ async def run(settings: Settings | None = None) -> None:
     await engine.start()
     prefs = UserPreferences(settings.memory_db_path)
     voice = VoiceService.from_settings(settings) if settings.voice_enabled else None
+    image_service = None
+    if settings.image_enabled:
+        from jarvis.media import ImageService
+        image_service = ImageService.from_settings(settings)
+        if not image_service.available():
+            image_service = None
     license_service = None
     if settings.auth_enabled:
         from jarvis.licensing import LicenseService
@@ -284,6 +290,7 @@ async def run(settings: Settings | None = None) -> None:
             name=settings.user_name,
             plan=_user_plan(user_id) if billing is not None else None,
             used_today=usage.stats(user_id)["messages_today"],
+            image_on=image_service is not None,
         )
 
     async def _is_subscribed(user_id: int) -> bool:
@@ -327,6 +334,26 @@ async def run(settings: Settings | None = None) -> None:
         text, rows = limit_screen(locale, plan)
         await message.answer(text, reply_markup=_markup(rows))
         return False
+
+    async def _make_image(message: "Message", prompt: str, locale: str) -> None:
+        """Generate an image from ``prompt`` and send it back."""
+        if image_service is None:
+            await message.answer(t("image_locked", locale))
+            return
+        from aiogram.enums import ChatAction as _CA
+        from aiogram.types import BufferedInputFile
+        await message.bot.send_chat_action(message.chat.id, _CA.UPLOAD_PHOTO)
+        await message.answer(t("image_generating", locale))
+        try:
+            png = await image_service.generate(prompt)
+        except Exception as exc:  # noqa: BLE001 - surface a clean error
+            logger.error("Image generation failed: %s", exc)
+            await message.answer(t("image_failed", locale, error=str(exc)),
+                                parse_mode=None)
+            return
+        usage.record(message.from_user.id, tokens=0)  # counts toward the daily limit
+        await message.answer_photo(
+            BufferedInputFile(png, "jarvis.png"), caption=f"🎨 {prompt[:900]}")
 
     @dp.message(CommandStart())
     async def _start(message: "Message") -> None:
@@ -468,6 +495,14 @@ async def run(settings: Settings | None = None) -> None:
             sess.scratch.pop("model_profile", None)
             await _edit(callback, *bm.screen_catalog(
                 locale, tier, model.slug, idx // mc.PAGE_SIZE))
+        elif action == "image":
+            # Image generation is a Plus/Pro feature; free users get the upsell.
+            plan = _user_plan(user.id)
+            if not plan.images:
+                await _show_plans(callback, *bm.screen_plans(locale, plans, plan.name))
+                return
+            engine.session(session_id_for(user.id)).scratch["awaiting_image"] = True
+            await callback.message.answer(t("image_ask", locale))
         elif action == "memory":
             await _edit(callback, *bm.screen_memory(locale))
         elif action == "help":
@@ -654,6 +689,11 @@ async def run(settings: Settings | None = None) -> None:
             await _show_gate(message, locale)
             return
         if not await _within_limit(message, message.from_user.id, locale):
+            return
+        # If the user tapped "Image", this message is a drawing prompt.
+        session = engine.session(session_id_for(message.from_user.id))
+        if session.scratch.pop("awaiting_image", False):
+            await _make_image(message, message.text, locale)
             return
         await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
         reply = await generate_reply(
