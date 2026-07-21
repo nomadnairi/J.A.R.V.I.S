@@ -22,7 +22,7 @@ class StubProvider(LLMProvider):
         return LLMResult(text=f"reply from {self.label}", model=self.model,
                         provider=self.label)
 
-    async def stream(self, messages, system=None):
+    async def stream(self, messages, system=None, model=None):
         yield f"[{self.label}] "
         yield "hello"
 

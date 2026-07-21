@@ -120,14 +120,16 @@ class OpenAIProvider(LLMProvider):
         self,
         messages: list[dict],
         system: str | None = None,
+        model: str | None = None,
     ) -> AsyncIterator[str]:
         if not self.api_key:
             raise LLMConfigError("Missing OpenAI API key.")
 
         client = self._ensure_client()
+        use_model = model or self.model
         try:
             stream = await client.chat.completions.create(  # type: ignore[attr-defined]
-                model=self.model,
+                model=use_model,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
                 messages=self._with_system(messages, system),
@@ -142,7 +144,7 @@ class OpenAIProvider(LLMProvider):
         except Exception as exc:  # noqa: BLE001
             raise LLMRequestError(
                 f"OpenAI stream failed: {exc}",
-                details={"model": self.model},
+                details={"model": use_model},
             ) from exc
 
     def continuation_messages(

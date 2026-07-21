@@ -193,10 +193,11 @@ class JarvisEngine:
         await self.state.transition(AssistantState.THINKING)
         await self.bus.emit(EventType.LLM_REQUEST, source=self.settings.llm_provider)
 
+        model_id, profile = self._model_selection(session)
         chunks: list[str] = []
         async for chunk in self.llm.stream(
             session.conversation.to_provider_format(), system=system,
-            profile=session.scratch.get("model_profile"),
+            profile=profile, model=model_id,
         ):
             chunks.append(chunk)
             yield chunk
@@ -207,6 +208,17 @@ class JarvisEngine:
                                 semantic=True)
         await self.bus.emit(EventType.RESPONSE_READY, source=self.settings.llm_provider)
         await self.state.transition(AssistantState.IDLE)
+
+    def _model_selection(self, session) -> tuple[str | None, str | None]:
+        """Resolve ``(model, profile)`` from the session scratch.
+
+        A specific catalog model (``model_id``) is routed through the
+        OpenRouter profile; otherwise only the user's chosen profile applies.
+        """
+        model_id = session.scratch.get("model_id")
+        if model_id:
+            return model_id, "openrouter"
+        return None, session.scratch.get("model_profile")
 
     # -- core handler (wrapped by the pipeline) ----------------------------
 
@@ -268,7 +280,9 @@ class JarvisEngine:
             language=self._language(session),
         )
         tools = self.skills.tool_specs()
-        model = self.router.model_for(request.text)  # None → provider default
+        model_id, profile = self._model_selection(session)
+        # A specific catalog model wins over the tier router.
+        model = model_id or self.router.model_for(request.text)
         messages = session.conversation.to_provider_format()
         total_tokens = 0
         result = None
@@ -278,7 +292,7 @@ class JarvisEngine:
             for _ in range(self.settings.max_tool_rounds):
                 result = await self.llm.complete(
                     messages, system=system, tools=tools, model=model,
-                    profile=session.scratch.get("model_profile"),
+                    profile=profile,
                 )
                 total_tokens += result.total_tokens
 

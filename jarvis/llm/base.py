@@ -87,10 +87,12 @@ class LLMProvider(ABC):
         self,
         messages: list[dict],
         system: str | None = None,
+        model: str | None = None,
     ) -> AsyncIterator[str]:
         """Yield the completion as a stream of text chunks.
 
-        Streaming does not support tool calls; use :meth:`complete` for those.
+        ``model`` optionally overrides the provider's default model for this
+        call. Streaming does not support tool calls; use :meth:`complete`.
         """
         raise NotImplementedError
         yield ""  # pragma: no cover - marks this as an async generator

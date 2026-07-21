@@ -219,16 +219,18 @@ class LLMClient:
         messages: list[dict],
         system: str | None = None,
         profile: str | None = None,
+        model: str | None = None,
     ) -> AsyncIterator[str]:
         """Stream a completion, falling back before the first chunk only.
 
         Once a provider has produced its first chunk we are committed to it;
         mid-stream fallback is not possible. ``profile`` pins the stream to one
-        configured provider (the user's chosen AI).
+        configured provider (the user's chosen AI); ``model`` overrides that
+        provider's default model (a specific catalog model).
         """
         selected = self._select(profile)
         if selected is not None:
-            async for chunk in selected.stream(messages, system):
+            async for chunk in selected.stream(messages, system, model):
                 yield chunk
             return
 
@@ -237,7 +239,7 @@ class LLMClient:
             if not provider.is_available():
                 errors.append(f"{provider.name}: no credentials")
                 continue
-            agen = provider.stream(messages, system)
+            agen = provider.stream(messages, system, model)
             try:
                 first = await agen.__anext__()
             except StopAsyncIteration:

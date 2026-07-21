@@ -11,6 +11,7 @@ Callback scheme (kept short — Telegram caps callback_data at 64 bytes):
     m:main  m:profile  m:usage  m:subscription  m:settings  m:memory
     m:model  m:language  m:help  m:link  m:plans  m:reset  m:forget  m:admin
     m:setmodel:<name|auto>   m:setlang:<locale>   m:buy[:<tier>]
+    m:catalog[:<page>]   m:setcat:<index>
 """
 
 from __future__ import annotations
@@ -182,13 +183,42 @@ def gate_screen(locale: str, channel: str) -> tuple[str, Rows]:
     return text, rows
 
 
-def screen_settings(locale: str, *, multi_model: bool) -> tuple[str, Rows]:
+def screen_settings(locale: str, *, multi_model: bool,
+                    catalog_on: bool = False) -> tuple[str, Rows]:
     text = f"⚙️ <b>{t('settings_title', locale)}</b>\n\n{t('settings_hint', locale)}"
     rows: Rows = []
+    if catalog_on:
+        rows.append([_b(t("menu_catalog", locale), "catalog")])
     if multi_model:
         rows.append([_b(t("menu_model", locale), "model")])
     rows.append([_b(t("menu_language", locale), "language")])
     rows.append(_back(locale))
+    return text, rows
+
+
+def screen_catalog(locale: str, user_tier: str, current_slug: str,
+                page: int = 0) -> tuple[str, Rows]:
+    """A paginated, tier-gated catalog of models (served via OpenRouter)."""
+    from jarvis.interfaces import model_catalog as mc
+
+    text = (f"🗂 <b>{t('catalog_title', locale)}</b>\n\n"
+            f"{t('catalog_hint', locale)}")
+    rows: Rows = []
+    for idx, model in mc.page(page):
+        locked = not mc.unlocked(model, user_tier)
+        mark = "✅ " if model.slug == current_slug else ("🔒 " if locked else "")
+        label = f"{mark}{model.emoji} {model.name}"
+        if model.note:
+            label += f" · {model.note}"
+        rows.append([_b(label, f"setcat:{idx}")])
+    pages = mc.page_count()
+    if pages > 1:
+        rows.append([
+            _b("◀️", f"catalog:{(page - 1) % pages}"),
+            _b(f"{page + 1}/{pages}", f"catalog:{page}"),
+            _b("▶️", f"catalog:{(page + 1) % pages}"),
+        ])
+    rows.append([_b(t("menu_back", locale), "settings")])
     return text, rows
 
 

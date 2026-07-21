@@ -86,6 +86,7 @@ async def generate_reply(engine: JarvisEngine, user_id: int, text: str,
                         locale: str | None = None, *,
                         match_input_language: bool = False,
                         model_profile: str | None = None,
+                        model_id: str | None = None,
                         usage=None) -> str:
     """Produce the assistant's reply for a Telegram user (testable core).
 
@@ -107,6 +108,10 @@ async def generate_reply(engine: JarvisEngine, user_id: int, text: str,
         session.scratch["model_profile"] = model_profile
     elif model_profile == "":  # explicit "Auto" — unpin any earlier model
         session.scratch.pop("model_profile", None)
+    if model_id:
+        session.scratch["model_id"] = model_id
+    else:
+        session.scratch.pop("model_id", None)
     try:
         response = await engine.process(Request(text=text, session_id=session_id))
         if usage is not None:
@@ -371,6 +376,12 @@ async def run(settings: Settings | None = None) -> None:
         except Exception:  # noqa: BLE001 - message unchanged / too old
             await msg.answer(text, reply_markup=_markup(rows))
 
+    def _settings_screen(loc: str):
+        from jarvis.interfaces.bot_menu import screen_settings
+        profiles = engine.llm.list_profiles()
+        return screen_settings(loc, multi_model=len(profiles) > 1,
+                            catalog_on="openrouter" in profiles)
+
     async def _show_plans(callback: "CallbackQuery", text: str, rows) -> None:
         """Render the Tariffs screen as a banner photo + caption + buttons."""
         msg = callback.message
@@ -433,8 +444,30 @@ async def run(settings: Settings | None = None) -> None:
         elif action == "voice":
             await _edit(callback, *bm.screen_voice(locale))
         elif action == "settings":
-            await _edit(callback, *bm.screen_settings(
-                locale, multi_model=len(engine.llm.list_profiles()) > 1))
+            await _edit(callback, *_settings_screen(locale))
+        elif action == "catalog":
+            page = int(parts[2]) if len(parts) > 2 else 0
+            await _edit(callback, *bm.screen_catalog(
+                locale, _user_plan(user.id).name,
+                prefs.get_model_id(user.id) or "", page))
+        elif action == "setcat":
+            from jarvis.interfaces import model_catalog as mc
+            idx = int(parts[2])
+            model = mc.CATALOG[idx] if 0 <= idx < len(mc.CATALOG) else None
+            if model is None:
+                return
+            tier = _user_plan(user.id).name
+            if not mc.unlocked(model, tier):
+                # Locked for this tier — send them to the Tariffs screen.
+                await _show_plans(callback, *bm.screen_plans(locale, plans, tier))
+                return
+            prefs.set_model_id(user.id, model.slug)
+            prefs.set_model(user.id, "")  # a specific model supersedes a profile
+            sess = engine.session(session_id_for(user.id))
+            sess.scratch["model_id"] = model.slug
+            sess.scratch.pop("model_profile", None)
+            await _edit(callback, *bm.screen_catalog(
+                locale, tier, model.slug, idx // mc.PAGE_SIZE))
         elif action == "memory":
             await _edit(callback, *bm.screen_memory(locale))
         elif action == "help":
@@ -464,20 +497,21 @@ async def run(settings: Settings | None = None) -> None:
         elif action == "setmodel":
             choice = parts[2]
             session = engine.session(session_id_for(user.id))
+            # Picking a profile supersedes any specific catalog model.
+            prefs.set_model_id(user.id, "")
+            session.scratch.pop("model_id", None)
             if choice == "auto":
                 prefs.set_model(user.id, "")
                 session.scratch.pop("model_profile", None)  # unpin now
             else:
                 prefs.set_model(user.id, choice)
                 session.scratch["model_profile"] = choice
-            await _edit(callback, *bm.screen_settings(
-                locale, multi_model=len(engine.llm.list_profiles()) > 1))
+            await _edit(callback, *_settings_screen(locale))
         elif action == "setlang":
             new_locale = normalize_locale(parts[2])
             prefs.set_language(user.id, new_locale)
             engine.session(session_id_for(user.id)).scratch["language"] = new_locale
-            await _edit(callback, *bm.screen_settings(
-                new_locale, multi_model=len(engine.llm.list_profiles()) > 1))
+            await _edit(callback, *_settings_screen(new_locale))
         elif action in ("reset", "forget"):
             # Ask before wiping — these are destructive.
             await _edit(callback, *bm.screen_confirm(locale, action))
@@ -625,6 +659,7 @@ async def run(settings: Settings | None = None) -> None:
         reply = await generate_reply(
             engine, message.from_user.id, message.text, locale,
             model_profile=prefs.get_model(message.from_user.id),
+            model_id=prefs.get_model_id(message.from_user.id),
             usage=usage,
         )
         # LLM output is plain text — disable HTML parsing to avoid entity errors.
@@ -663,6 +698,7 @@ async def run(settings: Settings | None = None) -> None:
             engine, message.from_user.id, transcription.text, locale,
             match_input_language=True,
             model_profile=prefs.get_model(message.from_user.id),
+            model_id=prefs.get_model_id(message.from_user.id),
             usage=usage,
         )
         for chunk in split_message(reply):

@@ -31,12 +31,15 @@ class UserPreferences:
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(_SCHEMA)
-        # Add the model-profile column to databases created before it existed.
+        # Add columns to databases created before they existed.
         columns = {row["name"] for row in
                 self._conn.execute("PRAGMA table_info(user_prefs)")}
         if "model_profile" not in columns:
             self._conn.execute(
                 "ALTER TABLE user_prefs ADD COLUMN model_profile TEXT")
+        if "model_id" not in columns:
+            self._conn.execute(
+                "ALTER TABLE user_prefs ADD COLUMN model_id TEXT")
         self._conn.commit()
 
     def get_language(self, user_id: int | str) -> str | None:
@@ -71,6 +74,24 @@ class UserPreferences:
                 "ON CONFLICT(user_id) DO UPDATE SET "
                 "model_profile = excluded.model_profile",
                 (str(user_id), profile),
+            )
+            self._conn.commit()
+
+    def get_model_id(self, user_id: int | str) -> str | None:
+        """The user's specific chosen model (OpenRouter slug), if any."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT model_id FROM user_prefs WHERE user_id = ?",
+                (str(user_id),),
+            ).fetchone()
+        return row["model_id"] if row and row["model_id"] else None
+
+    def set_model_id(self, user_id: int | str, model_id: str) -> None:
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO user_prefs (user_id, model_id) VALUES (?, ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET model_id = excluded.model_id",
+                (str(user_id), model_id),
             )
             self._conn.commit()
 
