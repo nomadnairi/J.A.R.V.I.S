@@ -194,10 +194,12 @@ class JarvisEngine:
         await self.bus.emit(EventType.LLM_REQUEST, source=self.settings.llm_provider)
 
         model_id, profile = self._model_selection(session)
+        override = self._byok_provider(session)
         chunks: list[str] = []
         async for chunk in self.llm.stream(
             session.conversation.to_provider_format(), system=system,
-            profile=profile, model=model_id,
+            profile=profile, model=None if override else model_id,
+            override=override,
         ):
             chunks.append(chunk)
             yield chunk
@@ -219,6 +221,23 @@ class JarvisEngine:
         if model_id:
             return model_id, "openrouter"
         return None, session.scratch.get("model_profile")
+
+    def _byok_provider(self, session):
+        """Build an ad-hoc provider from the user's own key (BYOK), or None."""
+        byok = session.scratch.get("byok")
+        if not byok or not byok.get("key"):
+            return None
+        from jarvis.llm.providers import PROVIDER_REGISTRY
+        cls = PROVIDER_REGISTRY.get(byok.get("provider", ""))
+        if cls is None:
+            return None
+        return cls(
+            api_key=byok["key"],
+            model=byok.get("model") or "",
+            temperature=self.settings.llm_temperature,
+            max_tokens=self.settings.llm_max_tokens,
+            base_url=byok.get("base_url", ""),
+        )
 
     # -- core handler (wrapped by the pipeline) ----------------------------
 
@@ -281,8 +300,9 @@ class JarvisEngine:
         )
         tools = self.skills.tool_specs()
         model_id, profile = self._model_selection(session)
-        # A specific catalog model wins over the tier router.
-        model = model_id or self.router.model_for(request.text)
+        override = self._byok_provider(session)
+        # A specific catalog model wins over the tier router; BYOK uses its own.
+        model = None if override else (model_id or self.router.model_for(request.text))
         messages = session.conversation.to_provider_format()
         total_tokens = 0
         result = None
@@ -292,7 +312,7 @@ class JarvisEngine:
             for _ in range(self.settings.max_tool_rounds):
                 result = await self.llm.complete(
                     messages, system=system, tools=tools, model=model,
-                    profile=profile,
+                    profile=profile, override=override,
                 )
                 total_tokens += result.total_tokens
 

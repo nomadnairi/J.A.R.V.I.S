@@ -195,7 +195,28 @@ def screen_settings(locale: str, *, multi_model: bool,
     if multi_model:
         rows.append([_b(t("menu_model", locale), "model")])
     rows.append([_b(t("menu_language", locale), "language")])
+    rows.append([_b(t("menu_byok", locale), "byok")])
     rows.append(_back(locale))
+    return text, rows
+
+
+BYOK_PROVIDERS = (("openai", "🔷 OpenAI"), ("openrouter", "🌐 OpenRouter"),
+                ("anthropic", "🧠 Anthropic"))
+
+
+def screen_byok(locale: str, current_provider: str | None = None) -> tuple[str, Rows]:
+    """Bring-your-own-key: connect a personal provider key (removes limits)."""
+    status = (t("byok_active", locale, provider=current_provider)
+            if current_provider else t("byok_none", locale))
+    text = (f"🔑 <b>{t('byok_title', locale)}</b>\n\n"
+            f"{t('byok_hint', locale)}\n\n{status}")
+    rows: Rows = []
+    for prov, label in BYOK_PROVIDERS:
+        mark = "✅ " if prov == current_provider else ""
+        rows.append([_b(mark + label, f"byokset:{prov}")])
+    if current_provider:
+        rows.append([_b(t("byok_disconnect", locale), "byokoff")])
+    rows.append([_b(t("menu_back", locale), "settings")])
     return text, rows
 
 

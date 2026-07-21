@@ -40,6 +40,11 @@ class UserPreferences:
         if "model_id" not in columns:
             self._conn.execute(
                 "ALTER TABLE user_prefs ADD COLUMN model_id TEXT")
+        # Bring-your-own-key: the user's own provider credentials.
+        for col in ("byok_provider", "byok_key", "byok_model"):
+            if col not in columns:
+                self._conn.execute(
+                    f"ALTER TABLE user_prefs ADD COLUMN {col} TEXT")
         self._conn.commit()
 
     def get_language(self, user_id: int | str) -> str | None:
@@ -92,6 +97,38 @@ class UserPreferences:
                 "INSERT INTO user_prefs (user_id, model_id) VALUES (?, ?) "
                 "ON CONFLICT(user_id) DO UPDATE SET model_id = excluded.model_id",
                 (str(user_id), model_id),
+            )
+            self._conn.commit()
+
+    def get_byok(self, user_id: int | str) -> dict | None:
+        """The user's own provider credentials, or ``None`` if not connected."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT byok_provider, byok_key, byok_model FROM user_prefs "
+                "WHERE user_id = ?", (str(user_id),),
+            ).fetchone()
+        if not row or not row["byok_provider"] or not row["byok_key"]:
+            return None
+        return {"provider": row["byok_provider"], "key": row["byok_key"],
+                "model": row["byok_model"] or ""}
+
+    def set_byok(self, user_id: int | str, provider: str, key: str,
+                model: str = "") -> None:
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO user_prefs (user_id, byok_provider, byok_key, "
+                "byok_model) VALUES (?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE "
+                "SET byok_provider = excluded.byok_provider, "
+                "byok_key = excluded.byok_key, byok_model = excluded.byok_model",
+                (str(user_id), provider, key, model),
+            )
+            self._conn.commit()
+
+    def clear_byok(self, user_id: int | str) -> None:
+        with self._lock:
+            self._conn.execute(
+                "UPDATE user_prefs SET byok_provider = NULL, byok_key = NULL, "
+                "byok_model = NULL WHERE user_id = ?", (str(user_id),),
             )
             self._conn.commit()
 

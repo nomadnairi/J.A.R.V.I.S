@@ -87,6 +87,7 @@ async def generate_reply(engine: JarvisEngine, user_id: int, text: str,
                         match_input_language: bool = False,
                         model_profile: str | None = None,
                         model_id: str | None = None,
+                        byok: dict | None = None,
                         usage=None) -> str:
     """Produce the assistant's reply for a Telegram user (testable core).
 
@@ -112,6 +113,10 @@ async def generate_reply(engine: JarvisEngine, user_id: int, text: str,
         session.scratch["model_id"] = model_id
     else:
         session.scratch.pop("model_id", None)
+    if byok:
+        session.scratch["byok"] = byok
+    else:
+        session.scratch.pop("byok", None)
     try:
         response = await engine.process(Request(text=text, session_id=session_id))
         if usage is not None:
@@ -326,6 +331,9 @@ async def run(settings: Settings | None = None) -> None:
         applies when billing is on (otherwise everyone is effectively Pro)."""
         if billing is None:
             return True
+        # BYOK users pay their own provider — no daily cap.
+        if prefs.get_byok(user_id):
+            return True
         plan = _user_plan(user_id)
         used_today = usage.stats(user_id)["messages_today"]
         if plan.within_daily(used_today):
@@ -354,6 +362,31 @@ async def run(settings: Settings | None = None) -> None:
         usage.record(message.from_user.id, tokens=0)  # counts toward the daily limit
         await message.answer_photo(
             BufferedInputFile(png, "jarvis.png"), caption=f"🎨 {prompt[:900]}")
+
+    async def _save_byok(message: "Message", provider: str, key: str,
+                        locale: str) -> None:
+        """Store the user's own provider key (removes their limits)."""
+        key = (key or "").strip()
+        if len(key) < 12 or " " in key:
+            await message.answer(t("byok_bad", locale), parse_mode=None)
+            engine.session(session_id_for(message.from_user.id)
+                        ).scratch["awaiting_byok"] = provider
+            return
+        from jarvis.config.constants import DEFAULT_MODELS
+        model = {
+            "openai": DEFAULT_MODELS.get("openai", ""),
+            "anthropic": DEFAULT_MODELS.get("anthropic", ""),
+            "openrouter": settings.openrouter_model,
+        }.get(provider, "")
+        prefs.set_byok(message.from_user.id, provider, key, model)
+        engine.session(session_id_for(message.from_user.id)).scratch["byok"] = {
+            "provider": provider, "key": key, "model": model}
+        await message.answer(t("byok_saved", locale))
+        # Best effort: strip the key from the chat (works only where allowed).
+        try:
+            await message.delete()
+        except Exception:  # noqa: BLE001
+            pass
 
     @dp.message(CommandStart())
     async def _start(message: "Message") -> None:
@@ -503,6 +536,18 @@ async def run(settings: Settings | None = None) -> None:
                 return
             engine.session(session_id_for(user.id)).scratch["awaiting_image"] = True
             await callback.message.answer(t("image_ask", locale))
+        elif action == "byok":
+            current = (prefs.get_byok(user.id) or {}).get("provider")
+            await _edit(callback, *bm.screen_byok(locale, current))
+        elif action == "byokset":
+            provider = parts[2]
+            engine.session(session_id_for(user.id)).scratch["awaiting_byok"] = provider
+            await callback.message.answer(t("byok_ask", locale))
+        elif action == "byokoff":
+            prefs.clear_byok(user.id)
+            engine.session(session_id_for(user.id)).scratch.pop("byok", None)
+            await _edit(callback, t("byok_cleared", locale),
+                        [[(t("menu_back", locale), "m:settings")]])
         elif action == "memory":
             await _edit(callback, *bm.screen_memory(locale))
         elif action == "help":
@@ -688,10 +733,15 @@ async def run(settings: Settings | None = None) -> None:
         if not await _is_subscribed(message.from_user.id):
             await _show_gate(message, locale)
             return
+        # A pending "connect your key" message is captured before any limit.
+        session = engine.session(session_id_for(message.from_user.id))
+        awaiting_provider = session.scratch.pop("awaiting_byok", None)
+        if awaiting_provider:
+            await _save_byok(message, awaiting_provider, message.text, locale)
+            return
         if not await _within_limit(message, message.from_user.id, locale):
             return
         # If the user tapped "Image", this message is a drawing prompt.
-        session = engine.session(session_id_for(message.from_user.id))
         if session.scratch.pop("awaiting_image", False):
             await _make_image(message, message.text, locale)
             return
@@ -700,6 +750,7 @@ async def run(settings: Settings | None = None) -> None:
             engine, message.from_user.id, message.text, locale,
             model_profile=prefs.get_model(message.from_user.id),
             model_id=prefs.get_model_id(message.from_user.id),
+            byok=prefs.get_byok(message.from_user.id),
             usage=usage,
         )
         # LLM output is plain text — disable HTML parsing to avoid entity errors.
@@ -739,6 +790,7 @@ async def run(settings: Settings | None = None) -> None:
             match_input_language=True,
             model_profile=prefs.get_model(message.from_user.id),
             model_id=prefs.get_model_id(message.from_user.id),
+            byok=prefs.get_byok(message.from_user.id),
             usage=usage,
         )
         for chunk in split_message(reply):

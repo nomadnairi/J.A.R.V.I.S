@@ -165,14 +165,20 @@ class LLMClient:
         tools: list[ToolSpec] | None = None,
         model: str | None = None,
         profile: str | None = None,
+        override: LLMProvider | None = None,
     ) -> LLMResult:
         """Complete ``messages``, retrying and falling back as needed.
 
         ``model`` optionally overrides the provider's default model for this
         call (used by the AI router to pick a tier). ``profile`` pins the call
         to one configured provider (user's chosen AI); it still retries but
-        does not fall back to other providers.
+        does not fall back to other providers. ``override`` is an explicit
+        provider (e.g. a user's own BYOK credentials) used directly.
         """
+        if override is not None:
+            return await self._complete_with_retry(
+                override, messages, system, tools, model)
+
         selected = self._select(profile)
         if selected is not None:
             return await self._complete_with_retry(
@@ -220,14 +226,21 @@ class LLMClient:
         system: str | None = None,
         profile: str | None = None,
         model: str | None = None,
+        override: LLMProvider | None = None,
     ) -> AsyncIterator[str]:
         """Stream a completion, falling back before the first chunk only.
 
         Once a provider has produced its first chunk we are committed to it;
         mid-stream fallback is not possible. ``profile`` pins the stream to one
         configured provider (the user's chosen AI); ``model`` overrides that
-        provider's default model (a specific catalog model).
+        provider's default model (a specific catalog model). ``override`` is an
+        explicit provider (BYOK) used directly.
         """
+        if override is not None:
+            async for chunk in override.stream(messages, system, model):
+                yield chunk
+            return
+
         selected = self._select(profile)
         if selected is not None:
             async for chunk in selected.stream(messages, system, model):
