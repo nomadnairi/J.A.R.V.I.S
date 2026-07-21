@@ -67,20 +67,30 @@ class LLMClient:
         The primary provider is ``settings.llm_provider``; any *other*
         provider with credentials configured is registered as a fallback.
         """
-        primary = cls._make_provider(settings, settings.llm_provider,
-                                    settings.llm_model)
+        # OpenRouter carries its own model (OPENROUTER_MODEL), so don't force
+        # the anthropic/openai LLM_MODEL onto it — that would send a non-slug
+        # model name and fail.
+        primary_model = (None if settings.llm_provider == "openrouter"
+                        else settings.llm_model)
+        primary = cls._make_provider(settings, settings.llm_provider, primary_model)
 
         fallbacks: list[LLMProvider] = []
         for name in PROVIDER_REGISTRY:
             if name == settings.llm_provider:
                 continue
-            key = (settings.anthropic_api_key if name == "anthropic"
-                else settings.openai_api_key)
-            if key:
+            if cls._key_for(settings, name):
                 fallbacks.append(cls._make_provider(settings, name))
 
         return cls(primary, fallbacks,
                 profiles=cls._build_profiles(settings))
+
+    @staticmethod
+    def _key_for(settings: Settings, name: str) -> str:
+        return {
+            "anthropic": settings.anthropic_api_key,
+            "openai": settings.openai_api_key,
+            "openrouter": settings.openrouter_api_key,
+        }.get(name, "")
 
     @staticmethod
     def _build_profiles(settings: Settings) -> dict[str, LLMProvider]:
@@ -92,6 +102,7 @@ class LLMClient:
         """
         from jarvis.config.constants import DEFAULT_MODELS
         from jarvis.llm.providers.openai_provider import OpenAIProvider
+        from jarvis.llm.providers.openrouter_provider import OpenRouterProvider
 
         profiles: dict[str, LLMProvider] = {}
         if settings.anthropic_api_key:
@@ -110,12 +121,12 @@ class LLMClient:
                 base_url=settings.openai_base_url,
             )
         if settings.openrouter_api_key:
-            profiles["openrouter"] = OpenAIProvider(
+            profiles["openrouter"] = OpenRouterProvider(
                 api_key=settings.openrouter_api_key,
                 model=settings.openrouter_model,
                 temperature=settings.llm_temperature,
                 max_tokens=settings.llm_max_tokens,
-                base_url="https://openrouter.ai/api/v1",
+                base_url=settings.openrouter_base_url,
             )
         return profiles
 
@@ -127,12 +138,19 @@ class LLMClient:
             raise LLMConfigError(f"Unknown LLM provider: {name!r}")
 
         from jarvis.config.constants import DEFAULT_MODELS
-        key = (settings.anthropic_api_key if name == "anthropic"
-            else settings.openai_api_key)
-        base_url = settings.openai_base_url if name == "openai" else ""
+        key = LLMClient._key_for(settings, name)
+        if name == "openrouter":
+            base_url = settings.openrouter_base_url
+            default_model = settings.openrouter_model
+        elif name == "openai":
+            base_url = settings.openai_base_url
+            default_model = DEFAULT_MODELS.get(name, "")
+        else:
+            base_url = ""
+            default_model = DEFAULT_MODELS.get(name, "")
         return provider_cls(
             api_key=key,
-            model=model or DEFAULT_MODELS.get(name, ""),
+            model=model or default_model,
             temperature=settings.llm_temperature,
             max_tokens=settings.llm_max_tokens,
             base_url=base_url,

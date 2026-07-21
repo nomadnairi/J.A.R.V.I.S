@@ -29,16 +29,20 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(default="", description="Anthropic API key.")
     openai_api_key: str = Field(default="", description="OpenAI API key.")
 
-    llm_provider: Literal["anthropic", "openai"] = "anthropic"
+    #: Which provider the core engine uses by default. Each is standalone:
+    #: "openai" = the real OpenAI, "openrouter" = OpenRouter (its own key/model).
+    llm_provider: Literal["anthropic", "openai", "openrouter"] = "anthropic"
     llm_model: str = "claude-sonnet-4-20250514"
-    #: Custom OpenAI-compatible endpoint (e.g. OpenRouter:
-    #: https://openrouter.ai/api/v1). Empty = the official OpenAI API.
+    #: Custom OpenAI-compatible endpoint for the OpenAI provider only. Empty =
+    #: the official OpenAI API. (For OpenRouter use the OPENROUTER_* settings.)
     openai_base_url: str = ""
-    #: OpenRouter API key — enables a separate "openrouter" model profile so
-    #: users can switch between Claude / GPT / OpenRouter at runtime.
+    #: OpenRouter — a fully separate provider. Set these to use OpenRouter as the
+    #: engine (LLM_PROVIDER=openrouter) and/or as a switchable model profile.
     openrouter_api_key: str = ""
-    #: Default model used for the OpenRouter profile.
+    #: Default model used by the OpenRouter provider (an OpenRouter model slug).
     openrouter_model: str = "anthropic/claude-3.7-sonnet"
+    #: OpenRouter endpoint (rarely changed).
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     llm_max_tokens: int = Field(default=2048, gt=0)
 
@@ -235,11 +239,11 @@ class Settings(BaseSettings):
 
     def active_api_key(self) -> str:
         """Return the API key for the currently selected provider."""
-        return (
-            self.anthropic_api_key
-            if self.llm_provider == "anthropic"
-            else self.openai_api_key
-        )
+        return {
+            "anthropic": self.anthropic_api_key,
+            "openai": self.openai_api_key,
+            "openrouter": self.openrouter_api_key,
+        }.get(self.llm_provider, "")
 
     def has_llm_credentials(self) -> bool:
         """Whether an API key is configured for the active provider."""

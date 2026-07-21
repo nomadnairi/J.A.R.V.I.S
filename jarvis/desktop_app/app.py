@@ -656,7 +656,7 @@ def run_app() -> int:
             form = QFormLayout(widget)
 
             self.provider_box = QComboBox()
-            self.provider_box.addItems(["anthropic", "openai"])
+            self.provider_box.addItems(["anthropic", "openai", "openrouter"])
             self.provider_box.setCurrentText(config.llm_provider)
             self.model_edit = QLineEdit(config.llm_model)
             self.anthropic_edit = QLineEdit(config.anthropic_api_key)
