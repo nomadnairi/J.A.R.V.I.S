@@ -8,12 +8,38 @@ from typing import AsyncIterator
 from jarvis.llm.base import LLMProvider, LLMResult
 from jarvis.llm.tools import ToolCall, ToolResult, ToolSpec
 from jarvis.utils.exceptions import LLMConfigError, LLMRequestError
+from jarvis.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+#: OpenRouter API keys use this prefix; the base URL of its OpenAI-compatible API.
+_OPENROUTER_PREFIX = "sk-or-"
+_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
 class OpenAIProvider(LLMProvider):
     """LLM provider backed by the OpenAI Chat Completions API."""
 
     name = "openai"
+
+    def _effective_base_url(self) -> str | None:
+        """Resolve the base URL, catching a common misconfiguration.
+
+        An OpenRouter key (``sk-or-*``) sent to the default OpenAI endpoint
+        always fails with 401, so when no base URL is configured but the key is
+        clearly an OpenRouter key, route to OpenRouter instead of guaranteeing a
+        failure — and say so, so the fix (setting OPENAI_BASE_URL) is obvious.
+        """
+        if self.base_url:
+            return self.base_url
+        if (self.api_key or "").startswith(_OPENROUTER_PREFIX):
+            logger.warning(
+                "OPENAI_API_KEY looks like an OpenRouter key (sk-or-*) but "
+                "OPENAI_BASE_URL is not set — routing to %s. Set "
+                "OPENAI_BASE_URL=%s to make this explicit.",
+                _OPENROUTER_BASE_URL, _OPENROUTER_BASE_URL)
+            return _OPENROUTER_BASE_URL
+        return None
 
     def _ensure_client(self) -> object:
         if self._client is not None:
@@ -28,7 +54,7 @@ class OpenAIProvider(LLMProvider):
         # (OpenRouter, Together, a local proxy, …) with the same code path.
         self._client = AsyncOpenAI(
             api_key=self.api_key,
-            base_url=self.base_url or None,
+            base_url=self._effective_base_url(),
         )
         return self._client
 

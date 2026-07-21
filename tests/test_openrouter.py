@@ -40,6 +40,23 @@ def test_no_base_url_defaults_to_none(monkeypatch):
     assert captured["base_url"] is None  # official OpenAI API
 
 
+def test_openrouter_key_without_base_url_is_auto_routed(monkeypatch):
+    # An sk-or-* key with no base URL would 401 against OpenAI; route it to
+    # OpenRouter instead of guaranteeing a failure.
+    captured = {}
+
+    class FakeAsyncOpenAI:
+        def __init__(self, *, api_key, base_url):
+            captured["base_url"] = base_url
+
+    import openai
+    monkeypatch.setattr(openai, "AsyncOpenAI", FakeAsyncOpenAI)
+
+    OpenAIProvider(api_key="sk-or-v1-abc",
+                model="nvidia/nemotron-3-ultra:free")._ensure_client()
+    assert captured["base_url"] == "https://openrouter.ai/api/v1"
+
+
 def test_settings_wire_base_url_into_openai_provider():
     settings = Settings(
         anthropic_api_key="", openai_api_key="sk-or-x", log_file="",
