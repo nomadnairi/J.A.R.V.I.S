@@ -215,6 +215,11 @@ class Settings(BaseSettings):
     image_api_key: str = ""
     image_base_url: str = ""
 
+    # --- Referrals ---
+    #: Extra daily messages granted per successful referral (0 disables the
+    #: referral program's reward, but invite links still work).
+    referral_bonus_daily: int = Field(default=20, ge=0)
+
     # --- Telegram bot ---
     telegram_bot_token: str = Field(default="", description="Bot token from @BotFather.")
     #: Optional comma-separated allowlist of Telegram user IDs (empty = open).

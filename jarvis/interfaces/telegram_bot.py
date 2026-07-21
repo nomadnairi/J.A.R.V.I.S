@@ -236,6 +236,10 @@ async def run(settings: Settings | None = None) -> None:
         billing = BillingService(license_service, settings.auth_db_path)
     from jarvis.interfaces.usage import UsageStore
     usage = UsageStore(settings.memory_db_path)
+    from jarvis.interfaces.referrals import ReferralStore
+    referrals = ReferralStore(settings.memory_db_path)
+    #: Filled in at startup once we know the bot's @username (for invite links).
+    bot_username = ""
 
     from jarvis.billing import PRO, build_plans, resolve_plan
     plans = build_plans(
@@ -296,6 +300,7 @@ async def run(settings: Settings | None = None) -> None:
             plan=_user_plan(user_id) if billing is not None else None,
             used_today=usage.stats(user_id)["messages_today"],
             image_on=image_service is not None,
+            referral_on=bool(bot_username),
         )
 
     async def _is_subscribed(user_id: int) -> bool:
@@ -336,7 +341,11 @@ async def run(settings: Settings | None = None) -> None:
             return True
         plan = _user_plan(user_id)
         used_today = usage.stats(user_id)["messages_today"]
-        if plan.within_daily(used_today):
+        if plan.unlimited:
+            return True
+        # Referral bonus extends the daily allowance.
+        bonus = referrals.count(user_id) * settings.referral_bonus_daily
+        if used_today < plan.daily_messages + bonus:
             return True
         from jarvis.interfaces.bot_menu import limit_screen
         text, rows = limit_screen(locale, plan)
@@ -393,6 +402,12 @@ async def run(settings: Settings | None = None) -> None:
         locale = _resolve_locale(prefs, message.from_user)
         if not await _guard(message, locale):
             return
+        # Deep-link referral payload: "/start ref_<referrer_id>".
+        payload = (message.text or "").split(maxsplit=1)
+        if len(payload) > 1 and payload[1].startswith("ref_"):
+            ref = payload[1][4:]
+            if ref.isdigit():
+                referrals.record(ref, message.from_user.id)
         if not await _is_subscribed(message.from_user.id):
             await _show_gate(message, locale)
             return
@@ -536,6 +551,11 @@ async def run(settings: Settings | None = None) -> None:
                 return
             engine.session(session_id_for(user.id)).scratch["awaiting_image"] = True
             await callback.message.answer(t("image_ask", locale))
+        elif action == "referral":
+            link = bm.referral_link(bot_username, user.id)
+            await _edit(callback, *bm.screen_referral(
+                locale, link=link, count=referrals.count(user.id),
+                bonus_each=settings.referral_bonus_daily))
         elif action == "byok":
             current = (prefs.get_byok(user.id) or {}).get("provider")
             await _edit(callback, *bm.screen_byok(locale, current))
@@ -843,9 +863,11 @@ async def run(settings: Settings | None = None) -> None:
         """Log exactly what this process is running, so the deployed state is
         never a guess: version, whether the subscription gate is active, and —
         if it is — whether the bot can actually check membership."""
+        nonlocal bot_username
         from jarvis import __version__
         try:
             me = await bot.get_me()
+            bot_username = me.username or ""
             who = f"@{me.username}"
         except Exception as exc:  # noqa: BLE001
             who = f"<unknown: {exc}>"
@@ -909,6 +931,7 @@ async def run(settings: Settings | None = None) -> None:
         if license_service is not None:
             license_service.close()
         usage.close()
+        referrals.close()
         await bot.session.close()
 
 

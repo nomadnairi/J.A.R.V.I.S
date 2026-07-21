@@ -78,7 +78,8 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
                 accounts_on: bool = False, multi_model: bool = False,
                 voice_on: bool = False, channel: str = "", name: str = "Sir",
                 plan=None, used_today: int = 0,
-                image_on: bool = False) -> tuple[str, Rows]:
+                image_on: bool = False, referral_on: bool = False,
+                ) -> tuple[str, Rows]:
     header = (
         f"🤖 <b>J.A.R.V.I.S.</b>\n"
         f"<i>{t('menu_greeting', locale, name=name)}</i>"
@@ -101,6 +102,8 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
     if billing_on:
         rows.append([_b(t("menu_plans", locale), "plans"),
                     _b(t("menu_subscription", locale), "subscription")])
+    if referral_on:
+        rows.append([_b(t("menu_referral", locale), "referral")])
     if accounts_on:
         rows.append([_b(t("menu_link", locale), "link")])
     last = [_b(t("menu_help", locale), "help")]
@@ -160,6 +163,33 @@ def limit_screen(locale: str, plan) -> tuple[str, Rows]:
     text = (f"🚦 <b>{t('limit_title', locale)}</b>\n\n"
             f"{t('limit_body', locale, n=plan.daily_messages)}")
     rows: Rows = [[_b(t("menu_plans", locale), "plans")], _back(locale)]
+    return text, rows
+
+
+def referral_link(bot_username: str, user_id: int | str) -> str:
+    """The user's personal invite link (`?start=ref_<id>`)."""
+    return f"https://t.me/{bot_username}?start=ref_{user_id}"
+
+
+def screen_referral(locale: str, *, link: str, count: int,
+                    bonus_each: int) -> tuple[str, Rows]:
+    """The invite screen: personal link, referral count and earned bonus."""
+    from urllib.parse import quote
+
+    total = count * bonus_each
+    text = "\n".join([
+        f"🎁 <b>{t('ref_title', locale)}</b>",
+        "━━━━━━━━━━━━━━",
+        t("ref_body", locale, bonus=bonus_each),
+        "",
+        f"👥 {t('ref_count', locale)}: <b>{count}</b>",
+        f"➕ {t('ref_earned', locale)}: <b>+{total}</b> / {t('ref_day', locale)}",
+        "",
+        f"🔗 <code>{link}</code>",
+    ])
+    share = (f"https://t.me/share/url?url={quote(link, safe='')}"
+            f"&text={quote(t('ref_share_text', locale), safe='')}")
+    rows: Rows = [[(t("ref_share", locale), share)], _back(locale)]
     return text, rows
 
 
