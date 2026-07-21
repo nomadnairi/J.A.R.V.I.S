@@ -94,6 +94,7 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
         _b(t("menu_memory", locale), "memory")],
         [_b(t("menu_ideas", locale), "ideas"),
         _b(t("menu_newchat", locale), "newchat")],
+        [_b(t("menu_reminders", locale), "reminders")],
     ]
     third = [_b(t("menu_language", locale), "language")]
     if voice_on:
@@ -282,7 +283,8 @@ def gate_screen(locale: str, channel: str) -> tuple[str, Rows]:
 
 
 def screen_settings(locale: str, *, multi_model: bool,
-                    catalog_on: bool = False) -> tuple[str, Rows]:
+                    catalog_on: bool = False,
+                    proactive: bool = False) -> tuple[str, Rows]:
     text = f"⚙️ <b>{t('settings_title', locale)}</b>\n\n{t('settings_hint', locale)}"
     rows: Rows = []
     if catalog_on:
@@ -291,8 +293,24 @@ def screen_settings(locale: str, *, multi_model: bool,
         rows.append([_b(t("menu_model", locale), "model")])
     rows.append([_b(t("menu_language", locale), "language")])
     rows.append([_b(t("menu_byok", locale), "byok")])
+    rows.append([_b(f"{t('menu_proactive', locale)}: {_yn(proactive)}",
+                    "proactive")])
     rows.append(_back(locale))
     return text, rows
+
+
+def screen_reminders(locale: str, items: list[tuple[int, str]]) -> tuple[str, Rows]:
+    """Active reminders (``items`` = ``(id, label)``) with cancel buttons."""
+    head = f"⏰ <b>{t('reminders_title', locale)}</b>\n\n{t('reminders_hint', locale)}"
+    if not items:
+        return f"{head}\n\n{t('reminders_empty', locale)}", [_back(locale)]
+    lines = [head, ""]
+    rows: Rows = []
+    for rid, label in items:
+        lines.append(f"• {label}")
+        rows.append([_b(f"🗑 {label[:40]}", f"remcancel:{rid}")])
+    rows.append(_back(locale))
+    return "\n".join(lines), rows
 
 
 BYOK_PROVIDERS = (("openai", "🔷 OpenAI"), ("openrouter", "🌐 OpenRouter"),

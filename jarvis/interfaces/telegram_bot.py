@@ -240,6 +240,8 @@ async def run(settings: Settings | None = None) -> None:
     referrals = ReferralStore(settings.memory_db_path)
     from jarvis.interfaces.model_search import ModelIndex
     model_index = ModelIndex(settings.openrouter_base_url)
+    from jarvis.interfaces.reminders import ReminderStore
+    reminder_store = ReminderStore(settings.memory_db_path)
     #: Filled in at startup once we know the bot's @username (for invite links).
     bot_username = ""
 
@@ -389,6 +391,21 @@ async def run(settings: Settings | None = None) -> None:
         for chunk in split_message(reply):
             await message.answer(chunk, parse_mode=None)
 
+    async def _handle_reminder(message: "Message", locale: str) -> None:
+        """Parse and store a 'remind me …' request."""
+        from datetime import datetime
+
+        from jarvis.interfaces.reminders import parse_reminder
+        parsed = parse_reminder(message.text, datetime.now())
+        if parsed is None:
+            await message.answer(t("reminder_bad", locale), parse_mode=None)
+            return
+        due, body = parsed
+        reminder_store.add(message.from_user.id, message.chat.id,
+                        body or t("reminders_title", locale), due.timestamp())
+        when = due.strftime("%d.%m %H:%M")
+        await message.answer(t("reminder_set", locale, when=when), parse_mode=None)
+
     async def _send_support(message: "Message", locale: str) -> None:
         """Forward a user's support message to the bot owner(s)."""
         admins = settings.telegram_admins()
@@ -459,6 +476,7 @@ async def run(settings: Settings | None = None) -> None:
         locale = _resolve_locale(prefs, message.from_user)
         if not await _guard(message, locale):
             return
+        prefs.touch(message.from_user.id, message.chat.id)
         # Deep-link referral payload: "/start ref_<referrer_id>".
         payload = (message.text or "").split(maxsplit=1)
         if len(payload) > 1 and payload[1].startswith("ref_"):
@@ -524,7 +542,16 @@ async def run(settings: Settings | None = None) -> None:
         from jarvis.interfaces.bot_menu import screen_settings
         profiles = engine.llm.list_profiles()
         return screen_settings(loc, multi_model=len(profiles) > 1,
-                            catalog_on=_openrouter_available(user_id))
+                            catalog_on=_openrouter_available(user_id),
+                            proactive=prefs.get_proactive(user_id))
+
+    def _reminder_items(user_id: int) -> list:
+        from datetime import datetime
+        items = []
+        for r in reminder_store.list_active(user_id):
+            when = datetime.fromtimestamp(r["due_ts"]).strftime("%d.%m %H:%M")
+            items.append((r["id"], f"{when} — {r['text']}"))
+        return items
 
     async def _show_plans(callback: "CallbackQuery", text: str, rows) -> None:
         """Render the Tariffs screen as a banner photo + caption + buttons."""
@@ -597,6 +624,19 @@ async def run(settings: Settings | None = None) -> None:
             await engine.reset(session_id_for(user.id))
             await _edit(callback, t("newchat_done", locale),
                         [[(t("menu_back", locale), "m:main")]])
+        elif action == "reminders":
+            await _edit(callback, *bm.screen_reminders(
+                locale, _reminder_items(user.id)))
+        elif action == "remcancel":
+            reminder_store.cancel(int(parts[2]), user.id)
+            await _edit(callback, *bm.screen_reminders(
+                locale, _reminder_items(user.id)))
+        elif action == "proactive":
+            new_state = not prefs.get_proactive(user.id)
+            prefs.set_proactive(user.id, new_state)
+            await callback.message.answer(
+                t("proactive_on" if new_state else "proactive_off", locale))
+            await _edit(callback, *_settings_screen(locale, user.id))
         elif action == "support":
             engine.session(session_id_for(user.id)).scratch["awaiting_support"] = True
             await callback.message.answer(t("support_ask", locale))
@@ -859,10 +899,16 @@ async def run(settings: Settings | None = None) -> None:
         if not await _is_subscribed(message.from_user.id):
             await _show_gate(message, locale)
             return
+        prefs.touch(message.from_user.id, message.chat.id)
         session = engine.session(session_id_for(message.from_user.id))
         # A pending support message is forwarded to the owner (before anything else).
         if session.scratch.pop("awaiting_support", False):
             await _send_support(message, locale)
+            return
+        # "напомни …" / "remind me …" → schedule a reminder.
+        from jarvis.interfaces.reminders import is_reminder
+        if is_reminder(message.text):
+            await _handle_reminder(message, locale)
             return
         # An in-chat "api …" command (connect a key / search models).
         from jarvis.interfaces.chat_api import parse_api_command
@@ -906,6 +952,7 @@ async def run(settings: Settings | None = None) -> None:
             return
         if not await _within_limit(message, message.from_user.id, locale):
             return
+        prefs.touch(message.from_user.id, message.chat.id)
 
         await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
         try:
@@ -1019,8 +1066,61 @@ async def run(settings: Settings | None = None) -> None:
                 "SUBSCRIPTION GATE: could not verify channel %s (%s). Ensure the "
                 "channel exists and the bot is an admin of it.", channel, exc)
 
+    async def _proactive_worker() -> None:
+        """Background loop: fire due reminders and (opt-in) proactive nudges."""
+        import time as _t
+        from datetime import datetime
+        sent_morning: dict[str, str] = {}   # user_id -> YYYY-MM-DD
+        nudged: dict[str, float] = {}       # user_id -> last-nudge ts
+        idle_seconds = settings.proactive_idle_days * 86400
+        while True:
+            try:
+                now = _t.time()
+                # 1) Fire any due reminders.
+                for r in reminder_store.due(now):
+                    loc = normalize_locale(prefs.get_language(r["user_id"]))
+                    try:
+                        await bot.send_message(
+                            int(r["chat_id"]),
+                            t("reminder_fire", loc, text=r["text"]),
+                            parse_mode=None)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.debug("Reminder send failed: %s", exc)
+                    reminder_store.mark_fired(r["id"])
+                # 2) Morning check-in + idle nudge for opted-in users.
+                hour = datetime.now().hour
+                today = datetime.now().strftime("%Y-%m-%d")
+                for row in prefs.list_proactive():
+                    uid, chat_id = row["user_id"], row["chat_id"]
+                    if not chat_id:
+                        continue
+                    loc = normalize_locale(row["language"])
+                    if (hour == settings.proactive_morning_hour
+                            and sent_morning.get(uid) != today):
+                        sent_morning[uid] = today
+                        try:
+                            await bot.send_message(int(chat_id),
+                                                t("morning_greeting", loc))
+                        except Exception as exc:  # noqa: BLE001
+                            logger.debug("Morning send failed: %s", exc)
+                    elif (idle_seconds
+                        and now - (row["last_seen"] or 0) > idle_seconds
+                        and now - nudged.get(uid, 0) > idle_seconds):
+                        nudged[uid] = now
+                        try:
+                            await bot.send_message(int(chat_id),
+                                                t("idle_nudge", loc))
+                        except Exception as exc:  # noqa: BLE001
+                            logger.debug("Nudge send failed: %s", exc)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - keep the worker alive
+                logger.warning("Proactive worker error: %s", exc)
+            await asyncio.sleep(30)
+
     await _set_commands()
     await _startup_report()
+    worker_task = asyncio.create_task(_proactive_worker())
     logger.info("Telegram bot starting (long-polling)…")
     try:
         # Keep the sales bot up 24/7: if polling dies (network drop, Telegram
@@ -1043,11 +1143,17 @@ async def run(settings: Settings | None = None) -> None:
             else:  # pragma: no cover - defensive
                 break
     finally:
+        worker_task.cancel()
+        try:
+            await worker_task
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            pass
         await engine.shutdown()
         if license_service is not None:
             license_service.close()
         usage.close()
         referrals.close()
+        reminder_store.close()
         await bot.session.close()
 
 

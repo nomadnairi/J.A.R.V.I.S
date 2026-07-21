@@ -41,10 +41,17 @@ class UserPreferences:
             self._conn.execute(
                 "ALTER TABLE user_prefs ADD COLUMN model_id TEXT")
         # Bring-your-own-key: the user's own provider credentials.
-        for col in ("byok_provider", "byok_key", "byok_model"):
+        for col in ("byok_provider", "byok_key", "byok_model", "chat_id"):
             if col not in columns:
                 self._conn.execute(
                     f"ALTER TABLE user_prefs ADD COLUMN {col} TEXT")
+        # Proactive messaging opt-in + last-seen timestamp.
+        if "proactive" not in columns:
+            self._conn.execute(
+                "ALTER TABLE user_prefs ADD COLUMN proactive INTEGER DEFAULT 0")
+        if "last_seen" not in columns:
+            self._conn.execute(
+                "ALTER TABLE user_prefs ADD COLUMN last_seen REAL DEFAULT 0")
         self._conn.commit()
 
     def get_language(self, user_id: int | str) -> str | None:
@@ -131,6 +138,46 @@ class UserPreferences:
                 "byok_model = NULL WHERE user_id = ?", (str(user_id),),
             )
             self._conn.commit()
+
+    def touch(self, user_id: int | str, chat_id: int | str) -> None:
+        """Record the user's chat id and last-seen time (for proactive msgs)."""
+        import time as _time
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO user_prefs (user_id, chat_id, last_seen) "
+                "VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET "
+                "chat_id = excluded.chat_id, last_seen = excluded.last_seen",
+                (str(user_id), str(chat_id), _time.time()))
+            self._conn.commit()
+
+    def get_proactive(self, user_id: int | str) -> bool:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT proactive FROM user_prefs WHERE user_id = ?",
+                (str(user_id),)).fetchone()
+        return bool(row["proactive"]) if row else False
+
+    def set_proactive(self, user_id: int | str, on: bool) -> None:
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO user_prefs (user_id, proactive) VALUES (?, ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET proactive = excluded.proactive",
+                (str(user_id), 1 if on else 0))
+            self._conn.commit()
+
+    def list_proactive(self) -> list:
+        """Rows (user_id, chat_id, last_seen, language) for opted-in users."""
+        with self._lock:
+            return list(self._conn.execute(
+                "SELECT user_id, chat_id, last_seen, language FROM user_prefs "
+                "WHERE proactive = 1 AND chat_id IS NOT NULL"))
+
+    def get_chat_id(self, user_id: int | str) -> str | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT chat_id FROM user_prefs WHERE user_id = ?",
+                (str(user_id),)).fetchone()
+        return row["chat_id"] if row and row["chat_id"] else None
 
     def close(self) -> None:  # pragma: no cover - lifecycle
         with self._lock:

@@ -230,6 +230,12 @@ class Settings(BaseSettings):
     #: referral program's reward, but invite links still work).
     referral_bonus_daily: int = Field(default=20, ge=0)
 
+    # --- Proactive messaging (the bot reaches out first) ---
+    #: Hour (server local time, 0-23) for the opt-in morning check-in.
+    proactive_morning_hour: int = Field(default=9, ge=0, le=23)
+    #: Nudge users who've been quiet for at least this many days (0 disables).
+    proactive_idle_days: int = Field(default=3, ge=0)
+
     # --- Telegram bot ---
     telegram_bot_token: str = Field(default="", description="Bot token from @BotFather.")
     #: Optional comma-separated allowlist of Telegram user IDs (empty = open).
