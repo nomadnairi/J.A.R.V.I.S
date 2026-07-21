@@ -48,6 +48,10 @@ gui = ["PySide6>=6.6"]             # the desktop app (jarvis-desktop)
 [tool.setuptools.packages.find]
 include = ["jarvis*"]
 
+[tool.setuptools.package-data]
+# Ship static assets (e.g. the Tariffs banner) inside the package.
+"jarvis.interfaces" = ["assets/*.png"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

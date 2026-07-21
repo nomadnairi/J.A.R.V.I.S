@@ -88,6 +88,19 @@ def test_screen_plans_offers_upgrades_not_current():
     assert "m:buy:plus" not in flat_pro and "m:buy:pro" not in flat_pro
 
 
+def test_plans_banner_exists_and_caption_fits():
+    # The Tariffs screen is sent as a photo; captions cap at 1024 chars.
+    from pathlib import Path
+
+    banner = (Path(__file__).resolve().parents[1]
+            / "jarvis/interfaces/assets/plans_banner.png")
+    assert banner.exists() and banner.stat().st_size > 0
+    plans = default_plans()
+    for loc in ("en", "ru", "uz"):
+        text, _ = screen_plans(loc, plans, current_tier=FREE)
+        assert len(text) <= 1024
+
+
 def test_limit_screen_points_to_plans():
     plans = default_plans()
     text, rows = screen_plans("ru", plans, current_tier=FREE)
