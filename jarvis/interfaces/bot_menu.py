@@ -9,8 +9,8 @@ feels like a little app.
 
 Callback scheme (kept short — Telegram caps callback_data at 64 bytes):
     m:main  m:profile  m:usage  m:subscription  m:settings  m:memory
-    m:model  m:language  m:help  m:link  m:buy  m:reset  m:forget  m:admin
-    m:setmodel:<name|auto>   m:setlang:<locale>
+    m:model  m:language  m:help  m:link  m:plans  m:reset  m:forget  m:admin
+    m:setmodel:<name|auto>   m:setlang:<locale>   m:buy[:<tier>]
 """
 
 from __future__ import annotations
@@ -56,17 +56,34 @@ def _fmt_num(n: int) -> str:
     return f"{n:,}".replace(",", " ")
 
 
+def _yn(value: bool) -> str:
+    return "✅" if value else "❌"
+
+
 # -- screens ------------------------------------------------------------------
+
+def plan_status(locale: str, plan, used_today: int) -> str:
+    """One-line tier badge for the main menu (e.g. '🆓 Free · 7/10 today')."""
+    name = t(f"plan_{plan.name}", locale)
+    if plan.unlimited:
+        tail = t("plan_unlimited", locale)
+    else:
+        tail = t("plan_left_today", locale,
+                n=plan.remaining_daily(used_today), total=plan.daily_messages)
+    return f"{plan.emoji} <b>{name}</b> · {tail}"
+
 
 def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False,
                 accounts_on: bool = False, multi_model: bool = False,
                 voice_on: bool = False, channel: str = "", name: str = "Sir",
-                ) -> tuple[str, Rows]:
-    text = (
+                plan=None, used_today: int = 0) -> tuple[str, Rows]:
+    header = (
         f"🤖 <b>J.A.R.V.I.S.</b>\n"
-        f"<i>{t('menu_greeting', locale, name=name)}</i>\n\n"
-        f"{t('menu_pick', locale)}"
+        f"<i>{t('menu_greeting', locale, name=name)}</i>"
     )
+    if plan is not None:
+        header += f"\n{plan_status(locale, plan, used_today)}"
+    text = f"{header}\n\n{t('menu_pick', locale)}"
     rows: Rows = [
         [_b(t("menu_profile", locale), "profile"),
         _b(t("menu_usage", locale), "usage")],
@@ -78,8 +95,8 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
         third.insert(0, _b(t("menu_voice", locale), "voice"))
     rows.append(third)
     if billing_on:
-        rows.append([_b(t("menu_subscription", locale), "subscription"),
-                    _b(t("menu_buy", locale), "buy")])
+        rows.append([_b(t("menu_plans", locale), "plans"),
+                    _b(t("menu_subscription", locale), "subscription")])
     if accounts_on:
         rows.append([_b(t("menu_link", locale), "link")])
     last = [_b(t("menu_help", locale), "help")]
@@ -88,6 +105,57 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
     rows.append(last)
     if is_admin:
         rows.append([_b(t("menu_admin", locale), "admin")])
+    return text, rows
+
+
+def plan_card(locale: str, plan, *, current: bool = False) -> str:
+    """A comparison block for one tier, used inside the Tariffs screen."""
+    head = f"{plan.emoji} <b>{t(f'plan_{plan.name}', locale)}</b>"
+    if plan.price_stars:
+        head += f" — ⭐{plan.price_stars}"
+    if current:
+        head += f"  · {t('plan_current', locale)}"
+    daily = (t("plan_unlimited", locale) if plan.unlimited
+            else t("plan_per_day", locale, n=plan.daily_messages))
+    models = (t("plan_models_all", locale) if plan.all_models
+            else t("plan_models_basic", locale))
+    return "\n".join([
+        head,
+        f"   💬 {daily}",
+        f"   🧠 {models}",
+        f"   🎨 {t('plan_feat_images', locale)}: {_yn(plan.images)}",
+        f"   🔌 {t('plan_feat_api', locale)}: {_yn(plan.api_access)}",
+        f"   🛟 {t('plan_feat_support', locale)}: {t(f'support_{plan.support}', locale)}",
+    ])
+
+
+def screen_plans(locale: str, plans: dict, current_tier: str) -> tuple[str, Rows]:
+    """The Tariffs screen — Free / Plus / Pro side by side with buy buttons."""
+    from jarvis.billing import TIER_ORDER
+
+    blocks = [f"💎 <b>{t('plans_title', locale)}</b>", t("plans_hint", locale), ""]
+    for tier in TIER_ORDER:
+        blocks.append(plan_card(locale, plans[tier], current=(tier == current_tier)))
+        blocks.append("")
+    # Only offer upgrades — tiers strictly above the current one.
+    current_rank = TIER_ORDER.index(current_tier) if current_tier in TIER_ORDER else 0
+    rows: Rows = []
+    for tier in ("plus", "pro"):
+        if TIER_ORDER.index(tier) <= current_rank:
+            continue
+        p = plans[tier]
+        rows.append([_b(
+            t("plan_buy", locale, plan=t(f"plan_{tier}", locale), price=p.price_stars),
+            f"buy:{tier}")])
+    rows.append(_back(locale))
+    return "\n".join(blocks).strip(), rows
+
+
+def limit_screen(locale: str, plan) -> tuple[str, Rows]:
+    """Shown when a user hits their daily message limit."""
+    text = (f"🚦 <b>{t('limit_title', locale)}</b>\n\n"
+            f"{t('limit_body', locale, n=plan.daily_messages)}")
+    rows: Rows = [[_b(t("menu_plans", locale), "plans")], _back(locale)]
     return text, rows
 
 

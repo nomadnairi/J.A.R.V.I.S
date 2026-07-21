@@ -76,15 +76,26 @@ def test_main_menu_minimal():
     assert "m:help" in flat
     # Admin / billing absent by default.
     assert "m:admin" not in flat
-    assert "m:buy" not in flat
+    assert "m:plans" not in flat
 
 
 def test_main_menu_full():
     _text, rows = screen_main("ru", is_admin=True, billing_on=True,
                             accounts_on=True, multi_model=True)
     flat = _flat(rows)
-    for expected in ("m:subscription", "m:buy", "m:link", "m:admin"):
+    for expected in ("m:subscription", "m:plans", "m:link", "m:admin"):
         assert expected in flat
+
+
+def test_main_menu_shows_plan_status():
+    from jarvis.billing import default_plans
+    plans = default_plans()
+    text, _rows = screen_main("en", billing_on=True, plan=plans["free"],
+                            used_today=3)
+    # Free tier badge with remaining-today counter.
+    assert "Free" in text and "7/10" in text
+    text_pro, _r = screen_main("en", billing_on=True, plan=plans["pro"])
+    assert "unlimited" in text_pro
 
 
 def test_settings_and_submenus_have_back():

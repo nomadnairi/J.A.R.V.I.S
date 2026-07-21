@@ -191,6 +191,16 @@ class Settings(BaseSettings):
     #: HMAC-SHA256 secret for POST /billing/webhook (empty = webhook disabled).
     billing_webhook_secret: str = ""
 
+    # --- Plans / tiers (Free / Plus / Pro) ---
+    #: Daily message allowance per tier (0 = unlimited). Free is deliberately
+    #: tight; Plus is generous; Pro is unlimited.
+    plan_free_daily: int = Field(default=10, ge=0)
+    plan_plus_daily: int = Field(default=100, ge=0)
+    plan_pro_daily: int = Field(default=0, ge=0)
+    #: Telegram Stars price shown on the Plus / Pro upgrade cards.
+    plan_plus_price_stars: int = Field(default=2500, gt=0)
+    plan_pro_price_stars: int = Field(default=8000, gt=0)
+
     # --- Telegram bot ---
     telegram_bot_token: str = Field(default="", description="Bot token from @BotFather.")
     #: Optional comma-separated allowlist of Telegram user IDs (empty = open).

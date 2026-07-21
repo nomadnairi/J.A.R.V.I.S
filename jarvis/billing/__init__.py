@@ -11,6 +11,21 @@ Every payment is recorded by its charge id, so retries and duplicate webhooks
 can never issue a second license.
 """
 
+from jarvis.billing.plans import (
+    FREE,
+    PLUS,
+    PRO,
+    TIER_ORDER,
+    Plan,
+    build_plans,
+    default_plans,
+    resolve_plan,
+    tier_for,
+)
 from jarvis.billing.service import BillingService, Fulfillment
 
-__all__ = ["BillingService", "Fulfillment"]
+__all__ = [
+    "BillingService", "Fulfillment",
+    "Plan", "FREE", "PLUS", "PRO", "TIER_ORDER",
+    "build_plans", "default_plans", "resolve_plan", "tier_for",
+]

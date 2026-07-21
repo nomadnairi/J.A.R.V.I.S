@@ -120,13 +120,18 @@ def _is_allowed(settings: Settings, user_id: int) -> bool:
 
 def handle_successful_payment(billing, settings: Settings, telegram_user_id: int,
                             charge_id: str, locale: str, *,
-                            amount: int = 0, currency: str = "") -> str:
-    """Fulfil a paid Telegram invoice and return the reply text (testable core)."""
+                            amount: int = 0, currency: str = "",
+                            plan: str | None = None) -> str:
+    """Fulfil a paid Telegram invoice and return the reply text (testable core).
+
+    ``plan`` overrides the licence plan name (e.g. a purchased tier "plus" /
+    "pro"); when ``None`` the server's default ``billing_plan`` is used.
+    """
     days = settings.billing_plan_days or None
     fulfillment = billing.process_payment(
         charge_id,
         telegram_user_id=telegram_user_id,
-        plan=settings.billing_plan,
+        plan=plan or settings.billing_plan,
         valid_days=days,
         amount=amount,
         currency=currency,
@@ -212,6 +217,28 @@ async def run(settings: Settings | None = None) -> None:
     from jarvis.interfaces.usage import UsageStore
     usage = UsageStore(settings.memory_db_path)
 
+    from jarvis.billing import PRO, build_plans, resolve_plan
+    plans = build_plans(
+        free_daily=settings.plan_free_daily,
+        plus_daily=settings.plan_plus_daily,
+        pro_daily=settings.plan_pro_daily,
+        plus_price=settings.plan_plus_price_stars,
+        pro_price=settings.plan_pro_price_stars,
+    )
+
+    def _user_plan(user_id: int):
+        """Resolve a user's tier: admins and unrestricted deployments are Pro;
+        otherwise it's the plan on their active licence, else Free."""
+        if license_service is None or user_id in settings.telegram_admins():
+            return plans[PRO]
+        account = license_service.get_account_by_telegram(user_id)
+        if account is None:
+            return plans["free"]
+        import time as _time
+        active = next((lic for lic in license_service.list_licenses(account.id)
+                    if lic.is_valid(now=_time.time())), None)
+        return resolve_plan(active.plan, plans) if active else plans["free"]
+
     bot = Bot(
         token=settings.telegram_bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
@@ -246,6 +273,8 @@ async def run(settings: Settings | None = None) -> None:
             voice_on=voice is not None and voice.stt_available(),
             channel=settings.telegram_channel,
             name=settings.user_name,
+            plan=_user_plan(user_id) if billing is not None else None,
+            used_today=usage.stats(user_id)["messages_today"],
         )
 
     async def _is_subscribed(user_id: int) -> bool:
@@ -274,6 +303,21 @@ async def run(settings: Settings | None = None) -> None:
     async def _open_menu(message: "Message", user_id: int, locale: str) -> None:
         text, rows = _main_screen(user_id, locale)
         await message.answer(text, reply_markup=_markup(rows))
+
+    async def _within_limit(message: "Message", user_id: int, locale: str) -> bool:
+        """Enforce the daily message allowance. Returns True if the turn is
+        allowed; otherwise shows the limit screen and returns False. Only
+        applies when billing is on (otherwise everyone is effectively Pro)."""
+        if billing is None:
+            return True
+        plan = _user_plan(user_id)
+        used_today = usage.stats(user_id)["messages_today"]
+        if plan.within_daily(used_today):
+            return True
+        from jarvis.interfaces.bot_menu import limit_screen
+        text, rows = limit_screen(locale, plan)
+        await message.answer(text, reply_markup=_markup(rows))
+        return False
 
     @dp.message(CommandStart())
     async def _start(message: "Message") -> None:
@@ -412,22 +456,36 @@ async def run(settings: Settings | None = None) -> None:
             await engine.forget(session_id_for(user.id))
             await _edit(callback, "🗑 " + t("forget_done", locale),
                         [[(t("menu_back", locale), "m:memory")]])
+        elif action == "plans":
+            await _edit(callback, *bm.screen_plans(
+                locale, plans, _user_plan(user.id).name))
         elif action == "buy":
-            await _send_invoice(callback.message, locale)
+            tier = parts[2] if len(parts) > 2 else None
+            await _send_invoice(callback.message, locale, tier)
 
-    async def _send_invoice(message: "Message", locale: str) -> None:
+    async def _send_invoice(message: "Message", locale: str,
+                            tier: str | None = None) -> None:
         if billing is None:
             await message.answer(t("buy_disabled", locale))
             return
+        # A tiered purchase (plus/pro) carries the tier in the payload and uses
+        # that tier's price; a bare purchase falls back to the default plan.
+        if tier in plans and tier != "free":
+            price = plans[tier].price_stars
+            payload = f"jarvis-plan:{tier}"
+            title = f"J.A.R.V.I.S. {t(f'plan_{tier}', locale)}"
+        else:
+            price = settings.billing_price_stars
+            payload = "jarvis-license"
+            title = t("buy_invoice_title", locale)
         from aiogram.types import LabeledPrice
         await message.bot.send_invoice(
             chat_id=message.chat.id,
-            title=t("buy_invoice_title", locale),
+            title=title,
             description=t("buy_invoice_desc", locale),
-            payload="jarvis-license",
+            payload=payload,
             currency="XTR",
-            prices=[LabeledPrice(label=t("buy_invoice_title", locale),
-                                amount=settings.billing_price_stars)],
+            prices=[LabeledPrice(label=title, amount=price)],
         )
 
     @dp.callback_query(F.data.startswith("lang:"))
@@ -452,10 +510,16 @@ async def run(settings: Settings | None = None) -> None:
         if billing is None:
             return
         payment = message.successful_payment
+        # A tiered invoice encodes the plan as "jarvis-plan:<tier>".
+        plan_override = None
+        payload = getattr(payment, "invoice_payload", "") or ""
+        if payload.startswith("jarvis-plan:"):
+            plan_override = payload.split(":", 1)[1]
         reply = handle_successful_payment(
             billing, settings, message.from_user.id,
             payment.telegram_payment_charge_id, locale,
             amount=payment.total_amount, currency=payment.currency,
+            plan=plan_override,
         )
         await message.answer(reply)
 
@@ -522,6 +586,8 @@ async def run(settings: Settings | None = None) -> None:
         if not await _is_subscribed(message.from_user.id):
             await _show_gate(message, locale)
             return
+        if not await _within_limit(message, message.from_user.id, locale):
+            return
         await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
         reply = await generate_reply(
             engine, message.from_user.id, message.text, locale,
@@ -542,6 +608,8 @@ async def run(settings: Settings | None = None) -> None:
             return
         if voice is None or not voice.stt_available():
             await message.answer(t("voice_unavailable", locale))
+            return
+        if not await _within_limit(message, message.from_user.id, locale):
             return
 
         await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
