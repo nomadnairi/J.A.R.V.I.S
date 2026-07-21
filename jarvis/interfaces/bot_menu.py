@@ -130,10 +130,13 @@ def plan_card(locale: str, plan, *, current: bool = False) -> str:
             else t("plan_per_day", locale, n=plan.daily_messages))
     models = (t("plan_models_all", locale) if plan.all_models
             else t("plan_models_basic", locale))
+    integrations = (t("plan_unlimited", locale) if plan.unlimited_integrations
+                    else str(plan.integrations))
     return "\n".join([
         head,
         f"   💬 {daily}",
         f"   🧠 {models}",
+        f"   🔗 {t('plan_feat_integrations', locale)}: {integrations}",
         f"   🎨 {t('plan_feat_images', locale)}: {_yn(plan.images)}",
         f"   🔌 {t('plan_feat_api', locale)}: {_yn(plan.api_access)}",
         f"   🛟 {t('plan_feat_support', locale)}: {t(f'support_{plan.support}', locale)}",

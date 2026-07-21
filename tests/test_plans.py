@@ -50,6 +50,14 @@ def test_pro_plan_is_unlimited():
     assert pro.all_models and pro.images and pro.api_access
 
 
+def test_integration_limits_per_tier():
+    p = default_plans()
+    assert p[FREE].integrations == 2
+    assert p[PLUS].integrations == 6
+    assert p[PRO].integrations == 0 and p[PRO].unlimited_integrations
+    assert not p[FREE].unlimited_integrations
+
+
 def test_build_plans_applies_overrides():
     plans = build_plans(free_daily=3, plus_daily=50, pro_daily=0,
                         plus_price=999, pro_price=1999)

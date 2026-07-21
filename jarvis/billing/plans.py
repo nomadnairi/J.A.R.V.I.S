@@ -50,6 +50,8 @@ class Plan:
     images: bool
     api_access: bool
     byok: bool
+    #: Max integrations the user may connect (0 = unlimited).
+    integrations: int
     #: community | priority | premium
     support: str
     #: Telegram Stars price (0 = free).
@@ -58,6 +60,10 @@ class Plan:
     @property
     def unlimited(self) -> bool:
         return self.daily_messages <= 0
+
+    @property
+    def unlimited_integrations(self) -> bool:
+        return self.integrations <= 0
 
     def within_daily(self, used_today: int) -> bool:
         """Is another message allowed today under this plan?"""
@@ -84,19 +90,19 @@ def default_plans() -> dict[str, Plan]:
             name=FREE, emoji="🆓",
             daily_messages=10, monthly_messages=100,
             all_models=False, images=False, api_access=False, byok=True,
-            support="community", price_stars=0,
+            integrations=2, support="community", price_stars=0,
         ),
         PLUS: Plan(
             name=PLUS, emoji="⭐",
             daily_messages=100, monthly_messages=2000,
             all_models=True, images=True, api_access=True, byok=True,
-            support="priority", price_stars=2500,
+            integrations=6, support="priority", price_stars=2500,
         ),
         PRO: Plan(
             name=PRO, emoji="💎",
             daily_messages=0, monthly_messages=0,  # unlimited
             all_models=True, images=True, api_access=True, byok=True,
-            support="premium", price_stars=8000,
+            integrations=0, support="premium", price_stars=8000,  # unlimited
         ),
     }
 
