@@ -92,6 +92,8 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
         _b(t("menu_usage", locale), "usage")],
         [_b(t("menu_settings", locale), "settings"),
         _b(t("menu_memory", locale), "memory")],
+        [_b(t("menu_ideas", locale), "ideas"),
+        _b(t("menu_newchat", locale), "newchat")],
     ]
     third = [_b(t("menu_language", locale), "language")]
     if voice_on:
@@ -106,7 +108,9 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
         rows.append([_b(t("menu_referral", locale), "referral")])
     if accounts_on:
         rows.append([_b(t("menu_link", locale), "link")])
-    last = [_b(t("menu_help", locale), "help")]
+    rows.append([_b(t("menu_help", locale), "help"),
+                _b(t("menu_support", locale), "support")])
+    last = [_b(t("menu_about", locale), "about")]
     if channel:
         last.append((t("menu_channel", locale), channel_url(channel)))
     rows.append(last)
@@ -212,6 +216,43 @@ def screen_referral(locale: str, *, link: str, count: int,
             f"&text={quote(t('ref_share_text', locale), safe='')}")
     rows: Rows = [[(t("ref_share", locale), share)], _back(locale)]
     return text, rows
+
+
+#: Example prompts offered on the Ideas screen (keys resolved per locale).
+IDEA_KEYS = ("idea_write", "idea_code", "idea_translate", "idea_plan")
+
+
+def screen_ideas(locale: str) -> tuple[str, Rows]:
+    """A few tappable example prompts to get users started."""
+    text = f"💡 <b>{t('ideas_title', locale)}</b>\n\n{t('ideas_hint', locale)}"
+    rows: Rows = [[_b(t(key, locale), f"idea:{i}")]
+                for i, key in enumerate(IDEA_KEYS)]
+    rows.append(_back(locale))
+    return text, rows
+
+
+def screen_support(locale: str) -> tuple[str, Rows]:
+    """Prompt the user to write a message that's forwarded to the owner."""
+    text = f"💬 <b>{t('support_title', locale)}</b>\n\n{t('support_hint', locale)}"
+    rows: Rows = [[_b(t("support_write", locale), "support")], _back(locale)]
+    return text, rows
+
+
+def screen_about(locale: str, *, version: str, voice_on: bool, images_on: bool,
+                catalog_on: bool, billing_on: bool) -> tuple[str, Rows]:
+    """An About card listing what this deployment has enabled (✅/❌)."""
+    feats = [
+        (t("about_chat", locale), True),
+        (t("about_voice", locale), voice_on),
+        (t("about_images", locale), images_on),
+        (t("about_catalog", locale), catalog_on),
+        (t("about_plans", locale), billing_on),
+        (t("about_memory", locale), True),
+    ]
+    lines = [f"ℹ️ <b>{t('about_title', locale)}</b>",
+            f"<i>v{version}</i>", "━━━━━━━━━━━━━━"]
+    lines += [f"{_yn(on)} {label}" for label, on in feats]
+    return "\n".join(lines), [_back(locale)]
 
 
 def channel_url(channel: str) -> str:
@@ -363,13 +404,15 @@ def screen_link(locale: str) -> tuple[str, Rows]:
 
 def profile_text(locale: str, *, telegram_id: int, name: str, language: str,
                 model: str, account: str | None, telegram_verified: bool,
-                stats: dict) -> str:
+                stats: dict, plan_label: str | None = None,
+                voice_on: bool | None = None, images_on: bool | None = None,
+                own_key: str | None = None) -> str:
     model_label = MODEL_LABELS.get(model, model) if model else "⚙️ Auto"
     account_line = (f"🔓 <b>{account}</b>" if account
                     else t("profile_no_account", locale))
     verified = "✅" if telegram_verified else "—"
     lang_label = LANG_LABELS.get(language, language)
-    return "\n".join([
+    lines = [
         f"👤 <b>{t('profile_title', locale)}</b>",
         "━━━━━━━━━━━━━━",
         f"🆔 <code>{telegram_id}</code>",
@@ -378,10 +421,26 @@ def profile_text(locale: str, *, telegram_id: int, name: str, language: str,
         f"✔️ {t('profile_verified', locale)}: {verified}",
         f"🌐 {t('profile_language', locale)}: {lang_label}",
         f"🤖 {t('profile_model', locale)}: {model_label}",
+    ]
+    if plan_label is not None:
+        lines.append(f"💎 {t('profile_plan', locale)}: <b>{plan_label}</b>")
+    # Feature status with ✅/❌.
+    status = []
+    if voice_on is not None:
+        status.append(f"🎙 {t('profile_voice', locale)} {_yn(voice_on)}")
+    if images_on is not None:
+        status.append(f"🎨 {t('profile_images', locale)} {_yn(images_on)}")
+    if own_key is not None:
+        status.append(f"🔑 {t('profile_ownkey', locale)} "
+                    f"{('✅ ' + own_key) if own_key else '❌'}")
+    if status:
+        lines += ["━━━━━━━━━━━━━━", "   ".join(status)]
+    lines += [
         "━━━━━━━━━━━━━━",
         f"💬 {t('profile_messages', locale)}: <b>{_fmt_num(stats['messages'])}</b>",
         f"🔢 {t('profile_tokens', locale)}: <b>{_fmt_num(stats['tokens'])}</b>",
-    ])
+    ]
+    return "\n".join(lines)
 
 
 def usage_text(locale: str, stats: dict) -> str:

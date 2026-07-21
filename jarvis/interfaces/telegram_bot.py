@@ -375,6 +375,39 @@ async def run(settings: Settings | None = None) -> None:
         await message.answer_photo(
             BufferedInputFile(png, "jarvis.png"), caption=f"🎨 {prompt[:900]}")
 
+    async def _run_prompt(message: "Message", user_id: int, prompt: str,
+                        locale: str) -> None:
+        """Send ``prompt`` to the engine as if the user typed it (used by Ideas)."""
+        if not await _within_limit(message, user_id, locale):
+            return
+        await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
+        reply = await generate_reply(
+            engine, user_id, prompt, locale,
+            model_profile=prefs.get_model(user_id),
+            model_id=prefs.get_model_id(user_id),
+            byok=prefs.get_byok(user_id), usage=usage)
+        for chunk in split_message(reply):
+            await message.answer(chunk, parse_mode=None)
+
+    async def _send_support(message: "Message", locale: str) -> None:
+        """Forward a user's support message to the bot owner(s)."""
+        admins = settings.telegram_admins()
+        if not admins:
+            await message.answer(t("support_disabled", locale))
+            return
+        u = message.from_user
+        header = f"📩 Support from <code>{u.id}</code>"
+        if u.username:
+            header += f" (@{u.username})"
+        for admin_id in admins:
+            try:
+                await message.bot.send_message(admin_id, header)
+                await message.bot.forward_message(
+                    admin_id, message.chat.id, message.message_id)
+            except Exception as exc:  # noqa: BLE001 - admin unreachable
+                logger.debug("Support forward to %s failed: %s", admin_id, exc)
+        await message.answer(t("support_sent", locale))
+
     async def _save_byok(message: "Message", provider: str, key: str,
                         locale: str) -> None:
         """Store the user's own provider key (removes their limits)."""
@@ -448,12 +481,18 @@ async def run(settings: Settings | None = None) -> None:
             acc = license_service.get_account_by_telegram(user.id)
             if acc is not None:
                 account, verified = acc.username, acc.telegram_verified
+        byok = prefs.get_byok(user.id)
         return profile_text(
             locale, telegram_id=user.id,
             name=user.full_name or user.username or "—",
             language=locale, model=prefs.get_model(user.id) or "",
             account=account, telegram_verified=verified,
             stats=usage.stats(user.id),
+            plan_label=t(f"plan_{_user_plan(user.id).name}", locale)
+            if billing is not None else None,
+            voice_on=voice is not None and voice.stt_available(),
+            images_on=image_service is not None,
+            own_key=(byok or {}).get("provider", ""),
         )
 
     async def _edit(callback: "CallbackQuery", text: str, rows) -> None:
@@ -548,6 +587,27 @@ async def run(settings: Settings | None = None) -> None:
             await _edit(callback, *_main_screen(user.id, locale))
         elif action == "voice":
             await _edit(callback, *bm.screen_voice(locale))
+        elif action == "ideas":
+            await _edit(callback, *bm.screen_ideas(locale))
+        elif action == "idea":
+            prompt = t(bm.IDEA_KEYS[int(parts[2])], locale)
+            # Send the example as if the user typed it (strip the leading emoji).
+            await _run_prompt(callback.message, user.id, prompt, locale)
+        elif action == "newchat":
+            await engine.reset(session_id_for(user.id))
+            await _edit(callback, t("newchat_done", locale),
+                        [[(t("menu_back", locale), "m:main")]])
+        elif action == "support":
+            engine.session(session_id_for(user.id)).scratch["awaiting_support"] = True
+            await callback.message.answer(t("support_ask", locale))
+        elif action == "about":
+            from jarvis import __version__
+            await _edit(callback, *bm.screen_about(
+                locale, version=__version__,
+                voice_on=voice is not None and voice.stt_available(),
+                images_on=image_service is not None,
+                catalog_on=_openrouter_available(user.id),
+                billing_on=billing is not None))
         elif action == "settings":
             await _edit(callback, *_settings_screen(locale, user.id))
         elif action == "catalog":
@@ -799,6 +859,11 @@ async def run(settings: Settings | None = None) -> None:
         if not await _is_subscribed(message.from_user.id):
             await _show_gate(message, locale)
             return
+        session = engine.session(session_id_for(message.from_user.id))
+        # A pending support message is forwarded to the owner (before anything else).
+        if session.scratch.pop("awaiting_support", False):
+            await _send_support(message, locale)
+            return
         # An in-chat "api …" command (connect a key / search models).
         from jarvis.interfaces.chat_api import parse_api_command
         parsed = parse_api_command(message.text)
@@ -806,7 +871,6 @@ async def run(settings: Settings | None = None) -> None:
             await _handle_api_command(message, parsed, locale)
             return
         # A pending "connect your key" message is captured before any limit.
-        session = engine.session(session_id_for(message.from_user.id))
         awaiting_provider = session.scratch.pop("awaiting_byok", None)
         if awaiting_provider:
             await _save_byok(message, awaiting_provider, message.text, locale)
