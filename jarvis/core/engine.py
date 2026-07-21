@@ -198,8 +198,7 @@ class JarvisEngine:
         chunks: list[str] = []
         async for chunk in self.llm.stream(
             session.conversation.to_provider_format(), system=system,
-            profile=profile, model=None if override else model_id,
-            override=override,
+            profile=profile, model=model_id, override=override,
         ):
             chunks.append(chunk)
             yield chunk
@@ -301,8 +300,9 @@ class JarvisEngine:
         tools = self.skills.tool_specs()
         model_id, profile = self._model_selection(session)
         override = self._byok_provider(session)
-        # A specific catalog model wins over the tier router; BYOK uses its own.
-        model = None if override else (model_id or self.router.model_for(request.text))
+        # A specific catalog model wins everywhere (incl. on a BYOK key); else
+        # BYOK uses its own default and the router picks a tier.
+        model = model_id or (None if override else self.router.model_for(request.text))
         messages = session.conversation.to_provider_format()
         total_tokens = 0
         result = None

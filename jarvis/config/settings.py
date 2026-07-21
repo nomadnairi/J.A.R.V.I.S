@@ -15,6 +15,16 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _parse_ids(raw: str) -> set[int]:
+    """Parse a comma-separated list of integer IDs, ignoring junk."""
+    ids: set[int] = set()
+    for part in (raw or "").split(","):
+        part = part.strip()
+        if part.isdigit():
+            ids.add(int(part))
+    return ids
+
+
 class Settings(BaseSettings):
     """Application settings loaded from the environment / `.env`."""
 
@@ -226,6 +236,9 @@ class Settings(BaseSettings):
     telegram_allowed_users: str = ""
     #: Comma-separated Telegram user IDs with access to the bot's admin panel.
     telegram_admin_users: str = ""
+    #: Comma-separated Telegram user IDs treated as Pro (unlimited, all features)
+    #: with no licence or key needed — for close people / a ready-to-use gift bot.
+    telegram_vip_users: str = ""
     #: Allow the assistant to SEND Telegram messages/posts as a tool (outbound).
     telegram_send_enabled: bool = False
     #: Default channel (@channelusername or chat id) for the telegram_post tool.
@@ -245,12 +258,11 @@ class Settings(BaseSettings):
 
     def telegram_admins(self) -> set[int]:
         """Parsed set of Telegram user IDs allowed to use the admin panel."""
-        ids: set[int] = set()
-        for part in self.telegram_admin_users.split(","):
-            part = part.strip()
-            if part.isdigit():
-                ids.add(int(part))
-        return ids
+        return _parse_ids(self.telegram_admin_users)
+
+    def telegram_vips(self) -> set[int]:
+        """Parsed set of VIP Telegram user IDs (always Pro, no setup needed)."""
+        return _parse_ids(self.telegram_vip_users)
 
     def active_api_key(self) -> str:
         """Return the API key for the currently selected provider."""

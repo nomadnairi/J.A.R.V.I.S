@@ -238,6 +238,8 @@ async def run(settings: Settings | None = None) -> None:
     usage = UsageStore(settings.memory_db_path)
     from jarvis.interfaces.referrals import ReferralStore
     referrals = ReferralStore(settings.memory_db_path)
+    from jarvis.interfaces.model_search import ModelIndex
+    model_index = ModelIndex(settings.openrouter_base_url)
     #: Filled in at startup once we know the bot's @username (for invite links).
     bot_username = ""
 
@@ -251,9 +253,10 @@ async def run(settings: Settings | None = None) -> None:
     )
 
     def _user_plan(user_id: int):
-        """Resolve a user's tier: admins and unrestricted deployments are Pro;
-        otherwise it's the plan on their active licence, else Free."""
-        if license_service is None or user_id in settings.telegram_admins():
+        """Resolve a user's tier: admins, VIPs and unrestricted deployments are
+        Pro; otherwise it's the plan on their active licence, else Free."""
+        if (license_service is None or user_id in settings.telegram_admins()
+                or user_id in settings.telegram_vips()):
             return plans[PRO]
         account = license_service.get_account_by_telegram(user_id)
         if account is None:
@@ -397,6 +400,27 @@ async def run(settings: Settings | None = None) -> None:
         except Exception:  # noqa: BLE001
             pass
 
+    async def _handle_api_command(message: "Message", parsed, locale: str) -> None:
+        """Handle an in-chat ``api`` command: connect a key or search models."""
+        import jarvis.interfaces.bot_menu as bm
+        kind, a, b = parsed
+        user_id = message.from_user.id
+        if kind == "help":
+            await message.answer(t("api_help", locale))
+            return
+        if kind == "key":
+            await _save_byok(message, a, b, locale)
+            return
+        # kind == "search"
+        results = await model_index.search(a, limit=8)
+        engine.session(session_id_for(user_id)).scratch["search_results"] = [
+            m.slug for m in results]
+        text, rows = bm.screen_search(
+            locale, results, prefs.get_model_id(user_id) or "")
+        if results and not _openrouter_available(user_id):
+            text += "\n\n" + t("search_need_or", locale)
+        await message.answer(text, reply_markup=_markup(rows))
+
     @dp.message(CommandStart())
     async def _start(message: "Message") -> None:
         locale = _resolve_locale(prefs, message.from_user)
@@ -451,11 +475,17 @@ async def run(settings: Settings | None = None) -> None:
         except Exception:  # noqa: BLE001 - message unchanged / too old
             await msg.answer(text, reply_markup=_markup(rows))
 
-    def _settings_screen(loc: str):
+    def _openrouter_available(user_id: int) -> bool:
+        """OpenRouter is usable if the server has it, or the user brought a key."""
+        if "openrouter" in engine.llm.list_profiles():
+            return True
+        return (prefs.get_byok(user_id) or {}).get("provider") == "openrouter"
+
+    def _settings_screen(loc: str, user_id: int):
         from jarvis.interfaces.bot_menu import screen_settings
         profiles = engine.llm.list_profiles()
         return screen_settings(loc, multi_model=len(profiles) > 1,
-                            catalog_on="openrouter" in profiles)
+                            catalog_on=_openrouter_available(user_id))
 
     async def _show_plans(callback: "CallbackQuery", text: str, rows) -> None:
         """Render the Tariffs screen as a banner photo + caption + buttons."""
@@ -519,7 +549,7 @@ async def run(settings: Settings | None = None) -> None:
         elif action == "voice":
             await _edit(callback, *bm.screen_voice(locale))
         elif action == "settings":
-            await _edit(callback, *_settings_screen(locale))
+            await _edit(callback, *_settings_screen(locale, user.id))
         elif action == "catalog":
             page = int(parts[2]) if len(parts) > 2 else 0
             await _edit(callback, *bm.screen_catalog(
@@ -551,6 +581,22 @@ async def run(settings: Settings | None = None) -> None:
                 return
             engine.session(session_id_for(user.id)).scratch["awaiting_image"] = True
             await callback.message.answer(t("image_ask", locale))
+        elif action == "pick":
+            idx = int(parts[2])
+            slugs = engine.session(session_id_for(user.id)
+                                ).scratch.get("search_results", [])
+            if not (0 <= idx < len(slugs)):
+                return
+            if not _openrouter_available(user.id):
+                await callback.message.answer(t("search_need_or", locale))
+                return
+            slug = slugs[idx]
+            prefs.set_model_id(user.id, slug)
+            prefs.set_model(user.id, "")
+            sess = engine.session(session_id_for(user.id))
+            sess.scratch["model_id"] = slug
+            sess.scratch.pop("model_profile", None)
+            await callback.message.answer(t("model_set", locale, model=slug))
         elif action == "referral":
             link = bm.referral_link(bot_username, user.id)
             await _edit(callback, *bm.screen_referral(
@@ -606,12 +652,12 @@ async def run(settings: Settings | None = None) -> None:
             else:
                 prefs.set_model(user.id, choice)
                 session.scratch["model_profile"] = choice
-            await _edit(callback, *_settings_screen(locale))
+            await _edit(callback, *_settings_screen(locale, user.id))
         elif action == "setlang":
             new_locale = normalize_locale(parts[2])
             prefs.set_language(user.id, new_locale)
             engine.session(session_id_for(user.id)).scratch["language"] = new_locale
-            await _edit(callback, *_settings_screen(new_locale))
+            await _edit(callback, *_settings_screen(new_locale, user.id))
         elif action in ("reset", "forget"):
             # Ask before wiping — these are destructive.
             await _edit(callback, *bm.screen_confirm(locale, action))
@@ -752,6 +798,12 @@ async def run(settings: Settings | None = None) -> None:
             return
         if not await _is_subscribed(message.from_user.id):
             await _show_gate(message, locale)
+            return
+        # An in-chat "api …" command (connect a key / search models).
+        from jarvis.interfaces.chat_api import parse_api_command
+        parsed = parse_api_command(message.text)
+        if parsed is not None:
+            await _handle_api_command(message, parsed, locale)
             return
         # A pending "connect your key" message is captured before any limit.
         session = engine.session(session_id_for(message.from_user.id))

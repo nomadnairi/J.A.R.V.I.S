@@ -158,6 +158,27 @@ def screen_plans(locale: str, plans: dict, current_tier: str) -> tuple[str, Rows
     return "\n".join(blocks).strip(), rows
 
 
+def screen_search(locale: str, results: list, current_slug: str = "",
+                ) -> tuple[str, Rows]:
+    """Model search results: a picked-from list served through OpenRouter.
+
+    ``results`` is a list of objects with ``slug``, ``name`` and ``free``.
+    """
+    if not results:
+        return (f"🔎 <b>{t('search_title', locale)}</b>\n\n"
+                f"{t('search_none', locale)}", [_back(locale)])
+    lines = [f"🔎 <b>{t('search_title', locale)}</b>",
+            t("search_found", locale, n=len(results)), ""]
+    rows: Rows = []
+    for i, m in enumerate(results):
+        tag = " 🆓" if m.free else ""
+        mark = "✅ " if m.slug == current_slug else ""
+        lines.append(f"• {m.name}{tag}")
+        rows.append([_b(f"{mark}{m.name}{tag}", f"pick:{i}")])
+    rows.append(_back(locale))
+    return "\n".join(lines), rows
+
+
 def limit_screen(locale: str, plan) -> tuple[str, Rows]:
     """Shown when a user hits their daily message limit."""
     text = (f"🚦 <b>{t('limit_title', locale)}</b>\n\n"
