@@ -197,6 +197,19 @@ def get(slug: str) -> ModelCard | None:
     return _BY_SLUG.get(slug)
 
 
+def at(index: int) -> ModelCard | None:
+    """Model by its stable registry index (used in Telegram callback data)."""
+    return REGISTRY[index] if 0 <= index < len(REGISTRY) else None
+
+
+def index_of(slug: str) -> int:
+    """Registry index of a slug, or -1."""
+    for i, m in enumerate(REGISTRY):
+        if m.slug == slug:
+            return i
+    return -1
+
+
 def search(query: str, *, limit: int = 20) -> list[ModelCard]:
     q = (query or "").strip().lower()
     if not q:

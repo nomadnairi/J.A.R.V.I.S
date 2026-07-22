@@ -187,6 +187,128 @@ def screen_search(locale: str, results: list, current_slug: str = "",
     return "\n".join(lines), rows
 
 
+def screen_market_hub(locale: str) -> tuple[str, Rows]:
+    """The model marketplace home."""
+    text = f"🤖 <b>{t('market_title', locale)}</b>\n\n{t('market_hint', locale)}"
+    rows: Rows = [
+        [_b(t("market_search", locale), "mktsearch")],
+        [_b(t("market_popular", locale), "mktpop"),
+        _b(t("market_free", locale), "mktfree")],
+        [_b(t("market_top", locale), "mkttop"),
+        _b(t("market_favs", locale), "mktfavs")],
+        [_b(t("market_cats", locale), "mktcats"),
+        _b(t("market_provs", locale), "mktprovs")],
+        [_b(t("market_compare", locale), "mktcmp")],
+        _back(locale),
+    ]
+    return text, rows
+
+
+def screen_market_list(locale: str, title: str, cards: list,
+                    current_slug: str = "", fav_slugs=()) -> tuple[str, Rows]:
+    """A list of model cards; each opens its full card."""
+    import jarvis.interfaces.model_registry as mr
+
+    if not cards:
+        return (f"🤖 <b>{title}</b>\n\n{t('market_none', locale)}",
+                [[_b(t("menu_back", locale), "market")]])
+    lines = [f"🤖 <b>{title}</b>", t("search_found", locale, n=len(cards)), ""]
+    rows: Rows = []
+    for c in cards:
+        idx = mr.index_of(c.slug)
+        mark = ("✅ " if c.slug == current_slug
+                else ("⭐ " if c.slug in fav_slugs else ""))
+        tag = " 🆓" if c.free else ""
+        rows.append([_b(f"{mark}{c.emoji} {c.name}{tag}", f"mktcard:{idx}")])
+    rows.append([_b(t("menu_back", locale), "market")])
+    return "\n".join(lines), rows
+
+
+def screen_categories(locale: str) -> tuple[str, Rows]:
+    import jarvis.interfaces.model_registry as mr
+
+    text = f"📂 <b>{t('market_cats', locale)}</b>"
+    rows: Rows = []
+    row: list[tuple[str, str]] = []
+    for cid, (emoji, label) in mr.CATEGORIES.items():
+        row.append(_b(f"{emoji} {label}", f"mktcat:{cid}"))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([_b(t("menu_back", locale), "market")])
+    return text, rows
+
+
+def screen_providers(locale: str) -> tuple[str, Rows]:
+    import jarvis.interfaces.model_registry as mr
+
+    text = f"🏢 <b>{t('market_provs', locale)}</b>"
+    rows: Rows = []
+    row: list[tuple[str, str]] = []
+    for pid, name, count in mr.providers_with_models():
+        row.append(_b(f"{name} ({count})", f"mktprov:{pid}"))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([_b(t("menu_back", locale), "market")])
+    return text, rows
+
+
+def screen_model_card(locale: str, card, *, is_fav: bool = False,
+                    can_use: bool = True) -> tuple[str, Rows]:
+    import jarvis.interfaces.model_registry as mr
+
+    idx = mr.index_of(card.slug)
+    best = ", ".join(card.strengths) or "—"
+    lines = [
+        f"{card.emoji} <b>{card.name}</b>",
+        "━━━━━━━━━━━━━━",
+        f"🏢 {t('card_provider', locale)}: <b>{mr.PROVIDERS.get(card.provider, card.provider)}</b>",
+        f"📚 {t('card_context', locale)}: <b>{card.context // 1000}K</b>",
+        f"🎯 {t('card_best_for', locale)}: {best}",
+        f"💵 {t('card_cost', locale)}: {card.cost_label}",
+        f"⚡ {t('card_speed', locale)}: {card.stars(card.speed)}",
+        f"🏅 {t('card_quality', locale)}: {card.stars(card.quality)}",
+        f"🎨 Vision: {_yn(card.vision)}   🔧 Tools: {_yn(card.tools)}",
+        f"📦 {t('card_status', locale)}: {card.status}",
+    ]
+    if card.summary:
+        lines += ["", f"<i>{card.summary}</i>"]
+    rows: Rows = []
+    if can_use:
+        rows.append([_b(t("card_use", locale), f"mktuse:{idx}")])
+    rows.append([
+        _b(t("card_unfav", locale) if is_fav else t("card_fav", locale),
+        f"mktfav:{idx}"),
+        _b(t("card_compare_add", locale), f"mktcmpadd:{idx}"),
+    ])
+    rows.append([_b(t("menu_back", locale), "market")])
+    return "\n".join(lines), rows
+
+
+def screen_compare(locale: str, cards: list) -> tuple[str, Rows]:
+    import jarvis.interfaces.model_registry as mr
+
+    if not cards:
+        return (f"📊 <b>{t('cmp_title', locale)}</b>\n\n{t('cmp_empty', locale)}",
+                [[_b(t("menu_back", locale), "market")]])
+    lines = [f"📊 <b>{t('cmp_title', locale)}</b>", ""]
+    for c in cards:
+        lines.append(f"{c.emoji} <b>{c.name}</b> — {mr.PROVIDERS.get(c.provider, c.provider)}")
+        lines.append(f"   📚 {c.context // 1000}K · 💵 {c.cost_label} · "
+                    f"⚡{c.stars(c.speed)} · 🏅{c.stars(c.quality)}")
+        lines.append(f"   🎨 {_yn(c.vision)}  🔧 {_yn(c.tools)}  "
+                    f"🎯 {', '.join(c.strengths[:3])}")
+        lines.append("")
+    rows: Rows = [[_b(t("cmp_clear", locale), "mktcmpclear")],
+                [_b(t("menu_back", locale), "market")]]
+    return "\n".join(lines).strip(), rows
+
+
 def limit_screen(locale: str, plan) -> tuple[str, Rows]:
     """Shown when a user hits their daily message limit."""
     text = (f"🚦 <b>{t('limit_title', locale)}</b>\n\n"
@@ -288,7 +410,7 @@ def screen_settings(locale: str, *, multi_model: bool,
     text = f"⚙️ <b>{t('settings_title', locale)}</b>\n\n{t('settings_hint', locale)}"
     rows: Rows = []
     if catalog_on:
-        rows.append([_b(t("menu_catalog", locale), "catalog")])
+        rows.append([_b(t("menu_catalog", locale), "market")])
     if multi_model:
         rows.append([_b(t("menu_model", locale), "model")])
     rows.append([_b(t("menu_language", locale), "language")])

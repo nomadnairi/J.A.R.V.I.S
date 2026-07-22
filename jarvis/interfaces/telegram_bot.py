@@ -242,6 +242,8 @@ async def run(settings: Settings | None = None) -> None:
     model_index = ModelIndex(settings.openrouter_base_url)
     from jarvis.interfaces.reminders import ReminderStore
     reminder_store = ReminderStore(settings.memory_db_path)
+    from jarvis.interfaces.model_registry import FavoritesStore
+    favorites = FavoritesStore(settings.memory_db_path)
     #: Filled in at startup once we know the bot's @username (for invite links).
     bot_username = ""
 
@@ -553,6 +555,89 @@ async def run(settings: Settings | None = None) -> None:
             items.append((r["id"], f"{when} — {r['text']}"))
         return items
 
+    async def _market_cb(callback: "CallbackQuery", action: str, parts,
+                        locale: str) -> None:
+        """Model marketplace: hub, lists, categories, providers, cards, compare."""
+        import jarvis.interfaces.bot_menu as bm
+        import jarvis.interfaces.model_registry as mr
+        user = callback.from_user
+        favs = [c.slug for c in favorites.list(user.id)]
+        current = prefs.get_model_id(user.id) or ""
+
+        def show_list(title, cards):
+            return bm.screen_market_list(locale, title, cards, current, favs)
+
+        if action == "market":
+            await _edit(callback, *bm.screen_market_hub(locale))
+        elif action == "mktsearch":
+            engine.session(session_id_for(user.id)
+                        ).scratch["awaiting_market_search"] = True
+            await callback.message.answer(t("market_search_ask", locale))
+        elif action == "mktpop":
+            await _edit(callback, *show_list(t("market_popular", locale), mr.popular()))
+        elif action == "mktfree":
+            await _edit(callback, *show_list(t("market_free", locale),
+                                            mr.free_models()))
+        elif action == "mkttop":
+            await _edit(callback, *show_list(t("market_top", locale), mr.top_rated()))
+        elif action == "mktfavs":
+            await _edit(callback, *show_list(t("market_favs", locale),
+                                            favorites.list(user.id)))
+        elif action == "mktcats":
+            await _edit(callback, *bm.screen_categories(locale))
+        elif action == "mktprovs":
+            await _edit(callback, *bm.screen_providers(locale))
+        elif action == "mktcat":
+            cid = parts[2]
+            label = mr.CATEGORIES.get(cid, ("", cid))[1]
+            await _edit(callback, *show_list(label, mr.by_category(cid)))
+        elif action == "mktprov":
+            pid = parts[2]
+            await _edit(callback, *show_list(mr.PROVIDERS.get(pid, pid),
+                                            mr.by_provider(pid)))
+        elif action == "mktcard":
+            card = mr.at(int(parts[2]))
+            if card:
+                await _edit(callback, *bm.screen_model_card(
+                    locale, card, is_fav=favorites.is_favorite(user.id, card.slug),
+                    can_use=_openrouter_available(user.id)))
+        elif action == "mktuse":
+            card = mr.at(int(parts[2]))
+            if not card:
+                return
+            if not _openrouter_available(user.id):
+                await callback.message.answer(t("search_need_or", locale))
+                return
+            prefs.set_model_id(user.id, card.slug)
+            prefs.set_model(user.id, "")
+            sess = engine.session(session_id_for(user.id))
+            sess.scratch["model_id"] = card.slug
+            sess.scratch.pop("model_profile", None)
+            await callback.message.answer(t("model_set", locale, model=card.name))
+        elif action == "mktfav":
+            card = mr.at(int(parts[2]))
+            if card:
+                favorites.toggle(user.id, card.slug)
+                await _edit(callback, *bm.screen_model_card(
+                    locale, card, is_fav=favorites.is_favorite(user.id, card.slug),
+                    can_use=_openrouter_available(user.id)))
+        elif action == "mktcmpadd":
+            card = mr.at(int(parts[2]))
+            sess = engine.session(session_id_for(user.id))
+            basket = sess.scratch.setdefault("compare", [])
+            if card and card.slug not in basket and len(basket) < 4:
+                basket.append(card.slug)
+            cards = [mr.get(s) for s in basket if mr.get(s)]
+            await _edit(callback, *bm.screen_compare(locale, cards))
+        elif action == "mktcmp":
+            basket = engine.session(session_id_for(user.id)
+                                    ).scratch.get("compare", [])
+            cards = [mr.get(s) for s in basket if mr.get(s)]
+            await _edit(callback, *bm.screen_compare(locale, cards))
+        elif action == "mktcmpclear":
+            engine.session(session_id_for(user.id)).scratch["compare"] = []
+            await _edit(callback, *bm.screen_compare(locale, []))
+
     async def _show_plans(callback: "CallbackQuery", text: str, rows) -> None:
         """Render the Tariffs screen as a banner photo + caption + buttons."""
         msg = callback.message
@@ -650,6 +735,8 @@ async def run(settings: Settings | None = None) -> None:
                 billing_on=billing is not None))
         elif action == "settings":
             await _edit(callback, *_settings_screen(locale, user.id))
+        elif action.startswith("mkt") or action == "market":
+            await _market_cb(callback, action, parts, locale)
         elif action == "catalog":
             page = int(parts[2]) if len(parts) > 2 else 0
             await _edit(callback, *bm.screen_catalog(
@@ -904,6 +991,17 @@ async def run(settings: Settings | None = None) -> None:
         # A pending support message is forwarded to the owner (before anything else).
         if session.scratch.pop("awaiting_support", False):
             await _send_support(message, locale)
+            return
+        # A pending marketplace search runs against the model registry.
+        if session.scratch.pop("awaiting_market_search", False):
+            import jarvis.interfaces.bot_menu as bm
+            import jarvis.interfaces.model_registry as mr
+            cards = mr.search(message.text)
+            favs = [c.slug for c in favorites.list(message.from_user.id)]
+            text, rows = bm.screen_market_list(
+                locale, t("market_search", locale), cards,
+                prefs.get_model_id(message.from_user.id) or "", favs)
+            await message.answer(text, reply_markup=_markup(rows))
             return
         # "напомни …" / "remind me …" → schedule a reminder.
         from jarvis.interfaces.reminders import is_reminder
@@ -1161,6 +1259,7 @@ async def run(settings: Settings | None = None) -> None:
         usage.close()
         referrals.close()
         reminder_store.close()
+        favorites.close()
         await bot.session.close()
 
 
