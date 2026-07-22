@@ -63,6 +63,20 @@ def _models():
     ])
 
 
+def test_normalize_captures_description_and_hint():
+    models = normalize([
+        {"id": "deepseek/deepseek-coder", "name": "DeepSeek Coder",
+        "description": "A model tuned for code.", "pricing": {"prompt": "0"}},
+        {"id": "openai/o1", "name": "o1", "pricing": {"prompt": "1"}},
+        {"id": "openai/gpt-4o-mini", "name": "GPT-4o mini", "pricing": {"prompt": "1"}},
+    ])
+    by = {m.slug: m for m in models}
+    assert by["deepseek/deepseek-coder"].description == "A model tuned for code."
+    assert "coding" in by["deepseek/deepseek-coder"].hint
+    assert "reasoning" in by["openai/o1"].hint
+    assert "fast" in by["openai/gpt-4o-mini"].hint
+
+
 def test_normalize_marks_free():
     by = {m.slug: m for m in _models()}
     assert by["deepseek/deepseek-chat"].free is True

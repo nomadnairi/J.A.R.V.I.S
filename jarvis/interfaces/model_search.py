@@ -27,6 +27,35 @@ class FoundModel:
     slug: str
     name: str
     free: bool
+    description: str = ""
+
+    @property
+    def hint(self) -> str:
+        """A short 'best for …' tag derived from the model's name/description."""
+        return model_hint(self)
+
+
+# Keyword → short "best for" tag. Checked in order against name + description.
+_HINTS = (
+    (("coder", "code", "codestral", "deepseek-coder", "devstral"),
+    "🧑‍💻 coding"),
+    (("reason", "-r1", "o1", "o3", "o4", "thinking", "qwq", "math"),
+    "🧠 reasoning / math"),
+    (("vision", "-vl", "image", "multimodal", "vl-"),
+    "👁 vision / images"),
+    (("mini", "flash", "haiku", "small", "lite", "8b", "7b"),
+    "⚡ fast & cheap"),
+    (("opus", "gpt-4o", "sonnet", "-pro", "large", "70b", "405b", "ultra"),
+    "🏆 top quality"),
+)
+
+
+def model_hint(model: "FoundModel") -> str:
+    hay = f"{model.slug} {model.name} {model.description}".lower()
+    for needles, tag in _HINTS:
+        if any(n in hay for n in needles):
+            return tag
+    return "💬 general chat"
 
 
 def _is_free(model: dict) -> bool:
@@ -48,7 +77,8 @@ def normalize(raw_models: list[dict]) -> list[FoundModel]:
         slug = str(m.get("id", "")).strip()
         if not slug:
             continue
-        out.append(FoundModel(slug, str(m.get("name") or slug), _is_free(m)))
+        desc = str(m.get("description") or "").strip()
+        out.append(FoundModel(slug, str(m.get("name") or slug), _is_free(m), desc))
     return out
 
 
