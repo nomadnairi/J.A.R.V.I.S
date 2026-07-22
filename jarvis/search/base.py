@@ -13,6 +13,7 @@ import json
 import urllib.request
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from jarvis.utils.exceptions import JarvisError
 
@@ -49,7 +50,11 @@ def request_json(url: str, *, method: str = "GET", headers: dict | None = None,
         with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310  # nosec B310
             return json.loads(resp.read().decode("utf-8"))
     except Exception as exc:  # noqa: BLE001
-        raise SearchError(f"HTTP request failed: {exc}") from exc
+        # Some providers carry the API key in the query string; never surface
+        # the full URL in an error — report only scheme+host.
+        host = urlsplit(url).netloc or "search endpoint"
+        raise SearchError(f"HTTP request to {host} failed: {type(exc).__name__}") \
+            from exc
 
 
 class SearchProvider(ABC):

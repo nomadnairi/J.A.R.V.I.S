@@ -1164,6 +1164,12 @@ async def run(settings: Settings | None = None) -> None:
                 else logger.warning if issue.level == "warning"
                 else logger.info)
             log("CONFIG %s", issue)
+        # Security self-audit: highlight anything that widens the attack surface.
+        from jarvis.security.audit import audit_settings
+        for finding in audit_settings(settings):
+            log = (logger.warning if finding.severity in ("high", "medium")
+                else logger.info)
+            log("SECURITY %s", finding)
 
         channel = settings.telegram_required_channel
         if not channel:

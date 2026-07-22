@@ -79,6 +79,15 @@ def diagnose(engine) -> list[Check]:
         detail = "no issues"
     checks.append(Check("config", not errors, detail))
 
+    # Security self-audit — informational (dangerous caps flagged, never fails).
+    from jarvis.security.audit import audit_settings, worst_severity
+    findings = audit_settings(engine.settings)
+    worst = worst_severity(findings)
+    checks.append(Check(
+        "security_audit", True,
+        f"{len(findings)} finding(s), worst={worst}" if findings
+        else "hardened defaults"))
+
     return checks
 
 
