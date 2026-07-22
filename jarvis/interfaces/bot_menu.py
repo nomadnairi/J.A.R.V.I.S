@@ -419,7 +419,8 @@ def gate_screen(locale: str, channel: str) -> tuple[str, Rows]:
 
 def screen_settings(locale: str, *, multi_model: bool,
                     catalog_on: bool = False,
-                    proactive: bool = False) -> tuple[str, Rows]:
+                    proactive: bool = False,
+                    search_on: bool = False) -> tuple[str, Rows]:
     text = f"⚙️ <b>{t('settings_title', locale)}</b>\n\n{t('settings_hint', locale)}"
     rows: Rows = []
     if catalog_on:
@@ -428,6 +429,8 @@ def screen_settings(locale: str, *, multi_model: bool,
         rows.append([_b(t("menu_model", locale), "model")])
     rows.append([_b(t("menu_language", locale), "language")])
     rows.append([_b(t("menu_byok", locale), "byok")])
+    if search_on:
+        rows.append([_b(t("menu_search_prov", locale), "searchprov")])
     rows.append([_b(f"{t('menu_proactive', locale)}: {_yn(proactive)}",
                     "proactive")])
     rows.append(_back(locale))
@@ -492,6 +495,32 @@ def screen_catalog(locale: str, user_tier: str, current_slug: str,
         ])
     rows.append(_nav(locale, "settings"))
     return text, rows
+
+
+def screen_search_providers(locale: str, statuses, active: str | None,
+                            ) -> tuple[str, Rows]:
+    """Read-only view of the Search Provider Manager: providers by category,
+    each marked available (✅) or needs-a-key (❌), with the active one starred.
+    """
+    from jarvis.search.manager import KIND_LABELS
+
+    lines = [f"🌍 <b>{t('search_prov_title', locale)}</b>",
+            t("search_prov_hint", locale), ""]
+    by_kind: dict[str, list] = {}
+    for st in statuses:
+        by_kind.setdefault(st.kind, []).append(st)
+    for kind in ("ai", "web", "browser"):
+        group = by_kind.get(kind)
+        if not group:
+            continue
+        lines.append(f"<b>{KIND_LABELS.get(kind, kind)}</b>")
+        for st in group:
+            mark = "⭐ " if st.name == active else ""
+            key = "" if not st.requires_key else (
+                " 🔑" if not st.available else "")
+            lines.append(f"   {mark}{_yn(st.available)} {st.label}{key}")
+        lines.append("")
+    return "\n".join(lines).strip(), [_nav(locale, "settings")]
 
 
 def screen_memory(locale: str) -> tuple[str, Rows]:

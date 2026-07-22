@@ -9,8 +9,29 @@ backend is just adding its API key.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from jarvis.config.settings import Settings
 from jarvis.search.base import SearchError, SearchProvider, SearchResult
+
+#: Human labels for the three provider categories the router knows about.
+KIND_LABELS = {
+    "ai": "🤖 AI search",
+    "web": "🌐 Web search",
+    "browser": "🧭 Browser",
+}
+
+
+@dataclass(frozen=True)
+class ProviderStatus:
+    """One provider's routing metadata + readiness."""
+
+    name: str
+    label: str
+    kind: str
+    requires_key: bool
+    available: bool
+    is_default: bool
 from jarvis.search.providers import (
     BraveProvider,
     DuckDuckGoProvider,
@@ -51,6 +72,45 @@ class SearchManager:
 
     def available(self) -> list[str]:
         return [n for n in self._order if self._providers[n].available()]
+
+    # -- router introspection ---------------------------------------------
+
+    def statuses(self) -> list[ProviderStatus]:
+        """Routing metadata + readiness for every provider, in priority order."""
+        out: list[ProviderStatus] = []
+        for name in self._order:
+            p = self._providers[name]
+            out.append(ProviderStatus(
+                name=name, label=getattr(p, "label", name),
+                kind=getattr(p, "kind", "web"),
+                requires_key=getattr(p, "requires_key", True),
+                available=p.available(),
+                is_default=(name == self.default)))
+        return out
+
+    def by_kind(self, kind: str) -> list[str]:
+        """Provider names of a given category ('ai' / 'web' / 'browser')."""
+        return [s.name for s in self.statuses() if s.kind == kind]
+
+    def categories(self) -> dict[str, list[ProviderStatus]]:
+        """Providers grouped by category, categories ordered ai → web → browser."""
+        grouped: dict[str, list[ProviderStatus]] = {}
+        for st in self.statuses():
+            grouped.setdefault(st.kind, []).append(st)
+        ordered = {}
+        for kind in ("ai", "web", "browser"):
+            if kind in grouped:
+                ordered[kind] = grouped[kind]
+        # Any unexpected kinds appended after the known ones.
+        for kind, items in grouped.items():
+            if kind not in ordered:
+                ordered[kind] = items
+        return ordered
+
+    def active(self) -> str | None:
+        """Name of the provider a default (auto) search would route to now."""
+        chosen = self._pick(self.default)
+        return chosen.name if chosen else None
 
     def _pick(self, name: str | None) -> SearchProvider | None:
         if name and name != "auto":

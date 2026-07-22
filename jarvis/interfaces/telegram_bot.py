@@ -545,7 +545,8 @@ async def run(settings: Settings | None = None) -> None:
         profiles = engine.llm.list_profiles()
         return screen_settings(loc, multi_model=len(profiles) > 1,
                             catalog_on=_openrouter_available(user_id),
-                            proactive=prefs.get_proactive(user_id))
+                            proactive=prefs.get_proactive(user_id),
+                            search_on=settings.search_enabled)
 
     def _reminder_items(user_id: int) -> list:
         from datetime import datetime
@@ -797,6 +798,11 @@ async def run(settings: Settings | None = None) -> None:
             await _edit(callback, *bm.screen_referral(
                 locale, link=link, count=referrals.count(user.id),
                 bonus_each=settings.referral_bonus_daily))
+        elif action == "searchprov":
+            from jarvis.search.manager import SearchManager
+            mgr = SearchManager.from_settings(settings)
+            await _edit(callback, *bm.screen_search_providers(
+                locale, mgr.statuses(), mgr.active()))
         elif action == "byok":
             current = (prefs.get_byok(user.id) or {}).get("provider")
             await _edit(callback, *bm.screen_byok(locale, current))
