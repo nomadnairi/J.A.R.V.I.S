@@ -41,7 +41,8 @@ class Settings(BaseSettings):
 
     #: Which provider the core engine uses by default. Each is standalone:
     #: "openai" = the real OpenAI, "openrouter" = OpenRouter (its own key/model).
-    llm_provider: Literal["anthropic", "openai", "openrouter"] = "anthropic"
+    llm_provider: Literal[
+        "anthropic", "openai", "openrouter", "local"] = "anthropic"
     llm_model: str = "claude-sonnet-4-20250514"
     #: Custom OpenAI-compatible endpoint for the OpenAI provider only. Empty =
     #: the official OpenAI API. (For OpenRouter use the OPENROUTER_* settings.)
@@ -53,6 +54,18 @@ class Settings(BaseSettings):
     openrouter_model: str = "anthropic/claude-3.7-sonnet"
     #: OpenRouter endpoint (rarely changed).
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
+
+    #: Local / self-hosted models via an OpenAI-compatible server. Pick a backend
+    #: preset (its default URL is used unless LOCAL_LLM_BASE_URL overrides it).
+    local_llm_backend: Literal[
+        "ollama", "lmstudio", "vllm", "llamacpp", "custom"] = "ollama"
+    #: Override the backend's default endpoint (needed for "custom").
+    local_llm_base_url: str = ""
+    #: Model name to request from the local server (e.g. "llama3", "qwen2.5").
+    local_llm_model: str = "llama3"
+    #: Most local servers ignore auth; set only if yours requires a token.
+    local_llm_api_key: str = ""
+
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     llm_max_tokens: int = Field(default=2048, gt=0)
 

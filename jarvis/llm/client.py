@@ -67,10 +67,10 @@ class LLMClient:
         The primary provider is ``settings.llm_provider``; any *other*
         provider with credentials configured is registered as a fallback.
         """
-        # OpenRouter carries its own model (OPENROUTER_MODEL), so don't force
-        # the anthropic/openai LLM_MODEL onto it — that would send a non-slug
-        # model name and fail.
-        primary_model = (None if settings.llm_provider == "openrouter"
+        # OpenRouter and local backends carry their own model name, so don't
+        # force the anthropic/openai LLM_MODEL onto them — that would send a
+        # wrong model name and fail.
+        primary_model = (None if settings.llm_provider in ("openrouter", "local")
                         else settings.llm_model)
         primary = cls._make_provider(settings, settings.llm_provider, primary_model)
 
@@ -86,6 +86,9 @@ class LLMClient:
 
     @staticmethod
     def _key_for(settings: Settings, name: str) -> str:
+        # "local" intentionally returns "" so it is never auto-added to the
+        # fallback chain (the server may be offline); it is used only when it is
+        # the explicitly selected provider.
         return {
             "anthropic": settings.anthropic_api_key,
             "openai": settings.openai_api_key,
@@ -128,6 +131,18 @@ class LLMClient:
                 max_tokens=settings.llm_max_tokens,
                 base_url=settings.openrouter_base_url,
             )
+        # Local models become a switchable profile once the user runs on them
+        # (or explicitly points at a local endpoint).
+        if settings.llm_provider == "local" or settings.local_llm_base_url:
+            from jarvis.llm.providers.local_provider import LocalProvider
+            profiles["local"] = LocalProvider(
+                api_key=settings.local_llm_api_key,
+                model=settings.local_llm_model,
+                temperature=settings.llm_temperature,
+                max_tokens=settings.llm_max_tokens,
+                base_url=settings.local_llm_base_url,
+                backend=settings.local_llm_backend,
+            )
         return profiles
 
     @staticmethod
@@ -139,6 +154,16 @@ class LLMClient:
 
         from jarvis.config.constants import DEFAULT_MODELS
         key = LLMClient._key_for(settings, name)
+        if name == "local":
+            # Local backends take a preset endpoint + their own model name.
+            return provider_cls(
+                api_key=settings.local_llm_api_key,
+                model=model or settings.local_llm_model,
+                temperature=settings.llm_temperature,
+                max_tokens=settings.llm_max_tokens,
+                base_url=settings.local_llm_base_url,
+                backend=settings.local_llm_backend,
+            )
         if name == "openrouter":
             base_url = settings.openrouter_base_url
             default_model = settings.openrouter_model

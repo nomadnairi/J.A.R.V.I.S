@@ -28,7 +28,7 @@ Rows = list[list[tuple[str, str]]]
 # AI-picker labels.
 MODEL_LABELS = {
     "claude": "🧠 Claude", "gpt": "💬 ChatGPT", "openrouter": "🌐 OpenRouter",
-    "auto": "⚙️ Auto",
+    "local": "🖥 Local", "auto": "⚙️ Auto",
 }
 LANG_LABELS = {"en": "🇬🇧 English", "ru": "🇷🇺 Русский", "uz": "🇺🇿 O'zbek"}
 
