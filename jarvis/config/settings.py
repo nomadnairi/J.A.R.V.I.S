@@ -298,15 +298,22 @@ class Settings(BaseSettings):
         return _parse_ids(self.telegram_vip_users)
 
     def active_api_key(self) -> str:
-        """Return the API key for the currently selected provider."""
+        """Return the API key for the currently selected provider.
+
+        Local backends need no cloud key, so a placeholder is returned to mark
+        them as "credentialed" (see :meth:`has_llm_credentials`).
+        """
         return {
             "anthropic": self.anthropic_api_key,
             "openai": self.openai_api_key,
             "openrouter": self.openrouter_api_key,
+            "local": self.local_llm_api_key or "local",
         }.get(self.llm_provider, "")
 
     def has_llm_credentials(self) -> bool:
-        """Whether an API key is configured for the active provider."""
+        """Whether the active provider is usable (key set, or a local model)."""
+        if self.llm_provider == "local":
+            return bool(self.local_llm_model)
         return bool(self.active_api_key())
 
 

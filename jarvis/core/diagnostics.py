@@ -66,6 +66,19 @@ def diagnose(engine) -> list[Check]:
     count = engine.tools.count()
     checks.append(Check("tools", count > 0, f"{count} tools available"))
 
+    # Configuration Manager — cross-field validation (errors fail the check).
+    from jarvis.config.manager import ConfigManager
+    issues = ConfigManager(engine.settings).validate()
+    errors = [i for i in issues if i.level == "error"]
+    warnings = [i for i in issues if i.level == "warning"]
+    if errors:
+        detail = "; ".join(f"{i.key}: {i.message}" for i in errors)
+    elif warnings:
+        detail = "warnings — " + "; ".join(i.key for i in warnings)
+    else:
+        detail = "no issues"
+    checks.append(Check("config", not errors, detail))
+
     return checks
 
 

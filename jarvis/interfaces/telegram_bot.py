@@ -1142,9 +1142,10 @@ async def run(settings: Settings | None = None) -> None:
             who = f"<unknown: {exc}>"
         logger.info("J.A.R.V.I.S. bot %s starting as %s", __version__, who)
         # Active LLM configuration at a glance (which model actually runs).
-        active_model = (settings.openrouter_model
-                        if settings.llm_provider == "openrouter"
-                        else settings.llm_model)
+        active_model = {
+            "openrouter": settings.openrouter_model,
+            "local": f"{settings.local_llm_backend}:{settings.local_llm_model}",
+        }.get(settings.llm_provider, settings.llm_model)
         logger.info("LLM: provider=%s model=%s temp=%s max_tokens=%s",
                     settings.llm_provider, active_model,
                     settings.llm_temperature, settings.llm_max_tokens)
@@ -1152,6 +1153,13 @@ async def run(settings: Settings | None = None) -> None:
                     "billing=%s auth=%s voice=%s images=%s",
                     billing is not None, license_service is not None,
                     voice is not None, image_service is not None)
+        # Configuration Manager: surface any misconfiguration up front.
+        from jarvis.config.manager import ConfigManager
+        for issue in ConfigManager(settings).validate():
+            log = (logger.error if issue.level == "error"
+                else logger.warning if issue.level == "warning"
+                else logger.info)
+            log("CONFIG %s", issue)
 
         channel = settings.telegram_required_channel
         if not channel:
