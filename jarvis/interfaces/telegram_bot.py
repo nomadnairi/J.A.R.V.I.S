@@ -1153,6 +1153,10 @@ async def run(settings: Settings | None = None) -> None:
                     "billing=%s auth=%s voice=%s images=%s",
                     billing is not None, license_service is not None,
                     voice is not None, image_service is not None)
+        # Capability Manager: one line per feature (enabled/restricted/disabled).
+        from jarvis.core.capabilities import CapabilityManager
+        for line in CapabilityManager(settings).summary_lines():
+            logger.info("CAPABILITY %s", line)
         # Configuration Manager: surface any misconfiguration up front.
         from jarvis.config.manager import ConfigManager
         for issue in ConfigManager(settings).validate():
