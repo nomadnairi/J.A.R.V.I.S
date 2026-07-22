@@ -185,6 +185,13 @@ class ServiceContainer:
             from jarvis.desktop.controller import DesktopController
             from jarvis.desktop.tools import desktop_skills
             registry.register_many(desktop_skills(DesktopController(self.security)))
+        # Expose the web-search tool (gated by SEARCH_ENABLED; keyless
+        # DuckDuckGo fallback means it works even with no API keys).
+        if self._settings.search_enabled:
+            from jarvis.search.manager import SearchManager
+            from jarvis.search.tools import search_skills
+            registry.register_many(
+                search_skills(SearchManager.from_settings(self._settings)))
         # Expose the run_agent tool (delegating to an autonomous sub-agent).
         if self._settings.agents_enabled:
             from jarvis.agents.tools import RunAgentSkill

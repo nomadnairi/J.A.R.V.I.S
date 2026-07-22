@@ -97,10 +97,22 @@ class FileManager:
                 continue
         return "\n".join(matches) if matches else f"No matches for {query!r}."
 
+    def _read_document(self, path: str) -> str:
+        """Extract text from a document (PDF / DOCX / text), sandboxed + gated."""
+        from jarvis.files.documents import extract_text
+        self.security.require(Capability.FILE_READ, f"read document {path}")
+        target = self._safe_path(path)
+        if not target.is_file():
+            return f"No such file: {path}"
+        return extract_text(target, max_chars=_MAX_READ_BYTES)
+
     # -- async API ----------------------------------------------------------
 
     async def read(self, path: str) -> str:
         return await asyncio.to_thread(self._read, path)
+
+    async def read_document(self, path: str) -> str:
+        return await asyncio.to_thread(self._read_document, path)
 
     async def write(self, path: str, content: str) -> str:
         return await asyncio.to_thread(self._write, path, content)

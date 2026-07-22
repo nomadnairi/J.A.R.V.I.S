@@ -152,8 +152,96 @@ class SerpApiProvider(SearchProvider):
         return self._limit(self.parse(raw), limit)
 
 
-#: Registry of provider classes (order = routing priority; free DDG last).
+class PerplexityProvider(SearchProvider):
+    """Perplexity — an AI answer engine with cited sources (needs a key)."""
+
+    name = "perplexity"
+    label = "Perplexity"
+    kind = "ai"
+
+    @staticmethod
+    def parse(raw: dict) -> list[SearchResult]:
+        choices = raw.get("choices") or []
+        answer = ""
+        if choices:
+            answer = (choices[0].get("message") or {}).get("content", "") or ""
+        citations = [c for c in (raw.get("citations") or []) if c]
+        out: list[SearchResult] = []
+        if answer:
+            out.append(SearchResult(
+                title="🔮 Perplexity answer",
+                url=citations[0] if citations else "",
+                snippet=answer[:600], source="perplexity"))
+        for i, url in enumerate(citations, 1):
+            out.append(SearchResult(title=f"Source {i}", url=url,
+                                    snippet="", source="perplexity"))
+        return out
+
+    async def search(self, query: str, *, limit: int = 5) -> list[SearchResult]:
+        raw = await self._json(
+            "https://api.perplexity.ai/chat/completions", method="POST",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            payload={"model": "sonar",
+                    "messages": [{"role": "user", "content": query}]})
+        return self._limit(self.parse(raw), limit)
+
+
+class PlaywrightProvider(SearchProvider):
+    """Keyless browser search — drives headless Chromium to scrape results.
+
+    Only "available" when Playwright is installed; otherwise the router skips it.
+    """
+
+    name = "playwright"
+    label = "Browser (Playwright)"
+    requires_key = False
+    kind = "browser"
+
+    def available(self) -> bool:
+        try:
+            import playwright  # noqa: F401
+        except Exception:  # noqa: BLE001 - optional dependency
+            return False
+        return True
+
+    @staticmethod
+    def parse(items: list[dict]) -> list[SearchResult]:
+        """Turn scraped ``{title,url,snippet}`` dicts into results (pure)."""
+        return [SearchResult(title=(i.get("title") or "").strip(),
+                            url=i.get("url", ""),
+                            snippet=(i.get("snippet") or "").strip(),
+                            source="playwright")
+                for i in items if i.get("url")]
+
+    async def search(self, query: str, *, limit: int = 5) -> list[SearchResult]:
+        items = await self._scrape(query, limit)
+        return self._limit(self.parse(items), limit)
+
+    async def _scrape(self, query: str, limit: int) -> list[dict]:  # pragma: no cover - needs a browser
+        from playwright.async_api import async_playwright
+
+        items: list[dict] = []
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            try:
+                page = await browser.new_page()
+                await page.goto(f"https://duckduckgo.com/html/?q={quote_plus(query)}",
+                                timeout=20000)
+                anchors = await page.query_selector_all("a.result__a")
+                for a in anchors[:limit]:
+                    items.append({
+                        "title": await a.inner_text(),
+                        "url": await a.get_attribute("href") or "",
+                        "snippet": "",
+                    })
+            finally:
+                await browser.close()
+        return items
+
+
+#: Registry of provider classes (order = routing priority).
+#: AI answer engines first, classic web next, keyless fallbacks last.
 PROVIDER_CLASSES = (
-    TavilyProvider, ExaProvider, BraveProvider,
-    GoogleCSEProvider, SerpApiProvider, DuckDuckGoProvider,
+    TavilyProvider, ExaProvider, PerplexityProvider, BraveProvider,
+    GoogleCSEProvider, SerpApiProvider, DuckDuckGoProvider, PlaywrightProvider,
 )

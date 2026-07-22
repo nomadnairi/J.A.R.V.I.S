@@ -16,6 +16,8 @@ from jarvis.search.providers import (
     DuckDuckGoProvider,
     ExaProvider,
     GoogleCSEProvider,
+    PerplexityProvider,
+    PlaywrightProvider,
     SerpApiProvider,
     TavilyProvider,
 )
@@ -35,10 +37,12 @@ class SearchManager:
         providers: list[SearchProvider] = [
             TavilyProvider(settings.tavily_api_key),
             ExaProvider(settings.exa_api_key),
+            PerplexityProvider(settings.perplexity_api_key),
             BraveProvider(settings.brave_api_key),
             GoogleCSEProvider(settings.google_cse_key, cx=settings.google_cse_cx),
             SerpApiProvider(settings.serpapi_key),
-            DuckDuckGoProvider(),  # no key — always available fallback
+            DuckDuckGoProvider(),      # no key — always available fallback
+            PlaywrightProvider(),      # keyless browser (if Playwright installed)
         ]
         return cls(providers, default=settings.search_provider or "auto")
 
