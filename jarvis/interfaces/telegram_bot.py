@@ -1035,10 +1035,17 @@ async def run(settings: Settings | None = None) -> None:
         except Exception as exc:  # noqa: BLE001
             who = f"<unknown: {exc}>"
         logger.info("J.A.R.V.I.S. bot %s starting as %s", __version__, who)
+        # Active LLM configuration at a glance (which model actually runs).
+        active_model = (settings.openrouter_model
+                        if settings.llm_provider == "openrouter"
+                        else settings.llm_model)
+        logger.info("LLM: provider=%s model=%s temp=%s max_tokens=%s",
+                    settings.llm_provider, active_model,
+                    settings.llm_temperature, settings.llm_max_tokens)
         logger.info("Mode: button-only (no user commands). "
-                    "billing=%s auth=%s voice=%s",
+                    "billing=%s auth=%s voice=%s images=%s",
                     billing is not None, license_service is not None,
-                    voice is not None)
+                    voice is not None, image_service is not None)
 
         channel = settings.telegram_required_channel
         if not channel:
