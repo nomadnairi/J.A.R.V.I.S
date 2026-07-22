@@ -83,72 +83,98 @@ def stylesheet(theme: str = DEFAULT_THEME) -> str:
         outline: none;
     }}
     QMainWindow, QDialog {{ background: {p['bg']}; }}
+    QScrollArea {{ background: transparent; border: none; }}
     QWidget#Card {{
         background: {p['panel']};
         border: 1px solid {p['border']};
-        border-radius: 16px;
+        border-radius: 18px;
     }}
-    QWidget#Header {{ background: {p['bg']}; border-bottom: 1px solid {p['border']}; }}
+    QWidget#Header {{ background: {p['panel']}; border-bottom: 1px solid {p['border']}; }}
     QLabel#Wordmark {{
         font-family: {MONO_STACK};
-        font-size: 20px; font-weight: 700; letter-spacing: 3px;
+        font-size: 21px; font-weight: 800; letter-spacing: 4px;
         color: {p['text']};
     }}
-    QLabel#StatusDot {{ color: {p['success']}; font-size: 13px; }}
+    QLabel#StatusDot {{ color: {p['success']}; font-size: 13px; font-weight: 600; }}
     QLabel#Subtle {{ color: {p['muted']}; font-size: 13px; }}
     QLabel#Hint {{ color: {p['muted']}; font-size: 12px; }}
     QLabel#Title {{ font-size: 22px; font-weight: 700; }}
+    QLabel#PageTitle {{ font-size: 22px; font-weight: 800; letter-spacing: 0.3px; }}
+    QLabel#PageSub {{ color: {p['muted']}; font-size: 13px; }}
+    /* Form field labels sit muted above/next to their inputs. */
+    QFormLayout > QLabel, QLabel#FieldLabel {{
+        color: {p['muted']}; font-size: 12px; font-weight: 600;
+        letter-spacing: 0.4px;
+    }}
 
-    QTabWidget::pane {{ border: none; background: {p['bg']}; }}
+    /* Top navigation — a pill bar. */
+    QTabWidget::pane {{ border: none; background: transparent; }}
     QTabBar {{ qproperty-drawBase: 0; }}
     QTabBar::tab {{
         background: transparent; color: {p['muted']};
-        padding: 9px 18px; margin: 6px 4px; border-radius: 10px; font-weight: 600;
+        padding: 10px 20px; margin: 8px 4px; border-radius: 12px;
+        font-weight: 700; font-size: 13px;
     }}
     QTabBar::tab:hover {{ color: {p['text']}; background: {p['elevated']}; }}
-    QTabBar::tab:selected {{ color: {p['on_accent']}; background: {p['accent']}; }}
+    QTabBar::tab:selected {{
+        color: {p['on_accent']};
+        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+            stop:0 {p['accent_hi']}, stop:1 {p['accent']});
+    }}
 
     QLineEdit, QPlainTextEdit, QTextEdit, QComboBox {{
         background: {p['elevated']}; border: 1px solid {p['border']};
-        border-radius: 10px; padding: 9px 12px;
+        border-radius: 12px; padding: 11px 14px; min-height: 20px;
         selection-background-color: {p['accent_dim']};
     }}
+    QLineEdit:hover, QComboBox:hover {{ border: 1px solid {p['muted']}; }}
     QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QComboBox:focus {{
         border: 1px solid {p['accent']};
     }}
-    QComboBox::drop-down {{ border: none; width: 24px; }}
+    QComboBox::drop-down {{ border: none; width: 28px; }}
     QComboBox QAbstractItemView {{
         background: {p['panel']}; border: 1px solid {p['border']};
-        selection-background-color: {p['accent_soft']}; border-radius: 8px;
+        selection-background-color: {p['accent_soft']}; border-radius: 10px;
+        padding: 4px;
     }}
 
     QPushButton {{
         background: {p['elevated']}; border: 1px solid {p['border']};
-        border-radius: 10px; padding: 9px 18px; font-weight: 600;
+        border-radius: 12px; padding: 11px 20px; font-weight: 700;
+        min-height: 20px;
     }}
     QPushButton:hover {{ border: 1px solid {p['accent']}; color: {p['accent']}; }}
     QPushButton:pressed {{ background: {p['panel']}; }}
-    QPushButton#Primary {{ background: {p['accent']}; color: {p['on_accent']}; border: none; }}
+    QPushButton#Primary {{
+        color: {p['on_accent']}; border: none; font-size: 14px;
+        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+            stop:0 {p['accent_hi']}, stop:1 {p['accent']});
+    }}
     QPushButton#Primary:hover {{ background: {p['accent_hi']}; color: {p['on_accent']}; }}
     QPushButton#Primary:pressed {{ background: {p['accent_dim']}; }}
     QPushButton#Danger:hover {{ border: 1px solid {p['danger']}; color: {p['danger']}; }}
     QPushButton#Record {{
         background: {p['accent_soft']}; border: 1px solid {p['accent']};
-        color: {p['accent']}; font-size: 16px; border-radius: 32px;
+        color: {p['accent']}; font-size: 16px; font-weight: 700;
+        border-radius: 16px; min-height: 30px;
     }}
+    QPushButton#Record:hover {{ background: {p['accent_dim']}; color: {p['on_accent']}; }}
 
-    QCheckBox, QRadioButton {{ spacing: 8px; padding: 4px 0; }}
+    QCheckBox, QRadioButton {{ spacing: 10px; padding: 7px 0; font-size: 14px; }}
     QCheckBox::indicator, QRadioButton::indicator {{
-        width: 18px; height: 18px; border: 1px solid {p['border']};
-        border-radius: 5px; background: {p['elevated']};
+        width: 20px; height: 20px; border: 1px solid {p['border']};
+        border-radius: 6px; background: {p['elevated']};
     }}
-    QRadioButton::indicator {{ border-radius: 9px; }}
+    QRadioButton::indicator {{ border-radius: 10px; }}
+    QCheckBox::indicator:hover, QRadioButton::indicator:hover {{
+        border: 1px solid {p['accent']};
+    }}
     QCheckBox::indicator:checked, QRadioButton::indicator:checked {{
         background: {p['accent']}; border: 1px solid {p['accent']};
     }}
 
-    QScrollBar:vertical {{ background: transparent; width: 10px; margin: 4px; }}
-    QScrollBar::handle:vertical {{ background: {p['border']}; border-radius: 5px; min-height: 30px; }}
+    QScrollBar:vertical {{ background: transparent; width: 12px; margin: 4px; }}
+    QScrollBar::handle:vertical {{ background: {p['border']}; border-radius: 6px; min-height: 36px; }}
     QScrollBar::handle:vertical:hover {{ background: {p['muted']}; }}
     QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
     QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}

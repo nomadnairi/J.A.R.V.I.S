@@ -93,6 +93,17 @@ jobs:
           JARVIS_BUILD_NAME: JARVIS-${{ matrix.target }}
         run: pyinstaller deploy/desktop/jarvis-desktop.spec
 
+      - name: Build Windows installer
+        if: matrix.target == 'windows-amd64'
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $exe = (Get-ChildItem dist -Filter *.exe | Select-Object -First 1).FullName
+          $env:JARVIS_EXE = $exe
+          $env:JARVIS_VERSION = ("${{ github.ref_name }}" -replace '^v','')
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /Odist deploy/desktop/installer.iss
+          Write-Host "Installer built:"; Get-ChildItem dist -Filter *Setup*.exe
+
       - name: Upload artifact
         uses: actions/upload-artifact@v5
         with:

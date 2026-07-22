@@ -170,12 +170,20 @@ def run_app() -> int:
 
             tabs = QTabWidget()
             tabs.addTab(self._chat_tab(), tr("tab_chat", loc))
-            tabs.addTab(self._voice_tab(), tr("tab_voice", loc))
-            tabs.addTab(self._assistant_tab(), tr("tab_assistant", loc))
-            tabs.addTab(self._capabilities_tab(), tr("tab_capabilities", loc))
-            tabs.addTab(self._integrations_tab(), tr("tab_integrations", loc))
-            tabs.addTab(self._memory_tab(), tr("tab_memory", loc))
-            tabs.addTab(self._general_tab(), tr("tab_general", loc))
+            tabs.addTab(self._wrap(self._voice_tab(), tr("tab_voice", loc)),
+                        tr("tab_voice", loc))
+            tabs.addTab(self._wrap(self._assistant_tab(), tr("tab_assistant", loc)),
+                        tr("tab_assistant", loc))
+            tabs.addTab(
+                self._wrap(self._capabilities_tab(), tr("tab_capabilities", loc)),
+                tr("tab_capabilities", loc))
+            tabs.addTab(
+                self._wrap(self._integrations_tab(), tr("tab_integrations", loc)),
+                tr("tab_integrations", loc))
+            tabs.addTab(self._wrap(self._memory_tab(), tr("tab_memory", loc)),
+                        tr("tab_memory", loc))
+            tabs.addTab(self._wrap(self._general_tab(), tr("tab_general", loc)),
+                        tr("tab_general", loc))
             tabs.addTab(self._logs_tab(), tr("tab_logs", loc))
 
             container = QWidget()
@@ -302,6 +310,46 @@ def run_app() -> int:
                 self._update_voice_ui()
             except Exception as exc:  # noqa: BLE001 - voice is optional
                 logger.warning("Voice init failed: %s", exc)
+
+        def _wrap(self, inner: "QWidget", title: str,
+                subtitle: str = "") -> "QWidget":
+            """Put a settings widget in a centred, scrollable card with a header."""
+            from PySide6.QtCore import Qt
+            from PySide6.QtWidgets import (
+                QLabel,
+                QScrollArea,
+                QVBoxLayout,
+                QWidget,
+            )
+            page = QWidget()
+            outer = QVBoxLayout(page)
+            outer.setContentsMargins(0, 0, 0, 0)
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+            host = QWidget()
+            hl = QVBoxLayout(host)
+            hl.setContentsMargins(36, 26, 36, 26)
+            hl.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+            card = QWidget()
+            card.setObjectName("Card")
+            card.setMaximumWidth(760)
+            cl = QVBoxLayout(card)
+            cl.setContentsMargins(30, 26, 30, 28)
+            cl.setSpacing(16)
+            header = QLabel(title)
+            header.setObjectName("PageTitle")
+            cl.addWidget(header)
+            if subtitle:
+                sub = QLabel(subtitle)
+                sub.setObjectName("PageSub")
+                sub.setWordWrap(True)
+                cl.addWidget(sub)
+            cl.addWidget(inner)
+            hl.addWidget(card)
+            scroll.setWidget(host)
+            outer.addWidget(scroll)
+            return page
 
         # -- chat tab -----------------------------------------------------
 
