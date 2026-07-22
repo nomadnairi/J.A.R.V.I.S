@@ -13,6 +13,16 @@ from dataclasses import dataclass
 
 from jarvis.config.settings import Settings
 from jarvis.search.base import SearchError, SearchProvider, SearchResult
+from jarvis.search.providers import (
+    BraveProvider,
+    DuckDuckGoProvider,
+    ExaProvider,
+    GoogleCSEProvider,
+    PerplexityProvider,
+    PlaywrightProvider,
+    SerpApiProvider,
+    TavilyProvider,
+)
 
 #: Human labels for the three provider categories the router knows about.
 KIND_LABELS = {
@@ -32,16 +42,6 @@ class ProviderStatus:
     requires_key: bool
     available: bool
     is_default: bool
-from jarvis.search.providers import (
-    BraveProvider,
-    DuckDuckGoProvider,
-    ExaProvider,
-    GoogleCSEProvider,
-    PerplexityProvider,
-    PlaywrightProvider,
-    SerpApiProvider,
-    TavilyProvider,
-)
 
 
 class SearchManager:
