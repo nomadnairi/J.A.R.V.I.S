@@ -230,6 +230,20 @@ class Settings(BaseSettings):
     #: referral program's reward, but invite links still work).
     referral_bonus_daily: int = Field(default=20, ge=0)
 
+    # --- Web / AI search (Search Manager) ---
+    #: Enable the search service (the AI never hits the internet directly).
+    search_enabled: bool = False
+    #: Preferred provider: "auto" picks the first available by priority.
+    search_provider: str = "auto"
+    #: Provider API keys (each empty = that provider is unavailable).
+    tavily_api_key: str = ""
+    exa_api_key: str = ""
+    brave_api_key: str = ""
+    perplexity_api_key: str = ""
+    serpapi_key: str = ""
+    google_cse_key: str = ""
+    google_cse_cx: str = ""
+
     # --- Proactive messaging (the bot reaches out first) ---
     #: Hour (server local time, 0-23) for the opt-in morning check-in.
     proactive_morning_hour: int = Field(default=9, ge=0, le=23)
