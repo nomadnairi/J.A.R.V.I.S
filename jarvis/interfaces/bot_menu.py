@@ -37,19 +37,32 @@ def _b(label: str, action: str) -> tuple[str, str]:
     return (label, f"{CB}:{action}")
 
 
-def _back(locale: str) -> list[tuple[str, str]]:
-    return [_b(t("menu_back", locale), "main")]
+def _nav(locale: str, back: str = "main") -> list[tuple[str, str]]:
+    """Universal navigation row: ⬅️ Back · 🏠 Home · ❌ Close.
+
+    ``back`` is the parent screen's bare action name. For a top-level screen
+    (``back == "main"``) Home is redundant with Back, so only ⬅️/❌ are shown.
+    """
+    close = _b(t("menu_close", locale), "close")
+    if back == "main":
+        return [_b(t("menu_back", locale), "main"), close]
+    return [_b(t("menu_back", locale), back),
+            _b(t("menu_home", locale), "main"), close]
+
+
+def _back(locale: str, parent: str = "main") -> list[tuple[str, str]]:
+    return _nav(locale, parent)
 
 
 def card_rows(locale: str, refresh_action: str) -> Rows:
-    """Buttons for an info card: a Refresh (re-open the same screen) + Back.
+    """Buttons for an info card: a Refresh (re-open the same screen) + nav row.
 
     ``refresh_action`` is a bare action name (e.g. ``"profile"``); the ``m:``
     prefix is added here.
     """
     return [
         [_b(t("menu_refresh", locale), refresh_action)],
-        _back(locale),
+        _nav(locale, "main"),
     ]
 
 
@@ -211,7 +224,7 @@ def screen_market_list(locale: str, title: str, cards: list,
 
     if not cards:
         return (f"🤖 <b>{title}</b>\n\n{t('market_none', locale)}",
-                [[_b(t("menu_back", locale), "market")]])
+                [_nav(locale, "market")])
     lines = [f"🤖 <b>{title}</b>", t("search_found", locale, n=len(cards)), ""]
     rows: Rows = []
     for c in cards:
@@ -220,7 +233,7 @@ def screen_market_list(locale: str, title: str, cards: list,
                 else ("⭐ " if c.slug in fav_slugs else ""))
         tag = " 🆓" if c.free else ""
         rows.append([_b(f"{mark}{c.emoji} {c.name}{tag}", f"mktcard:{idx}")])
-    rows.append([_b(t("menu_back", locale), "market")])
+    rows.append(_nav(locale, "market"))
     return "\n".join(lines), rows
 
 
@@ -237,7 +250,7 @@ def screen_categories(locale: str) -> tuple[str, Rows]:
             row = []
     if row:
         rows.append(row)
-    rows.append([_b(t("menu_back", locale), "market")])
+    rows.append(_nav(locale, "market"))
     return text, rows
 
 
@@ -254,7 +267,7 @@ def screen_providers(locale: str) -> tuple[str, Rows]:
             row = []
     if row:
         rows.append(row)
-    rows.append([_b(t("menu_back", locale), "market")])
+    rows.append(_nav(locale, "market"))
     return text, rows
 
 
@@ -286,7 +299,7 @@ def screen_model_card(locale: str, card, *, is_fav: bool = False,
         f"mktfav:{idx}"),
         _b(t("card_compare_add", locale), f"mktcmpadd:{idx}"),
     ])
-    rows.append([_b(t("menu_back", locale), "market")])
+    rows.append(_nav(locale, "market"))
     return "\n".join(lines), rows
 
 
@@ -295,7 +308,7 @@ def screen_compare(locale: str, cards: list) -> tuple[str, Rows]:
 
     if not cards:
         return (f"📊 <b>{t('cmp_title', locale)}</b>\n\n{t('cmp_empty', locale)}",
-                [[_b(t("menu_back", locale), "market")]])
+                [_nav(locale, "market")])
     lines = [f"📊 <b>{t('cmp_title', locale)}</b>", ""]
     for c in cards:
         lines.append(f"{c.emoji} <b>{c.name}</b> — {mr.PROVIDERS.get(c.provider, c.provider)}")
@@ -305,7 +318,7 @@ def screen_compare(locale: str, cards: list) -> tuple[str, Rows]:
                     f"🎯 {', '.join(c.strengths[:3])}")
         lines.append("")
     rows: Rows = [[_b(t("cmp_clear", locale), "mktcmpclear")],
-                [_b(t("menu_back", locale), "market")]]
+                _nav(locale, "market")]
     return "\n".join(lines).strip(), rows
 
 
@@ -451,7 +464,7 @@ def screen_byok(locale: str, current_provider: str | None = None) -> tuple[str, 
         rows.append([_b(mark + label, f"byokset:{prov}")])
     if current_provider:
         rows.append([_b(t("byok_disconnect", locale), "byokoff")])
-    rows.append([_b(t("menu_back", locale), "settings")])
+    rows.append(_nav(locale, "settings"))
     return text, rows
 
 
@@ -477,7 +490,7 @@ def screen_catalog(locale: str, user_tier: str, current_slug: str,
             _b(f"{page + 1}/{pages}", f"catalog:{page}"),
             _b("▶️", f"catalog:{(page + 1) % pages}"),
         ])
-    rows.append([_b(t("menu_back", locale), "settings")])
+    rows.append(_nav(locale, "settings"))
     return text, rows
 
 
@@ -519,7 +532,7 @@ def screen_model(locale: str, profiles: list[str], current: str) -> tuple[str, R
         rows.append([_b(mark + MODEL_LABELS.get(name, name), f"setmodel:{name}")])
     mark = "✅ " if not current else ""
     rows.append([_b(mark + MODEL_LABELS["auto"], "setmodel:auto")])
-    rows.append([_b(t("menu_back", locale), "settings")])
+    rows.append(_nav(locale, "settings"))
     return text, rows
 
 
@@ -529,7 +542,7 @@ def screen_language(locale: str, current: str) -> tuple[str, Rows]:
     for loc, label in LANG_LABELS.items():
         mark = "✅ " if loc == current else ""
         rows.append([_b(mark + label, f"setlang:{loc}")])
-    rows.append([_b(t("menu_back", locale), "settings")])
+    rows.append(_nav(locale, "settings"))
     return text, rows
 
 

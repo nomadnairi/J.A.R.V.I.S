@@ -697,6 +697,14 @@ async def run(settings: Settings | None = None) -> None:
 
         if action == "main":
             await _edit(callback, *_main_screen(user.id, locale))
+        elif action == "close":
+            # ❌ closes the menu: delete the card, leave a tiny hint.
+            try:
+                await callback.message.delete()
+            except Exception:  # noqa: BLE001
+                await _edit(callback, t("menu_closed", locale), [])
+            else:
+                await callback.message.answer(t("menu_closed", locale))
         elif action == "voice":
             await _edit(callback, *bm.screen_voice(locale))
         elif action == "ideas":

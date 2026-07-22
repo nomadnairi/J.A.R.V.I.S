@@ -67,6 +67,28 @@ def _flat(rows):
     return [data for row in rows for _, data in row]
 
 
+def test_nav_row_top_level_has_back_and_close():
+    from jarvis.interfaces.bot_menu import _nav
+    row = _nav("en", "main")
+    flat = [d for _, d in row]
+    assert flat == ["m:main", "m:close"]  # Home redundant at top level
+
+
+def test_nav_row_nested_has_back_home_close():
+    from jarvis.interfaces.bot_menu import _nav
+    row = _nav("en", "settings")
+    flat = [d for _, d in row]
+    assert flat == ["m:settings", "m:main", "m:close"]
+
+
+def test_every_settings_submenu_offers_close():
+    # Model / language / settings all carry the ❌ Close escape hatch.
+    for _t, rows in (screen_settings("en", multi_model=True),
+                    screen_model("en", ["claude"], ""),
+                    screen_language("en", "en")):
+        assert "m:close" in _flat(rows)
+
+
 def test_main_menu_minimal():
     text, rows = screen_main("en")
     assert "J.A.R.V.I.S." in text
