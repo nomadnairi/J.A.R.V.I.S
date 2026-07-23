@@ -197,9 +197,12 @@ def test_mcp_screen_empty():
     assert "No MCP servers" in text
 
 
-def test_settings_shows_mcp_button_when_enabled():
-    from jarvis.interfaces.bot_menu import screen_settings
-    _t, on = screen_settings("en", multi_model=False, mcp_on=True)
+def test_settings_tools_shows_mcp_button_when_enabled():
+    from jarvis.interfaces.bot_menu import screen_settings, screen_settings_tools
+    _t, on = screen_settings_tools("en", search_on=False, mcp_on=True)
     assert "m:mcp" in _flat(on)
-    _t2, off = screen_settings("en", multi_model=False, mcp_on=False)
+    _t2, off = screen_settings_tools("en", search_on=False, mcp_on=False)
     assert "m:mcp" not in _flat(off)
+    # The hub reveals the Tools category when MCP is on.
+    _t3, hub = screen_settings("en", mcp_on=True)
+    assert "m:settools" in _flat(hub)

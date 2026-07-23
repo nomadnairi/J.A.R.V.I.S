@@ -417,26 +417,60 @@ def gate_screen(locale: str, channel: str) -> tuple[str, Rows]:
     return text, rows
 
 
-def screen_settings(locale: str, *, multi_model: bool,
+def screen_settings(locale: str, *, multi_model: bool = False,
                     catalog_on: bool = False,
                     proactive: bool = False,
                     search_on: bool = False,
                     mcp_on: bool = False) -> tuple[str, Rows]:
+    """Settings hub — a few category buttons that open focused sub-screens.
+
+    Kept deliberately minimal: individual toggles live one level down inside
+    🤖 AI & models, 🌍 Tools & internet and 🎨 Preferences.
+    """
     text = f"⚙️ <b>{t('settings_title', locale)}</b>\n\n{t('settings_hint', locale)}"
+    rows: Rows = [[_b(t("set_cat_ai", locale), "setai")]]
+    if search_on or mcp_on:
+        rows.append([_b(t("set_cat_tools", locale), "settools")])
+    rows.append([_b(t("set_cat_prefs", locale), "setprefs")])
+    rows.append(_back(locale))
+    return text, rows
+
+
+def screen_settings_ai(locale: str, *, multi_model: bool,
+                    catalog_on: bool = False) -> tuple[str, Rows]:
+    """AI & models sub-hub: catalog, model profile, bring-your-own-key."""
+    text = f"🤖 <b>{t('set_cat_ai', locale)}</b>"
     rows: Rows = []
     if catalog_on:
         rows.append([_b(t("menu_catalog", locale), "market")])
     if multi_model:
         rows.append([_b(t("menu_model", locale), "model")])
-    rows.append([_b(t("menu_language", locale), "language")])
     rows.append([_b(t("menu_byok", locale), "byok")])
+    rows.append(_nav(locale, "settings"))
+    return text, rows
+
+
+def screen_settings_tools(locale: str, *, search_on: bool,
+                        mcp_on: bool) -> tuple[str, Rows]:
+    """Tools & internet sub-hub: search providers, MCP servers."""
+    text = f"🌍 <b>{t('set_cat_tools', locale)}</b>"
+    rows: Rows = []
     if search_on:
         rows.append([_b(t("menu_search_prov", locale), "searchprov")])
     if mcp_on:
         rows.append([_b(t("menu_mcp", locale), "mcp")])
-    rows.append([_b(f"{t('menu_proactive', locale)}: {_yn(proactive)}",
-                    "proactive")])
-    rows.append(_back(locale))
+    rows.append(_nav(locale, "settings"))
+    return text, rows
+
+
+def screen_settings_prefs(locale: str, *, proactive: bool) -> tuple[str, Rows]:
+    """Preferences sub-hub: language, proactive messaging."""
+    text = f"🎨 <b>{t('set_cat_prefs', locale)}</b>"
+    rows: Rows = [
+        [_b(t("menu_language", locale), "language")],
+        [_b(f"{t('menu_proactive', locale)}: {_yn(proactive)}", "proactive")],
+        _nav(locale, "settings"),
+    ]
     return text, rows
 
 

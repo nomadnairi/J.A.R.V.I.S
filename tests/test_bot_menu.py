@@ -120,10 +120,22 @@ def test_main_menu_shows_plan_status():
     assert "unlimited" in text_pro
 
 
-def test_settings_and_submenus_have_back():
-    _t, srows = screen_settings("en", multi_model=True)
-    assert "m:model" in _flat(srows)
-    assert "m:main" in _flat(srows)  # back button
+def test_settings_hub_and_submenus_have_back():
+    # The Settings hub is minimal: category buttons, not individual toggles.
+    _t, srows = screen_settings("en")
+    flat = _flat(srows)
+    assert "m:setai" in flat and "m:setprefs" in flat
+    assert "m:main" in flat  # back button
+    # Individual toggles live one level down.
+    from jarvis.interfaces.bot_menu import (
+        screen_settings_ai,
+        screen_settings_prefs,
+    )
+    _t, ai = screen_settings_ai("en", multi_model=True)
+    assert "m:model" in _flat(ai) and "m:byok" in _flat(ai)
+    assert "m:settings" in _flat(ai)  # back to hub
+    _t, prefs = screen_settings_prefs("en", proactive=False)
+    assert "m:language" in _flat(prefs) and "m:proactive" in _flat(prefs)
     _t, mrows = screen_memory("en")
     assert "m:reset" in _flat(mrows) and "m:forget" in _flat(mrows)
     assert "m:main" in _flat(mrows)
@@ -137,10 +149,18 @@ def test_settings_and_submenus_have_back():
     assert "m:settings" in flat
 
 
-def test_settings_hides_model_when_single():
-    _t, rows = screen_settings("en", multi_model=False)
+def test_settings_ai_hides_model_when_single():
+    from jarvis.interfaces.bot_menu import screen_settings_ai
+    _t, rows = screen_settings_ai("en", multi_model=False)
     assert "m:model" not in _flat(rows)
-    assert "m:language" in _flat(rows)
+    assert "m:byok" in _flat(rows)
+
+
+def test_settings_hub_shows_tools_category_only_when_available():
+    _t, on = screen_settings("en", search_on=True)
+    assert "m:settools" in _flat(on)
+    _t2, off = screen_settings("en")
+    assert "m:settools" not in _flat(off)
 
 
 def test_channel_url_forms():

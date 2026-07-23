@@ -110,5 +110,7 @@ def test_screen_reminders_lists_and_cancels():
 
 
 def test_settings_shows_proactive_toggle():
-    _t, rows = screen_settings("en", multi_model=False, proactive=True)
+    # Proactive lives in the Preferences sub-hub now.
+    from jarvis.interfaces.bot_menu import screen_settings_prefs
+    _t, rows = screen_settings_prefs("en", proactive=True)
     assert "m:proactive" in _flat(rows)

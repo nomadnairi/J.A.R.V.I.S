@@ -51,8 +51,12 @@ def test_screen_shows_categories_and_active_star():
     assert "m:close" in _flat(rows)
 
 
-def test_settings_exposes_search_button_only_when_enabled():
-    _t, on = screen_settings("en", multi_model=False, search_on=True)
+def test_settings_tools_exposes_search_button_only_when_enabled():
+    from jarvis.interfaces.bot_menu import screen_settings_tools
+    _t, on = screen_settings_tools("en", search_on=True, mcp_on=False)
     assert "m:searchprov" in _flat(on)
-    _t2, off = screen_settings("en", multi_model=False, search_on=False)
+    _t2, off = screen_settings_tools("en", search_on=False, mcp_on=False)
     assert "m:searchprov" not in _flat(off)
+    # And the hub surfaces the Tools category when search is on.
+    _t3, hub = screen_settings("en", search_on=True)
+    assert "m:settools" in _flat(hub)

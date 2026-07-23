@@ -542,12 +542,24 @@ async def run(settings: Settings | None = None) -> None:
 
     def _settings_screen(loc: str, user_id: int):
         from jarvis.interfaces.bot_menu import screen_settings
-        profiles = engine.llm.list_profiles()
-        return screen_settings(loc, multi_model=len(profiles) > 1,
-                            catalog_on=_openrouter_available(user_id),
-                            proactive=prefs.get_proactive(user_id),
+        return screen_settings(loc,
                             search_on=settings.search_enabled,
                             mcp_on=engine.mcp is not None)
+
+    def _settings_ai(loc: str, user_id: int):
+        from jarvis.interfaces.bot_menu import screen_settings_ai
+        profiles = engine.llm.list_profiles()
+        return screen_settings_ai(loc, multi_model=len(profiles) > 1,
+                                catalog_on=_openrouter_available(user_id))
+
+    def _settings_tools(loc: str):
+        from jarvis.interfaces.bot_menu import screen_settings_tools
+        return screen_settings_tools(loc, search_on=settings.search_enabled,
+                                    mcp_on=engine.mcp is not None)
+
+    def _settings_prefs(loc: str, user_id: int):
+        from jarvis.interfaces.bot_menu import screen_settings_prefs
+        return screen_settings_prefs(loc, proactive=prefs.get_proactive(user_id))
 
     def _reminder_items(user_id: int) -> list:
         from datetime import datetime
@@ -731,7 +743,7 @@ async def run(settings: Settings | None = None) -> None:
             prefs.set_proactive(user.id, new_state)
             await callback.message.answer(
                 t("proactive_on" if new_state else "proactive_off", locale))
-            await _edit(callback, *_settings_screen(locale, user.id))
+            await _edit(callback, *_settings_prefs(locale, user.id))
         elif action == "support":
             engine.session(session_id_for(user.id)).scratch["awaiting_support"] = True
             await callback.message.answer(t("support_ask", locale))
@@ -745,6 +757,12 @@ async def run(settings: Settings | None = None) -> None:
                 billing_on=billing is not None))
         elif action == "settings":
             await _edit(callback, *_settings_screen(locale, user.id))
+        elif action == "setai":
+            await _edit(callback, *_settings_ai(locale, user.id))
+        elif action == "settools":
+            await _edit(callback, *_settings_tools(locale))
+        elif action == "setprefs":
+            await _edit(callback, *_settings_prefs(locale, user.id))
         elif action.startswith("mkt") or action == "market":
             await _market_cb(callback, action, parts, locale)
         elif action == "catalog":
@@ -860,12 +878,12 @@ async def run(settings: Settings | None = None) -> None:
             else:
                 prefs.set_model(user.id, choice)
                 session.scratch["model_profile"] = choice
-            await _edit(callback, *_settings_screen(locale, user.id))
+            await _edit(callback, *_settings_ai(locale, user.id))
         elif action == "setlang":
             new_locale = normalize_locale(parts[2])
             prefs.set_language(user.id, new_locale)
             engine.session(session_id_for(user.id)).scratch["language"] = new_locale
-            await _edit(callback, *_settings_screen(new_locale, user.id))
+            await _edit(callback, *_settings_prefs(new_locale, user.id))
         elif action in ("reset", "forget"):
             # Ask before wiping — these are destructive.
             await _edit(callback, *bm.screen_confirm(locale, action))
