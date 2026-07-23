@@ -420,7 +420,8 @@ def gate_screen(locale: str, channel: str) -> tuple[str, Rows]:
 def screen_settings(locale: str, *, multi_model: bool,
                     catalog_on: bool = False,
                     proactive: bool = False,
-                    search_on: bool = False) -> tuple[str, Rows]:
+                    search_on: bool = False,
+                    mcp_on: bool = False) -> tuple[str, Rows]:
     text = f"⚙️ <b>{t('settings_title', locale)}</b>\n\n{t('settings_hint', locale)}"
     rows: Rows = []
     if catalog_on:
@@ -431,6 +432,8 @@ def screen_settings(locale: str, *, multi_model: bool,
     rows.append([_b(t("menu_byok", locale), "byok")])
     if search_on:
         rows.append([_b(t("menu_search_prov", locale), "searchprov")])
+    if mcp_on:
+        rows.append([_b(t("menu_mcp", locale), "mcp")])
     rows.append([_b(f"{t('menu_proactive', locale)}: {_yn(proactive)}",
                     "proactive")])
     rows.append(_back(locale))
@@ -520,6 +523,27 @@ def screen_search_providers(locale: str, statuses, active: str | None,
                 " 🔑" if not st.available else "")
             lines.append(f"   {mark}{_yn(st.available)} {st.label}{key}")
         lines.append("")
+    return "\n".join(lines).strip(), [_nav(locale, "settings")]
+
+
+def screen_mcp(locale: str, statuses, tool_names) -> tuple[str, Rows]:
+    """Read-only view of MCP servers and the tools they mounted.
+
+    ``statuses`` are objects with ``name``, ``connected``, ``tool_count`` and
+    ``detail``; ``tool_names`` is a flat list of mounted tool skill names.
+    """
+    lines = [f"🧩 <b>{t('mcp_title', locale)}</b>", t("mcp_hint", locale), ""]
+    if not statuses:
+        lines.append(t("mcp_none", locale))
+        return "\n".join(lines), [_nav(locale, "settings")]
+    for st in statuses:
+        head = f"{_yn(st.connected)} <b>{st.name}</b> · {st.tool_count} 🔧"
+        if not st.connected and st.detail:
+            head += f"\n   <i>{st.detail[:80]}</i>"
+        lines.append(head)
+    if tool_names:
+        lines += ["", f"<b>{t('mcp_tools', locale)}</b>"]
+        lines += [f"   • <code>{n}</code>" for n in tool_names[:20]]
     return "\n".join(lines).strip(), [_nav(locale, "settings")]
 
 

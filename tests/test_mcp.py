@@ -169,3 +169,37 @@ async def test_engine_mounts_mcp_tools_on_start():
 
 async def _wrap(session):
     return session
+
+
+# -- bot screen ---------------------------------------------------------------
+
+
+def _flat(rows):
+    return [data for row in rows for _, data in row]
+
+
+def test_mcp_screen_lists_servers_and_tools():
+    from jarvis.interfaces.bot_menu import screen_mcp
+    from jarvis.mcp.manager import ServerStatus
+
+    statuses = [ServerStatus("fs", True, tool_count=2),
+                ServerStatus("down", False, detail="cannot connect")]
+    text, rows = screen_mcp("en", statuses, ["fs__read", "fs__write"])
+    assert "fs" in text and "2 🔧" in text
+    assert "❌" in text and "cannot connect" in text
+    assert "fs__read" in text
+    assert "m:settings" in _flat(rows) and "m:close" in _flat(rows)
+
+
+def test_mcp_screen_empty():
+    from jarvis.interfaces.bot_menu import screen_mcp
+    text, _rows = screen_mcp("en", [], [])
+    assert "No MCP servers" in text
+
+
+def test_settings_shows_mcp_button_when_enabled():
+    from jarvis.interfaces.bot_menu import screen_settings
+    _t, on = screen_settings("en", multi_model=False, mcp_on=True)
+    assert "m:mcp" in _flat(on)
+    _t2, off = screen_settings("en", multi_model=False, mcp_on=False)
+    assert "m:mcp" not in _flat(off)

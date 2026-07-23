@@ -546,7 +546,8 @@ async def run(settings: Settings | None = None) -> None:
         return screen_settings(loc, multi_model=len(profiles) > 1,
                             catalog_on=_openrouter_available(user_id),
                             proactive=prefs.get_proactive(user_id),
-                            search_on=settings.search_enabled)
+                            search_on=settings.search_enabled,
+                            mcp_on=engine.mcp is not None)
 
     def _reminder_items(user_id: int) -> list:
         from datetime import datetime
@@ -803,6 +804,12 @@ async def run(settings: Settings | None = None) -> None:
             mgr = SearchManager.from_settings(settings)
             await _edit(callback, *bm.screen_search_providers(
                 locale, mgr.statuses(), mgr.active()))
+        elif action == "mcp":
+            from jarvis.mcp.skill import MCPToolSkill
+            statuses = engine.mcp.statuses() if engine.mcp else []
+            tool_names = [s.name for s in engine.skills.all()
+                        if isinstance(s, MCPToolSkill)]
+            await _edit(callback, *bm.screen_mcp(locale, statuses, tool_names))
         elif action == "byok":
             current = (prefs.get_byok(user.id) or {}).get("provider")
             await _edit(callback, *bm.screen_byok(locale, current))
