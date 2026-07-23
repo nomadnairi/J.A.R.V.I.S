@@ -68,6 +68,7 @@ class JarvisEngine:
         self.security = self.container.security  # capability gate + audit
         self.router = self.container.router  # model-tier routing
         self.tools = self.container.tool_manager  # tool governance/introspection
+        self.mcp = self.container.mcp_manager  # None unless MCP is enabled
 
         # Per-engine state. When memory is on, new sessions reload their
         # persisted history transparently via the loader.
@@ -105,12 +106,33 @@ class JarvisEngine:
     async def start(self) -> None:
         await self.bus.emit(EventType.STARTUP, source="engine")
         await self._connect_integrations()
+        await self._connect_mcp()
 
     async def shutdown(self) -> None:
         await self.drain()
         if self.integrations is not None:
             await self.integrations.disconnect_all()
+        if self.mcp is not None:
+            await self.mcp.stop()
         await self.bus.emit(EventType.SHUTDOWN, source="engine")
+
+    async def _connect_mcp(self) -> None:
+        """Connect MCP servers and register their tools as skills."""
+        if self.mcp is None:
+            return
+        try:
+            skills = await self.mcp.start()
+        except Exception as exc:  # noqa: BLE001 - MCP must never block startup
+            logger.warning("MCP startup failed: %s", exc)
+            return
+        for skill in skills:
+            try:
+                self.skills.register(skill)
+            except Exception as exc:  # noqa: BLE001 - skip duplicates/bad tools
+                logger.warning("Could not register MCP skill %r: %s",
+                            skill.name, exc)
+        if skills:
+            logger.info("MCP: mounted %d external tool(s).", len(skills))
 
     async def _connect_integrations(self) -> None:
         if self.integrations is None:

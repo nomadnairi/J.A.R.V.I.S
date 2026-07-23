@@ -61,7 +61,7 @@ class CapabilityManager:
         return [
             self._files(), self._coding(), self._desktop(), self._agents(),
             self._memory(), self._goals(), self._voice(), self._images(),
-            self._search(), self._integrations(),
+            self._search(), self._integrations(), self._mcp(),
         ]
 
     def get(self, cap_id: str) -> CapabilityInfo | None:
@@ -144,6 +144,15 @@ class CapabilityManager:
     def _integrations(self) -> CapabilityInfo:
         return self._mk("integrations", "🔗 Integrations",
                         self._s.integrations_enabled)
+
+    def _mcp(self) -> CapabilityInfo:
+        s = self._s
+        # Enabled but no servers configured = restricted (nothing to mount).
+        has_servers = bool(s.mcp_config_path or s.mcp_servers)
+        return self._mk("mcp", "🧩 MCP tools", s.mcp_enabled,
+                        restricted=not has_servers,
+                        detail=("servers configured" if has_servers
+                                else "no servers configured"))
 
     # -- summaries --------------------------------------------------------
 

@@ -139,6 +139,18 @@ class ServiceContainer:
         return manager
 
     @cached_property
+    def mcp_manager(self):
+        """MCP client manager (None unless MCP is enabled and servers configured)."""
+        if not self._settings.mcp_enabled:
+            return None
+        from jarvis.mcp.config import load_servers
+        from jarvis.mcp.manager import MCPManager
+        servers = load_servers(self._settings)
+        if not servers:
+            return None
+        return MCPManager(servers)
+
+    @cached_property
     def router(self):
         from jarvis.routing.router import AIRouter
         return AIRouter.from_settings(self._settings)

@@ -187,6 +187,15 @@ class Settings(BaseSettings):
     homeassistant_url: str = ""
     homeassistant_token: str = ""
 
+    # --- MCP (Model Context Protocol) — mount external agent skills as tools ---
+    #: Connect to MCP servers (the agentskills.io / Hermes / Claude standard) and
+    #: expose their tools as J.A.R.V.I.S. skills the model can call.
+    mcp_enabled: bool = False
+    #: Path to a JSON file with the standard {"mcpServers": {...}} shape.
+    mcp_config_path: str = ""
+    #: Inline JSON alternative to the file (same shape). Handy for env-only setups.
+    mcp_servers: str = ""
+
     # --- API server ---
     api_host: str = "0.0.0.0"
     api_port: int = Field(default=8000, gt=0, le=65535)
