@@ -56,6 +56,26 @@ def test_dashboard_state_requires_key_when_set():
         assert ok.status_code == 200
 
 
+def test_dashboard_state_has_ai_and_security():
+    with TestClient(_app()) as client:
+        s = client.get("/dashboard/state").json()
+        assert "ai" in s and "provider" in s["ai"] and "model" in s["ai"]
+        assert "security" in s and "shell" in s["security"]
+        # Dangerous caps default off.
+        assert s["security"]["shell"] is False
+
+
+def test_dashboard_models_from_registry():
+    with TestClient(_app()) as client:
+        d = client.get("/dashboard/models").json()
+        assert d["models"] and "categories" in d and "providers" in d
+        m0 = d["models"][0]
+        for k in ("slug", "name", "provider", "rating", "free", "categories"):
+            assert k in m0
+        # Ratings are normalised to a 0-5 scale.
+        assert 0 <= m0["rating"] <= 5
+
+
 def test_chat_open_when_no_key():
     with TestClient(_app()) as client:
         resp = client.post("/chat", json={"message": "hello"})

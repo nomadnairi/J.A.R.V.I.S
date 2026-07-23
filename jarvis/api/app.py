@@ -228,13 +228,41 @@ def create_app(engine: JarvisEngine | None = None,
         if getattr(engine, "mcp", None) is not None:
             mcp = [{"name": s.name, "up": s.connected, "tools": s.tool_count}
                 for s in engine.mcp.statuses()]
+        active_model = {
+            "openrouter": settings.openrouter_model,
+            "local": settings.local_llm_model,
+        }.get(settings.llm_provider, settings.llm_model)
         return {
             **_system_stats(),
             "capabilities": caps,
             "mcp": mcp,
+            "ai": {"provider": settings.llm_provider, "model": active_model,
+                "profiles": engine.llm.list_profiles(),
+                "router": settings.ai_router_enabled,
+                "search": settings.search_provider if settings.search_enabled else "off"},
+            "security": {"file_write": settings.allow_file_write,
+                        "shell": settings.allow_shell,
+                        "desktop": settings.allow_desktop_control,
+                        "redact": settings.memory_redact_secrets},
             "weather": {"temp": "—", "loc": settings.user_name or "Local",
                         "cond": "telemetry", "glyph": "🛰"},
         }
+
+    @app.get("/dashboard/models")
+    async def dashboard_models(_: str = Depends(require_principal)) -> dict:
+        from jarvis.interfaces import model_registry as mr
+        models = [{
+            "slug": m.slug, "name": m.name,
+            "provider": mr.PROVIDERS.get(m.provider, m.provider),
+            "emoji": m.emoji, "rating": round(m.rating / 20, 1),
+            "free": m.free, "popular": m.popular,
+            "categories": list(m.categories), "cost": m.cost_label,
+        } for m in mr.all_models()]
+        cats = [{"id": cid, "label": f"{emoji} {label}"}
+                for cid, (emoji, label) in mr.CATEGORIES.items()]
+        provs = [{"name": name, "count": count}
+                for _pid, name, count in mr.providers_with_models()]
+        return {"models": models, "categories": cats, "providers": provs}
 
     class _McpIn(BaseModel):
         spec: str

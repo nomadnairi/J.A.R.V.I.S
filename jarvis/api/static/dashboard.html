@@ -370,7 +370,7 @@
   function go(v){document.querySelectorAll(".view").forEach(x=>x.hidden=x.id!=="view-"+v);
     document.querySelectorAll(".nav").forEach(n=>n.classList.toggle("active",n.dataset.view===v));
     $("vTitle").textContent=TITLE[v]; $("vSub").textContent=SUB[v];
-    if(v==="models") renderModels(); if(v==="settings") renderSettings();}
+    if(v==="models") loadModels(); if(v==="settings") renderSettings();}
 
   function authH(){return CFG.key?{"X-API-Key":CFG.key,"Authorization":"Bearer "+CFG.key}:{};}
   function tick(){const t=new Date().toLocaleTimeString([],{hour12:false});$("clock").textContent=t;$("sbClock").textContent=t;}
@@ -396,8 +396,9 @@
     $("caps").innerHTML=s.capabilities.map(([n,st])=>`<span class="cap"><span class="s ${st}"></span>${n}</span>`).join("");
     $("mcpList").innerHTML=s.mcp.length?s.mcp.map(m=>`<div class="mcp-srv"><span class="nm">${m.up?'🟢':'🔴'} ${m.name}</span><span style="font-family:var(--mono);color:var(--muted)">${m.tools} 🔧</span><span class="badge ${m.up?'up':'down'}">${m.up?'up':'down'}</span></div>`).join(''):'<div style="color:var(--dim);font-family:var(--mono);font-size:13px;padding:8px 0">Серверы не настроены</div>';
   }
-  async function loadState(){if(!CFG.api){render(DEMO);return;}
-    try{const r=await fetch(CFG.api+"/dashboard/state",{headers:authH()});if(!r.ok)throw 0;const s=await r.json();s.online=true;render(s);}catch(e){render(DEMO);}}
+  let STATE=DEMO;
+  async function loadState(){if(!CFG.api){STATE=DEMO;render(DEMO);return;}
+    try{const r=await fetch(CFG.api+"/dashboard/state",{headers:authH()});if(!r.ok)throw 0;const s=await r.json();s.online=true;STATE=s;render(s);}catch(e){STATE=DEMO;render(DEMO);}}
   loadState();
 
   // ---- models catalog ----
@@ -409,16 +410,28 @@
     ["Q","Qwen 3","Qwen","4.6",["free"],["code","fast"]],
     ["M","Mistral Large","Mistral","4.4",["free"],["fast","code"]],
     ["L","Llama 4","Meta","4.5",["free"],["reason","fast"]]];
-  const CATS=[["all","Все модели",MODELS.length],["fav","Избранные",3],["pop","Популярные",3],["new","Новые",4],["prem","Premium",2],["free","Бесплатные",4]];
-  const PROVS=[["OpenRouter",45],["Anthropic",12],["OpenAI",15],["Google",8],["DeepSeek",6],["Qwen",7],["Mistral",5]];
-  const FILTERS=[["all","Все"],["code","Кодинг"],["reason","Reasoning"],["vision","Vision"],["fast","Быстрые"]];
-  let mCat="all", mFilter="all";
+  const FILTERS=[["all","Все"],["coding","Кодинг"],["reasoning","Reasoning"],["vision","Vision"],["fast","Быстрые"]];
+  let mCat="all", mFilter="all", CATALOG=null;
+  async function loadModels(){
+    if(!CFG.api){CATALOG=null;renderModels();return;}
+    try{const r=await fetch(CFG.api+"/dashboard/models",{headers:authH()});if(!r.ok)throw 0;
+      const d=await r.json();
+      CATALOG={models:d.models.map(m=>[m.emoji,m.name,m.provider,String(m.rating),
+        [m.popular?'pop':null,m.free?'free':(m.cost&&m.cost!=='🆓'?'prem':null)].filter(Boolean),m.categories]),
+        provs:d.provs||d.providers};
+    }catch(e){CATALOG=null;}
+    renderModels();
+  }
   function renderModels(){
-    $("mcats").innerHTML=CATS.map(([id,nm,n])=>`<div class="mcat ${id===mCat?'on':''}" onclick="mCat='${id}';renderModels()"><span>${id==='fav'?'★ ':''}${nm}</span><span class="n">${n}</span></div>`).join("");
+    const M = CATALOG?CATALOG.models:MODELS;
+    const count = id => id==="all"?M.length : id==="fav"?0 : M.filter(m=>m[4].includes(id)).length;
+    const CATS=[["all","Все модели"],["fav","Избранные"],["pop","Популярные"],["prem","Premium"],["free","Бесплатные"]];
+    const PROVS = CATALOG?CATALOG.provs.map(p=>[p.name,p.count]):[["OpenRouter",45],["Anthropic",12],["OpenAI",15],["Google",8],["DeepSeek",6],["Qwen",7],["Mistral",5]];
+    $("mcats").innerHTML=CATS.map(([id,nm])=>`<div class="mcat ${id===mCat?'on':''}" onclick="mCat='${id}';renderModels()"><span>${id==='fav'?'★ ':''}${nm}</span><span class="n">${count(id)}</span></div>`).join("");
     $("mprovs").innerHTML=PROVS.map(([nm,n])=>`<div class="mcat"><span>${nm}</span><span class="n">${n}</span></div>`).join("");
     $("mfilters").innerHTML=FILTERS.map(([id,nm])=>`<button class="fbtn ${id===mFilter?'on':''}" onclick="mFilter='${id}';renderModels()">${nm}</button>`).join("");
     const q=($("msearch").value||"").toLowerCase();
-    const rows=MODELS.filter(m=>{
+    const rows=M.filter(m=>{
       if(mCat==="free"&&!m[4].includes("free"))return false;
       if(mCat==="prem"&&!m[4].includes("prem"))return false;
       if(mCat==="pop"&&!m[4].includes("pop"))return false;
@@ -456,26 +469,34 @@
     ${srow("Размер шрифта","Масштаб текста",`<select id="fsSel" onchange="setFS(this.value)"><option value="sm">Малый</option><option value="md">Средний</option><option value="lg">Крупный</option></select>`)}
     ${srow("Плотность","Компактность интерфейса",`<select id="denSel" onchange="setDen(this.value)"><option value="compact">Компактная</option><option value="cozy">Комфортная</option><option value="roomy">Просторная</option></select>`)}
   </div></div>`;
-  P.ai=()=>`<div class="card"><header><h3>Провайдер AI</h3></header><div class="body">
-    ${srow("Провайдер","Движок по умолчанию","<select><option>Anthropic (Claude)</option><option>OpenAI</option><option>OpenRouter</option><option>Локальный (Ollama/vLLM)</option></select>")}
-    ${srow("Модель","Активная модель",`<input class="tinput" value="claude-sonnet-4" />`)}
-    ${srowTog("AI-роутер","Простое → быстрая, сложное → сильная","router")}
+  P.ai=()=>{const a=(STATE&&STATE.ai)||{provider:"—",model:"—",profiles:[],router:false,search:"off"};
+    const prov={anthropic:"Anthropic (Claude)",openai:"OpenAI",openrouter:"OpenRouter",local:"Локальный"}[a.provider]||a.provider;
+    const yn=b=>b?'<span class="badge up">вкл</span>':'<span class="badge down">выкл</span>';
+    return `<div class="card"><header><h3>Провайдер AI</h3></header><div class="body">
+    ${srow("Провайдер","Активный движок (из конфига сервера)",`<span class="tag pop">${prov}</span>`)}
+    ${srow("Модель","Текущая модель",`<code>${a.model}</code>`)}
+    ${srow("Профили","Переключаемые провайдеры",(a.profiles&&a.profiles.length?a.profiles:["—"]).map(p=>`<span class="tag">${p}</span>`).join(" "))}
+    ${srow("AI-роутер","Простое → быстрая, сложное → сильная",yn(a.router))}
   </div></div>
   <div class="card"><header><h3>Поиск в интернете</h3></header><div class="body">
-    ${srow("Провайдер поиска","AI-search → web → браузер","<select><option>Авто</option><option>Tavily</option><option>Exa</option><option>Perplexity</option><option>Brave</option><option>DuckDuckGo</option></select>")}
-  </div></div>`;
+    ${srow("Провайдер поиска","AI-search → web → браузер",a.search==="off"?'<span class="badge down">выкл</span>':`<span class="tag">${a.search}</span>`)}
+    <div class="set-row"><div class="d">Меняется в <code>.env</code> сервера. Здесь показано реальное состояние.</div></div>
+  </div></div>`;};
   P.system=()=>panelInfo("Система","CPU/RAM, аптайм и активные инструменты показаны на Главной. Логи и диагностика — через <code>/doctor</code> и API <code>/health</code>.");
   P.memory=()=>panelInfo("Память","Семантическая память включена. Факты извлекаются автоматически; секреты редактируются перед сохранением. Управление — в боте.");
   P.voice=()=>`<div class="card"><header><h3>Голос</h3></header><div class="body">
     ${srowTog("Голосовые ответы","Озвучивать ответы","voice")}
     ${srow("Голос TTS","Синтез речи","<select><option>alloy</option><option>edge</option><option>gTTS</option></select>")}
   </div></div>`;
-  P.security=()=>`<div class="card"><header><h3>Безопасность</h3></header><div class="body">
-    ${srowTog("Запись файлов","Разрешить изменение файлов","secW")}
-    ${srowTog("Выполнение команд","Разрешить shell","secS")}
-    ${srowTog("Управление ПК","Клавиатура/мышь/скриншот","secD")}
-    <div class="set-row"><div><div class="t">Редакция секретов</div><div class="d">Токены/ключи не сохраняются в память</div></div><span class="badge up">включено</span></div>
-  </div></div>`;
+  P.security=()=>{const s=(STATE&&STATE.security)||{file_write:false,shell:false,desktop:false,redact:true};
+    const st=(b,onTxt="разрешено",offTxt="запрещено")=>b?`<span class="badge up">${onTxt}</span>`:`<span class="badge down">${offTxt}</span>`;
+    return `<div class="card"><header><h3>Безопасность (реальный статус сервера)</h3></header><div class="body">
+    ${srow("Запись файлов","Изменение файлов ассистентом",st(s.file_write))}
+    ${srow("Выполнение команд","Shell-доступ",st(s.shell))}
+    ${srow("Управление ПК","Клавиатура/мышь/скриншот",st(s.desktop))}
+    ${srow("Редакция секретов","Токены/ключи не пишутся в память",st(s.redact,"включено","выключено"))}
+    <div class="set-row"><div class="d">Опасные права по умолчанию выключены. Меняются только в конфиге сервера (<code>ALLOW_*</code>).</div></div>
+  </div></div>`;};
   P.conn=()=>`<div class="card"><header><h3>Подключение</h3></header><div class="body">
     <div class="field"><label>API endpoint</label><input class="tinput" id="api" placeholder="http://localhost:8000" /></div>
     <div class="field"><label>API ключ</label><input class="tinput" id="key" type="password" placeholder="необязательно" /></div>
