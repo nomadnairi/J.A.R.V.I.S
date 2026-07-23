@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru" data-theme="dark">
+<html lang="ru" data-theme="dark" data-density="cozy" data-fs="md">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -14,69 +14,68 @@
     --good:#3FD9B0; --warn:#F2A65A; --crit:#FF6B5A;
     --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;
     --sans:"SF Pro Display",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-    --r:14px;
+    --r:14px; --pad:14px; --gap:18px;
   }
+  :root[data-fs="sm"]{font-size:13.5px} :root[data-fs="md"]{font-size:15px} :root[data-fs="lg"]{font-size:16.5px}
+  :root[data-density="compact"]{--pad:10px; --gap:12px} :root[data-density="cozy"]{--pad:14px; --gap:18px} :root[data-density="roomy"]{--pad:18px; --gap:24px}
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0; background:
       radial-gradient(1100px 560px at 60% -12%, rgba(232,179,65,.06), transparent 60%),
       radial-gradient(800px 460px at 40% 120%, rgba(63,217,176,.05), transparent 60%), var(--bg);
-    color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.5; overflow:hidden}
+    color:var(--ink); font-family:var(--sans); line-height:1.5; overflow:hidden}
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
   body.nomotion *{animation:none!important}
   button{font-family:inherit}
   :focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  code{font-family:var(--mono); color:var(--accent)}
 
   .app{display:grid; grid-template-columns:auto 1fr; grid-template-rows:1fr auto; height:100vh}
 
-  /* ---- sidebar rail: expands on hover (slides open from the left) ---- */
+  /* ---- sidebar rail (expands on hover) ---- */
   .rail{grid-row:1/2; width:66px; background:linear-gradient(180deg,var(--rail),#0a1110);
     border-right:1px solid var(--line-soft); display:flex; flex-direction:column; gap:4px;
     padding:14px 10px; overflow:hidden; transition:width .3s cubic-bezier(.22,.8,.2,1); z-index:20}
   .rail:hover{width:236px; box-shadow:30px 0 60px -30px rgba(0,0,0,.8)}
   .brand{display:flex; align-items:center; gap:12px; padding:6px 8px 14px; white-space:nowrap}
   .brand .mk{min-width:40px;height:40px;border-radius:12px; display:grid; place-items:center;
-    background:radial-gradient(circle at 50% 40%, rgba(246,207,122,.35), transparent 70%);
-    border:1px solid var(--line)}
+    background:radial-gradient(circle at 50% 40%, rgba(246,207,122,.35), transparent 70%); border:1px solid var(--line)}
   .brand b{font-weight:800; letter-spacing:.28em; font-size:13px; text-transform:uppercase; opacity:0; transition:.25s}
   .brand small{display:block; color:var(--dim); letter-spacing:.1em; font-size:9px; text-transform:uppercase}
   .rail:hover .brand b{opacity:1}
-  .grp{color:var(--dim); font:700 9px/1 var(--sans); letter-spacing:.18em; text-transform:uppercase;
-    padding:12px 12px 6px; white-space:nowrap; opacity:0; transition:.2s; height:0; overflow:hidden}
+  .grp{color:var(--dim); font:700 9px/1 var(--sans); letter-spacing:.18em; text-transform:uppercase; padding:12px 12px 6px; white-space:nowrap; opacity:0; transition:.2s; height:0; overflow:hidden}
   .rail:hover .grp{opacity:1; height:auto}
-  .nav{display:flex; align-items:center; gap:13px; padding:10px 11px; border-radius:11px; cursor:pointer;
-    color:var(--muted); white-space:nowrap; border:1px solid transparent; transition:.15s}
+  .nav{display:flex; align-items:center; gap:13px; padding:10px 11px; border-radius:11px; cursor:pointer; color:var(--muted); white-space:nowrap; border:1px solid transparent; transition:.15s}
   .nav svg{min-width:20px}
   .nav span{opacity:0; transition:.25s; font-weight:600; font-size:14px}
   .rail:hover .nav span{opacity:1}
   .nav:hover{color:var(--ink); background:rgba(234,240,236,.05)}
   .nav.active{color:var(--accent); background:rgba(232,179,65,.09); border-color:var(--line)}
-  .rail .foot{margin-top:auto; display:flex; flex-direction:column; gap:4px}
+  .rail .foot{margin-top:auto}
   .status-pill{display:flex; align-items:center; gap:10px; padding:9px 11px; white-space:nowrap; color:var(--good); font-size:13px; font-weight:600}
   .status-pill .d{min-width:8px;height:8px;border-radius:50%;background:var(--good);animation:beat 2.4s infinite}
   @keyframes beat{0%{box-shadow:0 0 0 0 rgba(63,217,176,.5)}70%{box-shadow:0 0 0 7px rgba(63,217,176,0)}100%{box-shadow:0 0 0 0 rgba(63,217,176,0)}}
 
   /* ---- content ---- */
   .main{grid-row:1/2; display:flex; flex-direction:column; min-width:0; overflow:hidden}
-  .head{display:flex; align-items:center; justify-content:space-between; gap:16px;
-    padding:16px 24px; border-bottom:1px solid var(--line-soft)}
-  .head h1{margin:0; font:800 20px/1.1 var(--sans); letter-spacing:.01em; text-wrap:balance}
+  .head{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 24px; border-bottom:1px solid var(--line-soft)}
+  .head h1{margin:0; font:800 20px/1.1 var(--sans); text-wrap:balance}
   .head .sub{color:var(--muted); font-size:13px; margin-top:3px}
   .head .clock{font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--muted); font-size:14px}
   .view{flex:1; overflow:auto; padding:22px 24px}
-  .view::-webkit-scrollbar{width:9px}.view::-webkit-scrollbar-thumb{background:var(--line-soft);border-radius:8px}
+  .view::-webkit-scrollbar,.scroll::-webkit-scrollbar{width:9px}
+  .view::-webkit-scrollbar-thumb,.scroll::-webkit-scrollbar-thumb{background:var(--line-soft);border-radius:8px}
   .view[hidden]{display:none}
 
-  .card{border:1px solid var(--line-soft); border-radius:var(--r); background:var(--panel);
-    backdrop-filter:blur(8px); box-shadow:0 18px 40px -30px rgba(0,0,0,.9)}
+  .card{border:1px solid var(--line-soft); border-radius:var(--r); background:var(--panel); backdrop-filter:blur(8px); box-shadow:0 18px 40px -30px rgba(0,0,0,.9)}
   .card > header{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--line-soft)}
   .card h3{margin:0; font:700 12px/1 var(--sans); letter-spacing:.16em; text-transform:uppercase; color:var(--muted); display:flex; gap:8px; align-items:center}
-  .card h3 svg{color:var(--accent)} .card .body{padding:14px}
+  .card .body{padding:var(--pad)}
   .refresh{color:var(--dim); cursor:pointer; background:none; border:0}.refresh:hover{color:var(--accent)}
 
   /* ---- home / reactor ---- */
-  .home{display:grid; grid-template-columns:300px 1fr 300px; gap:18px; height:100%}
-  .col{display:flex; flex-direction:column; gap:18px; min-height:0; overflow:auto}
+  .home{display:grid; grid-template-columns:300px 1fr 300px; gap:var(--gap); height:100%}
+  .col{display:flex; flex-direction:column; gap:var(--gap); min-height:0; overflow:auto}
   .core{display:flex; flex-direction:column; align-items:center; justify-content:center}
   .reactor{position:relative; width:min(42vh,340px); aspect-ratio:1}
   .ring{position:absolute; inset:0; border-radius:50%; border:1px solid var(--line)}
@@ -125,198 +124,232 @@
   .qbtn:hover{border-color:var(--line); color:var(--accent)}
   .qbtn svg{color:var(--accent)} .qbtn small{display:block; color:var(--dim); font-size:11px; font-weight:400}
 
-  /* ---- chat ---- */
-  .chatwrap{display:flex; flex-direction:column; height:100%; max-width:900px; margin:0 auto}
-  .stream{flex:1; overflow:auto; display:flex; flex-direction:column; gap:12px; padding-bottom:12px}
-  .msg{max-width:80%; padding:11px 14px; border-radius:14px; font-size:14px}
+  /* ---- chat with history ---- */
+  .chat{display:grid; grid-template-columns:240px 1fr; gap:16px; height:100%}
+  .hist{border:1px solid var(--line-soft); border-radius:var(--r); background:var(--panel); display:flex; flex-direction:column; overflow:hidden}
+  .hist .new{margin:12px; display:flex; align-items:center; justify-content:center; gap:8px; padding:11px; border-radius:11px; border:1px solid var(--line); color:var(--accent); background:rgba(232,179,65,.07); cursor:pointer; font-weight:700; font-size:13px}
+  .hist .scroll{flex:1; overflow:auto; padding:0 8px 12px}
+  .hist .hgrp{color:var(--dim); font:700 10px/1 var(--sans); letter-spacing:.14em; text-transform:uppercase; padding:12px 10px 6px}
+  .hist .item{padding:9px 10px; border-radius:9px; color:var(--muted); font-size:13px; cursor:pointer; display:flex; justify-content:space-between; gap:8px}
+  .hist .item:hover{background:rgba(234,240,236,.05); color:var(--ink)}
+  .hist .item.on{color:var(--accent); background:rgba(232,179,65,.08)}
+  .hist .item time{font-family:var(--mono); font-size:11px; color:var(--dim)}
+  .chatmain{display:flex; flex-direction:column; min-height:0}
+  .stream{flex:1; overflow:auto; display:flex; flex-direction:column; gap:12px; padding:4px 4px 12px}
+  .msg{max-width:82%; padding:11px 14px; border-radius:14px; font-size:14px}
   .msg.j{align-self:flex-start; background:rgba(232,179,65,.08); border:1px solid var(--line); border-bottom-left-radius:5px}
   .msg.u{align-self:flex-end; background:rgba(234,240,236,.06); border:1px solid var(--line-soft); border-bottom-right-radius:5px}
   .msg .who{font:700 10px/1 var(--sans); letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:6px}
   .msg.j .who{color:var(--accent)}
+  .msg pre{background:var(--bg-2); border:1px solid var(--line-soft); border-radius:9px; padding:10px; overflow:auto; margin:8px 0 0; font-family:var(--mono); font-size:12.5px}
   .composer{display:flex; gap:8px; padding-top:12px; border-top:1px solid var(--line-soft)}
   .composer input{flex:1; background:var(--bg-2); border:1px solid var(--line-soft); color:var(--ink); border-radius:11px; padding:12px 14px; font-size:14px}
   .composer input:focus{outline:none; border-color:var(--line)}
   .send{width:46px; border-radius:11px; border:1px solid var(--line); background:rgba(232,179,65,.1); color:var(--accent); cursor:pointer; display:grid; place-items:center}
 
-  /* ---- models ---- */
-  .mrow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px; border:1px solid var(--line-soft); border-radius:12px; margin-bottom:10px}
-  .mrow .l{display:flex; align-items:center; gap:14px}
-  .mrow .ic{width:40px;height:40px;border-radius:11px; display:grid; place-items:center; background:rgba(232,179,65,.08); border:1px solid var(--line); font-weight:800; color:var(--accent)}
-  .mrow .nm{font-weight:700}.mrow .pv{color:var(--dim); font-size:12px}
-  .tag{font:600 10px/1 var(--sans); letter-spacing:.06em; padding:4px 8px; border-radius:6px; background:rgba(63,217,176,.1); color:var(--good)}
-  .tag.free{background:rgba(110,193,228,.12); color:#8fd0ee}
-  .star{color:var(--accent); font-family:var(--mono)}
-  .filters{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap}
+  /* ---- models catalog ---- */
+  .models{display:grid; grid-template-columns:220px 1fr; gap:18px; height:100%}
+  .msidebar{border:1px solid var(--line-soft); border-radius:var(--r); background:var(--panel); overflow:auto; padding:10px}
+  .msidebar h4{margin:14px 10px 6px; font:700 10px/1 var(--sans); letter-spacing:.14em; text-transform:uppercase; color:var(--dim)}
+  .mcat{display:flex; align-items:center; justify-content:space-between; padding:9px 10px; border-radius:9px; color:var(--muted); cursor:pointer; font-size:13px; font-weight:600}
+  .mcat:hover{background:rgba(234,240,236,.05); color:var(--ink)}
+  .mcat.on{color:var(--accent); background:rgba(232,179,65,.08)}
+  .mcat .n{font-family:var(--mono); font-size:11px; color:var(--dim)}
+  .mmain{display:flex; flex-direction:column; min-height:0}
+  .msearch{display:flex; gap:8px; margin-bottom:14px}
+  .msearch input{flex:1; background:var(--bg-2); border:1px solid var(--line-soft); color:var(--ink); border-radius:10px; padding:10px 13px; font-size:14px}
+  .msearch input:focus{outline:none; border-color:var(--line)}
+  .filters{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap}
   .fbtn{padding:7px 13px; border-radius:9px; border:1px solid var(--line-soft); background:var(--panel); color:var(--muted); cursor:pointer; font-weight:600; font-size:13px}
   .fbtn.on{color:var(--accent); border-color:var(--line); background:rgba(232,179,65,.08)}
+  .mlist{overflow:auto; display:flex; flex-direction:column; gap:10px}
+  .mrow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px; border:1px solid var(--line-soft); border-radius:12px; transition:.15s}
+  .mrow:hover{border-color:var(--line)}
+  .mrow .l{display:flex; align-items:center; gap:14px}
+  .mrow .ic{width:42px;height:42px;border-radius:11px; display:grid; place-items:center; background:rgba(232,179,65,.08); border:1px solid var(--line); font-weight:800; color:var(--accent)}
+  .mrow .nm{font-weight:700}.mrow .pv{color:var(--dim); font-size:12px; display:flex; gap:6px; align-items:center; margin-top:3px}
+  .tag{font:600 10px/1 var(--sans); padding:4px 8px; border-radius:6px; background:rgba(232,179,65,.12); color:var(--accent)}
+  .tag.free{background:rgba(110,193,228,.14); color:#8fd0ee} .tag.pop{background:rgba(63,217,176,.12); color:var(--good)}
+  .mrow .r{display:flex; align-items:center; gap:14px}
+  .mtools{display:flex; gap:9px; color:var(--dim)}
+  .star{color:var(--accent); font-family:var(--mono); font-variant-numeric:tabular-nums}
 
-  /* ---- mcp / settings shared ---- */
-  .mcp-srv{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; border:1px solid var(--line-soft); border-radius:11px; margin-bottom:10px}
-  .mcp-srv .nm{display:flex; align-items:center; gap:9px; font-weight:600}
-  .badge{font:600 10px/1 var(--sans); letter-spacing:.1em; text-transform:uppercase; padding:4px 7px; border-radius:6px}
-  .badge.up{color:var(--good); background:rgba(63,217,176,.1)}.badge.down{color:var(--crit); background:rgba(255,107,90,.1)}
-  .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; font:700 12px/1 var(--sans); padding:11px 16px; border-radius:11px; border:1px solid var(--line); color:var(--accent); background:rgba(232,179,65,.06)}
-  .btn:hover{background:rgba(232,179,65,.12)}
-  .setgrid{display:grid; grid-template-columns:1fr 1fr; gap:18px; max-width:900px}
+  /* ---- settings (sub-nav + panels) ---- */
+  .settings{display:grid; grid-template-columns:210px 1fr; gap:18px; height:100%}
+  .snav{border:1px solid var(--line-soft); border-radius:var(--r); background:var(--panel); padding:10px; overflow:auto}
+  .sitem{display:flex; align-items:center; gap:11px; padding:10px 11px; border-radius:9px; color:var(--muted); cursor:pointer; font-weight:600; font-size:13px}
+  .sitem svg{min-width:17px}
+  .sitem:hover{background:rgba(234,240,236,.05); color:var(--ink)}
+  .sitem.on{color:var(--accent); background:rgba(232,179,65,.08)}
+  .spanel{overflow:auto}
+  .spanel .card{margin-bottom:16px; max-width:820px}
+  .set-row{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:13px 0; border-bottom:1px solid var(--line-soft)}
+  .set-row:last-child{border-bottom:0}
+  .set-row .t{font-weight:600; font-size:14px}.set-row .d{color:var(--dim); font-size:12px; margin-top:2px}
+  select,.tinput{background:var(--bg-2); border:1px solid var(--line-soft); color:var(--ink); border-radius:9px; padding:9px 12px; font-family:var(--mono); font-size:13px; min-width:150px}
+  select:focus,.tinput:focus{outline:none; border-color:var(--line)}
   .swatches{display:flex; gap:10px}
-  .sw{width:32px;height:32px;border-radius:10px; cursor:pointer; border:2px solid transparent}
+  .sw{width:30px;height:30px;border-radius:9px; cursor:pointer; border:2px solid transparent}
   .sw[aria-pressed="true"]{border-color:var(--ink)}
-  .field{display:flex; flex-direction:column; gap:6px; margin-bottom:14px}
-  .field label{font:600 11px/1 var(--sans); letter-spacing:.08em; text-transform:uppercase; color:var(--dim)}
-  .field input,.field select{background:var(--bg-2); border:1px solid var(--line-soft); color:var(--ink); border-radius:9px; padding:10px 12px; font-family:var(--mono); font-size:13px}
-  .field input:focus,.field select:focus{outline:none; border-color:var(--line)}
-  .row-toggle{display:flex; align-items:center; justify-content:space-between; padding:8px 0}
   .toggle{width:44px;height:24px;border-radius:999px; background:rgba(234,240,236,.12); border:0; cursor:pointer; position:relative; transition:.2s}
   .toggle::after{content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:var(--muted); transition:.2s}
   .toggle[aria-pressed="true"]{background:rgba(232,179,65,.3)}.toggle[aria-pressed="true"]::after{left:23px; background:var(--accent)}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; font:700 12px/1 var(--sans); padding:11px 16px; border-radius:11px; border:1px solid var(--line); color:var(--accent); background:rgba(232,179,65,.06)}
+  .btn:hover{background:rgba(232,179,65,.12)}
+  .field{display:flex; flex-direction:column; gap:6px; margin-bottom:14px}
+  .field label{font:600 11px/1 var(--sans); letter-spacing:.08em; text-transform:uppercase; color:var(--dim)}
+  .field .tinput{width:100%}
+
+  /* ---- mcp / profile ---- */
+  .mcp-srv{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; border:1px solid var(--line-soft); border-radius:11px; margin-bottom:10px; max-width:760px}
+  .mcp-srv .nm{display:flex; align-items:center; gap:9px; font-weight:600}
+  .badge{font:600 10px/1 var(--sans); letter-spacing:.1em; text-transform:uppercase; padding:4px 7px; border-radius:6px}
+  .badge.up{color:var(--good); background:rgba(63,217,176,.1)}.badge.down{color:var(--crit); background:rgba(255,107,90,.1)}
+  .profile{max-width:520px}
+  .profile .av{width:72px;height:72px;border-radius:20px; display:grid; place-items:center; font-size:32px; background:radial-gradient(circle at 50% 40%, rgba(246,207,122,.3), transparent 70%); border:1px solid var(--line)}
 
   /* ---- status bar ---- */
-  .statusbar{grid-column:1/3; grid-row:2/3; display:flex; align-items:center; gap:20px; padding:8px 20px;
-    border-top:1px solid var(--line-soft); background:var(--rail); font:600 12px/1 var(--mono); color:var(--muted)}
-  .statusbar .sp{margin-left:auto}
-  .statusbar b{color:var(--ink); font-weight:600}
-  .statusbar .ok{color:var(--good)}
+  .statusbar{grid-column:1/3; grid-row:2/3; display:flex; align-items:center; gap:20px; padding:8px 20px; border-top:1px solid var(--line-soft); background:var(--rail); font:600 12px/1 var(--mono); color:var(--muted)}
+  .statusbar .sp{margin-left:auto}.statusbar b{color:var(--ink); font-weight:600}.statusbar .ok{color:var(--good)}
 
-  @media (max-width:1100px){.home{grid-template-columns:1fr} .setgrid{grid-template-columns:1fr}}
+  /* ---- boot splash ---- */
+  .boot{position:fixed; inset:0; z-index:100; display:grid; place-items:center; background:var(--bg); transition:opacity .5s}
+  .boot.gone{opacity:0; visibility:hidden}
+  .boot .inner{text-align:center}
+  .boot .face{width:120px;height:120px;margin:0 auto; border-radius:50%; border:1px solid var(--line); display:grid; place-items:center;
+    background:radial-gradient(circle at 50% 40%, rgba(246,207,122,.28), transparent 68%); box-shadow:0 0 60px rgba(232,179,65,.25); animation:glow 3s ease-in-out infinite}
+  .boot .bt{margin-top:22px; font-weight:800; letter-spacing:.5em; font-size:26px; text-transform:uppercase}
+  .boot .bt b{color:var(--accent)}
+  .boot .bs{color:var(--dim); font-size:12px; margin-top:8px; letter-spacing:.1em}
+  .boot .prog{width:220px; height:4px; border-radius:4px; background:rgba(234,240,236,.08); margin:22px auto 0; overflow:hidden}
+  .boot .prog i{display:block; height:100%; width:0; background:linear-gradient(90deg,var(--accent),#f6cf7a); animation:load 1.5s ease forwards}
+  @keyframes load{to{width:100%}}
+  .boot .pct{font-family:var(--mono); color:var(--muted); font-size:12px; margin-top:8px}
+
+  @media (max-width:1100px){.home,.chat,.models,.settings{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
+<!-- boot splash -->
+<div class="boot" id="boot"><div class="inner">
+  <div class="face"><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2"/></svg></div>
+  <div class="bt">J<b>.</b>A<b>.</b>R<b>.</b>V<b>.</b>I<b>.</b>S</div>
+  <div class="bs">Just A Rather Very Intelligent System</div>
+  <div class="prog"><i></i></div><div class="pct" id="bootPct">Загрузка модулей… 0%</div>
+</div></div>
+
 <div class="app">
   <!-- rail -->
   <nav class="rail" id="rail">
-    <div class="brand"><div class="mk"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></div>
-      <b>J.A.R.V.I.S<small>Command Deck</small></b></div>
+    <div class="brand"><div class="mk"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></div><b>J.A.R.V.I.S<small>Command Deck</small></b></div>
 
-    <div class="nav active" data-view="home" onclick="go('home')" title="Главная">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span>Главная</span></div>
-
+    <div class="nav active" data-view="home" onclick="go('home')" title="Главная"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span>Главная</span></div>
     <div class="grp">Общение</div>
-    <div class="nav" data-view="chat" onclick="go('chat')" title="Чат">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Чат</span></div>
-
+    <div class="nav" data-view="chat" onclick="go('chat')" title="Чат"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Чат</span></div>
     <div class="grp">Интеллект</div>
-    <div class="nav" data-view="models" onclick="go('models')" title="Модели">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg><span>Модели</span></div>
-    <div class="nav" data-view="memory" onclick="go('memory')" title="Память">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3a3 3 0 0 0-3 3 3 3 0 0 0-3 3 3 3 0 0 0 2 2.8V18a3 3 0 0 0 6 0V3zM15 3a3 3 0 0 1 3 3 3 3 0 0 1 3 3 3 3 0 0 1-2 2.8V18a3 3 0 0 1-6 0"/></svg><span>Память</span></div>
-
+    <div class="nav" data-view="models" onclick="go('models')" title="Модели"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg><span>Модели</span></div>
+    <div class="nav" data-view="memory" onclick="go('memory')" title="Память"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3a3 3 0 0 0-3 3 3 3 0 0 0-3 3 3 3 0 0 0 2 2.8V18a3 3 0 0 0 6 0V3zM15 3a3 3 0 0 1 3 3 3 3 0 0 1 3 3 3 3 0 0 1-2 2.8V18a3 3 0 0 1-6 0"/></svg><span>Память</span></div>
     <div class="grp">Инструменты</div>
-    <div class="nav" data-view="internet" onclick="go('internet')" title="Интернет">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg><span>Интернет</span></div>
-    <div class="nav" data-view="mcp" onclick="go('mcp')" title="MCP серверы">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span>MCP серверы</span></div>
-
+    <div class="nav" data-view="internet" onclick="go('internet')" title="Интернет"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg><span>Интернет</span></div>
+    <div class="nav" data-view="mcp" onclick="go('mcp')" title="MCP серверы"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span>MCP серверы</span></div>
     <div class="grp">Система</div>
-    <div class="nav" data-view="settings" onclick="go('settings')" title="Настройки">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3.9a7 7 0 0 0-1.7-1l-.4-2.5h-4l-.4 2.5a7 7 0 0 0-1.7 1L4.1 5 2 8.5 4 10a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.3.9 2-3.4-2-1.5a7 7 0 0 0 .1-1z"/></svg><span>Настройки</span></div>
-    <div class="nav" data-view="about" onclick="go('about')" title="О системе">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span>О системе</span></div>
+    <div class="nav" data-view="settings" onclick="go('settings')" title="Настройки"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3.9a7 7 0 0 0-1.7-1l-.4-2.5h-4l-.4 2.5a7 7 0 0 0-1.7 1L4.1 5 2 8.5 4 10a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.3.9 2-3.4-2-1.5a7 7 0 0 0 .1-1z"/></svg><span>Настройки</span></div>
+    <div class="nav" data-view="profile" onclick="go('profile')" title="Профиль"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Профиль</span></div>
+    <div class="nav" data-view="about" onclick="go('about')" title="О системе"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span>О системе</span></div>
 
     <div class="foot"><div class="status-pill"><span class="d"></span><span id="railStatus">Онлайн</span></div></div>
   </nav>
 
-  <!-- main -->
   <div class="main">
-    <div class="head">
-      <div><h1 id="vTitle">Главная</h1><div class="sub" id="vSub">Добро пожаловать, сэр</div></div>
-      <div class="clock" id="clock">--:--:--</div>
-    </div>
+    <div class="head"><div><h1 id="vTitle">Главная</h1><div class="sub" id="vSub">Добро пожаловать, сэр</div></div><div class="clock" id="clock">--:--:--</div></div>
 
     <!-- HOME -->
     <section class="view" id="view-home">
       <div class="home">
         <div class="col">
-          <section class="card"><header><h3>Система</h3><button class="refresh" onclick="loadState()">↻</button></header>
-            <div class="body">
-              <div class="meter"><div class="lab">CPU <b id="cpu">—</b></div><div class="track"><div class="fill" id="cpuBar" style="width:0"></div></div></div>
-              <div class="meter"><div class="lab">Память <b id="ram">—</b></div><div class="track"><div class="fill good" id="ramBar" style="width:0"></div></div></div>
-              <div class="stat-row"><div class="stat"><div class="k">Сессия</div><div class="v" id="sess">1</div></div>
-                <div class="stat"><div class="k">Tools</div><div class="v" id="tools">—</div></div>
-                <div class="stat"><div class="k">Uptime</div><div class="v" id="up">00:00</div></div></div>
-            </div></section>
-          <section class="card"><header><h3>Погода</h3></header><div class="body">
-            <div class="wx"><div><div class="temp" id="wxT">—</div><div class="loc" id="wxL">—</div><div class="cond" id="wxC">—</div></div><div style="font-size:32px" id="wxG">🛰</div></div>
+          <section class="card"><header><h3>Система</h3><button class="refresh" onclick="loadState()">↻</button></header><div class="body">
+            <div class="meter"><div class="lab">CPU <b id="cpu">—</b></div><div class="track"><div class="fill" id="cpuBar" style="width:0"></div></div></div>
+            <div class="meter"><div class="lab">Память <b id="ram">—</b></div><div class="track"><div class="fill good" id="ramBar" style="width:0"></div></div></div>
+            <div class="stat-row"><div class="stat"><div class="k">Сессия</div><div class="v" id="sess">1</div></div><div class="stat"><div class="k">Tools</div><div class="v" id="tools">—</div></div><div class="stat"><div class="k">Uptime</div><div class="v" id="up">00:00</div></div></div>
           </div></section>
+          <section class="card"><header><h3>Погода</h3></header><div class="body"><div class="wx"><div><div class="temp" id="wxT">—</div><div class="loc" id="wxL">—</div><div class="cond" id="wxC">—</div></div><div style="font-size:32px" id="wxG">🛰</div></div></div></section>
         </div>
-
         <div class="col core">
           <div class="reactor"><div class="ring r1 spin"></div><div class="ring r2 spin rev"></div><div class="ring r3"></div><div class="ticks"></div><div class="hub"><div class="viz"><i></i><i></i><i></i><i></i><i></i></div></div></div>
           <div class="name">J<b>.</b>A<b>.</b>R<b>.</b>V<b>.</b>I<b>.</b>S</div>
           <div class="status" id="status"><span style="width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block"></span> Слушаю команду…</div>
-          <div class="dock">
-            <button class="dockbtn" title="Камера"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
-            <button class="dockbtn primary" title="Голос" onclick="pulse()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button>
-            <button class="dockbtn" title="Чат" onclick="go('chat')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
-          </div>
+          <div class="dock"><button class="dockbtn" title="Камера"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button><button class="dockbtn primary" title="Голос" onclick="pulse()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button><button class="dockbtn" title="Чат" onclick="go('chat')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button></div>
         </div>
-
         <div class="col">
           <section class="card"><header><h3>Возможности</h3></header><div class="body"><div class="caps" id="caps"></div></div></section>
-          <section class="card"><header><h3>Быстрые действия</h3></header><div class="body">
-            <div class="quick">
-              <button class="qbtn" onclick="go('chat')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><div>Новый чат<small>Спросить AI</small></div></button>
-              <button class="qbtn" onclick="go('models')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M2 12h4"/></svg><div>Модели<small>Каталог AI</small></div></button>
-              <button class="qbtn" onclick="go('mcp')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 12h16M4 17h10"/></svg><div>MCP<small>Инструменты</small></div></button>
-              <button class="qbtn" onclick="go('settings')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/></svg><div>Настройки<small>Внешний вид</small></div></button>
-            </div>
-          </div></section>
+          <section class="card"><header><h3>Быстрые действия</h3></header><div class="body"><div class="quick">
+            <button class="qbtn" onclick="go('chat')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><div>Новый чат<small>Спросить AI</small></div></button>
+            <button class="qbtn" onclick="go('models')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M2 12h4"/></svg><div>Модели<small>Каталог AI</small></div></button>
+            <button class="qbtn" onclick="go('mcp')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 12h16M4 17h10"/></svg><div>MCP<small>Инструменты</small></div></button>
+            <button class="qbtn" onclick="go('settings')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/></svg><div>Настройки<small>Внешний вид</small></div></button>
+          </div></div></section>
         </div>
       </div>
     </section>
 
     <!-- CHAT -->
     <section class="view" id="view-chat" hidden>
-      <div class="chatwrap">
-        <div class="stream" id="stream"><div class="msg j"><div class="who">Jarvis</div>Добрый день, сэр. Все системы в норме. Чем могу помочь?</div></div>
-        <div class="composer"><input id="q" placeholder="Введите сообщение…" onkeydown="if(event.key==='Enter')sendMsg()" />
-          <button class="send" onclick="sendMsg()" aria-label="Отправить"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button></div>
+      <div class="chat">
+        <div class="hist"><button class="new" onclick="newChat()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg> Новый чат</button>
+          <div class="scroll" id="histList"></div></div>
+        <div class="chatmain">
+          <div class="stream" id="stream"><div class="msg j"><div class="who">Jarvis</div>Добрый день, сэр. Все системы в норме. Чем могу помочь?</div></div>
+          <div class="composer"><input id="q" placeholder="Введите сообщение…" onkeydown="if(event.key==='Enter')sendMsg()" /><button class="send" onclick="sendMsg()" aria-label="Отправить"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button></div>
+        </div>
       </div>
     </section>
 
     <!-- MODELS -->
     <section class="view" id="view-models" hidden>
-      <div class="filters" id="filters"></div>
-      <div id="modelList"></div>
+      <div class="models">
+        <div class="msidebar">
+          <h4>Категории</h4><div id="mcats"></div>
+          <h4>Провайдеры</h4><div id="mprovs"></div>
+        </div>
+        <div class="mmain">
+          <div class="msearch"><input id="msearch" placeholder="Поиск модели…" oninput="renderModels()" /></div>
+          <div class="filters" id="mfilters"></div>
+          <div class="mlist" id="mlist"></div>
+        </div>
+      </div>
     </section>
 
-    <!-- MEMORY / INTERNET (light) -->
-    <section class="view" id="view-memory" hidden><div class="card"><div class="body">Управление памятью: контекст диалогов сохраняется автоматически. Полные настройки — в боте и API.</div></div></section>
-    <section class="view" id="view-internet" hidden><div class="card"><div class="body">Веб-поиск подключается как инструмент AI (Search Manager). Провайдеры настраиваются в <code>.env</code> и видны в разделе Настройки.</div></div></section>
+    <!-- MEMORY / INTERNET -->
+    <section class="view" id="view-memory" hidden><div class="card" style="max-width:760px"><div class="body">Контекст диалогов сохраняется автоматически (семантическая память). Управление — в боте и API. Здесь позже появятся факты и «забыть».</div></div></section>
+    <section class="view" id="view-internet" hidden><div class="card" style="max-width:760px"><div class="body">Веб-поиск подключается как инструмент AI (Search Manager). Провайдеры (Tavily, Exa, Perplexity, Brave, DuckDuckGo…) настраиваются в <code>.env</code> и видны в Настройках → AI.</div></div></section>
 
     <!-- MCP -->
     <section class="view" id="view-mcp" hidden>
-      <div id="mcpList" style="max-width:760px"></div>
+      <div id="mcpList"></div>
       <button class="btn" style="max-width:760px; width:100%; margin-top:6px" onclick="connectServer()">＋ Подключить MCP-сервер</button>
     </section>
 
     <!-- SETTINGS -->
     <section class="view" id="view-settings" hidden>
-      <div class="setgrid">
-        <section class="card"><header><h3>Внешний вид</h3></header><div class="body">
-          <div class="field"><label>Цвет акцента</label>
-            <div class="swatches" id="swatches">
-              <button class="sw" data-a="#E8B341" style="background:#E8B341" aria-pressed="true"></button>
-              <button class="sw" data-a="#3FD9B0" style="background:#3FD9B0" aria-pressed="false"></button>
-              <button class="sw" data-a="#9B8CFF" style="background:#9B8CFF" aria-pressed="false"></button>
-              <button class="sw" data-a="#6EC1E4" style="background:#6EC1E4" aria-pressed="false"></button>
-              <button class="sw" data-a="#C6CDD1" style="background:#C6CDD1" aria-pressed="false"></button>
-            </div></div>
-          <div class="row-toggle"><span>Анимации</span><button class="toggle" id="motionTog" aria-pressed="true" onclick="toggleMotion()"></button></div>
-          <div class="field" style="margin-top:12px"><label>Язык</label><select id="lang"><option value="ru">Русский</option><option value="en">English</option><option value="uz">O'zbek</option></select></div>
-        </div></section>
-        <section class="card"><header><h3>Подключение</h3></header><div class="body">
-          <div class="field"><label>API endpoint</label><input id="api" placeholder="http://localhost:8000" /></div>
-          <div class="field"><label>API ключ</label><input id="key" type="password" placeholder="необязательно" /></div>
-          <button class="btn" onclick="saveConn()">Сохранить и переподключиться</button>
-        </div></section>
+      <div class="settings">
+        <div class="snav" id="snav"></div>
+        <div class="spanel" id="spanel"></div>
       </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section class="view" id="view-profile" hidden>
+      <div class="card profile"><div class="body" style="display:flex; gap:18px; align-items:center">
+        <div class="av">🧑‍🚀</div>
+        <div><div style="font-weight:800; font-size:18px">Sir</div><div style="color:var(--muted); font-size:13px">Локальный аккаунт</div>
+          <div style="margin-top:10px; display:flex; gap:8px"><span class="tag pop">Pro</span><span class="tag">Владелец</span></div></div>
+      </div></div>
     </section>
 
     <!-- ABOUT -->
     <section class="view" id="view-about" hidden>
       <div class="card" style="max-width:520px"><div class="body" style="text-align:center; padding:32px">
-        <div style="font-size:40px">🛡</div>
-        <div style="font-weight:800; letter-spacing:.4em; font-size:22px; margin-top:12px">J.A.R.V.I.S</div>
+        <div style="font-size:40px">🛡</div><div style="font-weight:800; letter-spacing:.4em; font-size:22px; margin-top:12px">J.A.R.V.I.S</div>
         <div style="color:var(--dim); font-size:13px; margin-top:6px">Just A Rather Very Intelligent System</div>
         <div style="color:var(--muted); font-family:var(--mono); margin-top:14px">Версия 1.7.0</div>
         <div style="color:var(--dim); font-size:12px; margin-top:18px">Провайдер-независимый ассистент · MCP · тарифы · Telegram · десктоп</div>
@@ -324,14 +357,7 @@
     </section>
   </div>
 
-  <!-- status bar -->
-  <div class="statusbar">
-    <span>J.A.R.V.I.S <b>1.7.0</b></span>
-    <span>Python <b>3.11</b></span>
-    <span>API <b class="ok" id="sbApi">—</b></span>
-    <span>Память <b id="sbMem">—</b></span>
-    <span class="sp" id="sbClock">--:--:--</span>
-  </div>
+  <div class="statusbar"><span>J.A.R.V.I.S <b>1.7.0</b></span><span>Python <b>3.11</b></span><span>API <b class="ok" id="sbApi">—</b></span><span>Память <b id="sbMem">—</b></span><span>Telegram <b class="ok">Онлайн</b></span><span class="sp" id="sbClock">--:--:--</span></div>
 </div>
 
 <script>
@@ -339,86 +365,146 @@
   CFG.api = CFG.api || localStorage.getItem("jarvis.api") || "";
   CFG.key = CFG.key || localStorage.getItem("jarvis.key") || "";
   const $ = id => document.getElementById(id);
-  const SUB = {home:"Добро пожаловать, сэр", chat:"Диалог с ассистентом", models:"Каталог моделей",
-    memory:"Управление памятью", internet:"Веб-поиск", mcp:"Внешние инструменты (MCP)",
-    settings:"Персонализация", about:"О системе"};
-  const TITLE = {home:"Главная", chat:"Чат", models:"Модели", memory:"Память", internet:"Интернет",
-    mcp:"MCP серверы", settings:"Настройки", about:"О системе"};
+  const TITLE={home:"Главная",chat:"Чат",models:"Модели",memory:"Память",internet:"Интернет",mcp:"MCP серверы",settings:"Настройки",profile:"Профиль",about:"О системе"};
+  const SUB={home:"Добро пожаловать, сэр",chat:"Диалог с ассистентом",models:"Каталог моделей",memory:"Управление памятью",internet:"Веб-поиск",mcp:"Внешние инструменты (MCP)",settings:"Персонализация",profile:"Ваш профиль",about:"О системе"};
+  function go(v){document.querySelectorAll(".view").forEach(x=>x.hidden=x.id!=="view-"+v);
+    document.querySelectorAll(".nav").forEach(n=>n.classList.toggle("active",n.dataset.view===v));
+    $("vTitle").textContent=TITLE[v]; $("vSub").textContent=SUB[v];
+    if(v==="models") renderModels(); if(v==="settings") renderSettings();}
 
-  function go(view){
-    document.querySelectorAll(".view").forEach(v=>v.hidden = v.id !== "view-"+view);
-    document.querySelectorAll(".nav").forEach(n=>n.classList.toggle("active", n.dataset.view===view));
-    $("vTitle").textContent = TITLE[view]; $("vSub").textContent = SUB[view];
-    if(view==="models") renderModels();
-  }
-
-  function tick(){ const d=new Date(), t=d.toLocaleTimeString([],{hour12:false});
-    $("clock").textContent=t; $("sbClock").textContent=t; }
+  function authH(){return CFG.key?{"X-API-Key":CFG.key,"Authorization":"Bearer "+CFG.key}:{};}
+  function tick(){const t=new Date().toLocaleTimeString([],{hour12:false});$("clock").textContent=t;$("sbClock").textContent=t;}
   setInterval(tick,1000); tick();
 
-  const DEMO = {online:false, cpu:8, ram:44, tools:22, uptime:"00:07:19", session:1,
-    weather:{temp:"25.2°", loc:"Quezon City, PH", cond:"overcast clouds", glyph:"☁️"},
+  // boot splash
+  (function boot(){const el=$("boot"),pct=$("bootPct");let p=0;
+    const reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;
+    const iv=setInterval(()=>{p=Math.min(100,p+(reduce?100:7+Math.random()*9));pct.textContent="Загрузка модулей… "+Math.round(p)+"%";
+      if(p>=100){clearInterval(iv);setTimeout(()=>el.classList.add("gone"),reduce?0:250);}},reduce?0:110);})();
+
+  const DEMO={online:false,cpu:8,ram:44,tools:22,uptime:"00:07:19",session:1,
+    weather:{temp:"25.2°",loc:"Quezon City, PH",cond:"overcast clouds",glyph:"☁️"},
     capabilities:[["🧠 Память","on"],["🎙 Голос","on"],["🌍 Поиск","on"],["🎨 Картинки","res"],["📂 Файлы","res"],["🧩 MCP","on"],["🤝 Агенты","on"]],
     mcp:[{name:"filesystem",up:true,tools:6},{name:"hermes",up:true,tools:14},{name:"brave-search",up:false,tools:0}]};
-
   function render(s){
-    $("status").innerHTML = s.online ? '<span style="width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block"></span> Слушаю команду…' : '⚠ Бэкенд офлайн — демо-режим';
-    $("status").classList.toggle("offline", !s.online);
-    $("railStatus").textContent = s.online?"Онлайн":"Офлайн";
-    $("sbApi").textContent = s.online?"Онлайн":"Офлайн"; $("sbApi").className = s.online?"ok":"";
-    $("cpu").textContent=s.cpu+"%"; $("cpuBar").style.width=s.cpu+"%";
-    $("ram").textContent=s.ram+"%"; $("ramBar").style.width=s.ram+"%"; $("sbMem").textContent=s.ram+"%";
-    $("tools").textContent=s.tools; $("up").textContent=s.uptime; $("sess").textContent=s.session;
-    const w=s.weather; $("wxT").textContent=w.temp; $("wxL").textContent=w.loc; $("wxC").textContent=w.cond; $("wxG").textContent=w.glyph;
+    $("status").innerHTML=s.online?'<span style="width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block"></span> Слушаю команду…':'⚠ Бэкенд офлайн — демо-режим';
+    $("status").classList.toggle("offline",!s.online);
+    $("railStatus").textContent=s.online?"Онлайн":"Офлайн"; $("sbApi").textContent=s.online?"Онлайн":"Офлайн"; $("sbApi").className=s.online?"ok":"";
+    $("cpu").textContent=s.cpu+"%";$("cpuBar").style.width=s.cpu+"%";$("ram").textContent=s.ram+"%";$("ramBar").style.width=s.ram+"%";$("sbMem").textContent=s.ram+"%";
+    $("tools").textContent=s.tools;$("up").textContent=s.uptime;$("sess").textContent=s.session;
+    const w=s.weather;$("wxT").textContent=w.temp;$("wxL").textContent=w.loc;$("wxC").textContent=w.cond;$("wxG").textContent=w.glyph;
     $("caps").innerHTML=s.capabilities.map(([n,st])=>`<span class="cap"><span class="s ${st}"></span>${n}</span>`).join("");
-    $("mcpList").innerHTML=s.mcp.length? s.mcp.map(m=>`<div class="mcp-srv"><span class="nm">${m.up?'🟢':'🔴'} ${m.name}</span><span style="font-family:var(--mono);color:var(--muted)">${m.tools} 🔧</span><span class="badge ${m.up?'up':'down'}">${m.up?'up':'down'}</span></div>`).join('') : '<div style="color:var(--dim);font-family:var(--mono);font-size:13px;padding:8px">Серверы не настроены</div>';
+    $("mcpList").innerHTML=s.mcp.length?s.mcp.map(m=>`<div class="mcp-srv"><span class="nm">${m.up?'🟢':'🔴'} ${m.name}</span><span style="font-family:var(--mono);color:var(--muted)">${m.tools} 🔧</span><span class="badge ${m.up?'up':'down'}">${m.up?'up':'down'}</span></div>`).join(''):'<div style="color:var(--dim);font-family:var(--mono);font-size:13px;padding:8px 0">Серверы не настроены</div>';
   }
-  function authH(){return CFG.key?{"X-API-Key":CFG.key,"Authorization":"Bearer "+CFG.key}:{};}
-  async function loadState(){
-    if(!CFG.api){ render(DEMO); return; }
-    try{ const r=await fetch(CFG.api+"/dashboard/state",{headers:authH()});
-      if(!r.ok) throw 0; const s=await r.json(); s.online=true; render(s);
-    }catch(e){ render(DEMO); }
-  }
+  async function loadState(){if(!CFG.api){render(DEMO);return;}
+    try{const r=await fetch(CFG.api+"/dashboard/state",{headers:authH()});if(!r.ok)throw 0;const s=await r.json();s.online=true;render(s);}catch(e){render(DEMO);}}
   loadState();
 
-  // models (demo catalog; real one can come from /models)
-  const MODELS=[["A","Claude Sonnet 4","Anthropic","5.0",0],["G","GPT-5","OpenAI","4.9",0],
-    ["◆","Gemini 2.5 Pro","Google","4.8",0],["≋","DeepSeek R1","DeepSeek","4.7",1],["Q","Qwen 3","Qwen","4.6",1]];
-  let mFilter="Все";
+  // ---- models catalog ----
+  const MODELS=[
+    ["A","Claude Sonnet 4","Anthropic","5.0",["pop","prem"],["reason","code","vision"]],
+    ["G","GPT-5","OpenAI","4.9",["pop"],["reason","code","vision","fast"]],
+    ["◆","Gemini 2.5 Pro","Google","4.8",["pop"],["vision","fast"]],
+    ["≋","DeepSeek R1","DeepSeek","4.7",["free"],["reason","code"]],
+    ["Q","Qwen 3","Qwen","4.6",["free"],["code","fast"]],
+    ["M","Mistral Large","Mistral","4.4",["free"],["fast","code"]],
+    ["L","Llama 4","Meta","4.5",["free"],["reason","fast"]]];
+  const CATS=[["all","Все модели",MODELS.length],["fav","Избранные",3],["pop","Популярные",3],["new","Новые",4],["prem","Premium",2],["free","Бесплатные",4]];
+  const PROVS=[["OpenRouter",45],["Anthropic",12],["OpenAI",15],["Google",8],["DeepSeek",6],["Qwen",7],["Mistral",5]];
+  const FILTERS=[["all","Все"],["code","Кодинг"],["reason","Reasoning"],["vision","Vision"],["fast","Быстрые"]];
+  let mCat="all", mFilter="all";
   function renderModels(){
-    $("filters").innerHTML=["Все","Кодинг","Reasoning","Vision","Быстрые"].map(f=>`<button class="fbtn ${f===mFilter?'on':''}" onclick="mFilter='${f}';renderModels()">${f}</button>`).join("");
-    $("modelList").innerHTML=MODELS.map(([ic,nm,pv,st,free])=>`<div class="mrow"><div class="l"><div class="ic">${ic}</div><div><div class="nm">${nm}</div><div class="pv">${pv} · <span class="tag ${free?'free':''}">${free?'Бесплатная':'Premium'}</span></div></div></div><div class="star">★ ${st}</div></div>`).join("");
+    $("mcats").innerHTML=CATS.map(([id,nm,n])=>`<div class="mcat ${id===mCat?'on':''}" onclick="mCat='${id}';renderModels()"><span>${id==='fav'?'★ ':''}${nm}</span><span class="n">${n}</span></div>`).join("");
+    $("mprovs").innerHTML=PROVS.map(([nm,n])=>`<div class="mcat"><span>${nm}</span><span class="n">${n}</span></div>`).join("");
+    $("mfilters").innerHTML=FILTERS.map(([id,nm])=>`<button class="fbtn ${id===mFilter?'on':''}" onclick="mFilter='${id}';renderModels()">${nm}</button>`).join("");
+    const q=($("msearch").value||"").toLowerCase();
+    const rows=MODELS.filter(m=>{
+      if(mCat==="free"&&!m[4].includes("free"))return false;
+      if(mCat==="prem"&&!m[4].includes("prem"))return false;
+      if(mCat==="pop"&&!m[4].includes("pop"))return false;
+      if(mFilter!=="all"&&!m[5].includes(mFilter))return false;
+      if(q&&!m[1].toLowerCase().includes(q))return false; return true;});
+    const tag=t=>t==="free"?'<span class="tag free">Бесплатная</span>':t==="prem"?'<span class="tag">Premium</span>':t==="pop"?'<span class="tag pop">Популярная</span>':'';
+    $("mlist").innerHTML=rows.length?rows.map(([ic,nm,pv,st,tags])=>`<div class="mrow"><div class="l"><div class="ic">${ic}</div><div><div class="nm">${nm}</div><div class="pv">${pv} ${tags.map(tag).join(" ")}</div></div></div><div class="r"><span class="mtools">⚙ 🔧 👁 ⚡</span><span class="star">★ ${st}</span></div></div>`).join(""):'<div style="color:var(--dim);padding:16px">Ничего не найдено</div>';
   }
 
-  function addMsg(t,who){const el=document.createElement("div");el.className="msg "+(who==="u"?"u":"j");
-    el.innerHTML=`<div class="who">${who==="u"?"Вы":"Jarvis"}</div>`+t.replace(/</g,"&lt;");
-    $("stream").appendChild(el);$("stream").scrollTop=$("stream").scrollHeight;return el;}
-  async function sendMsg(){const q=$("q").value.trim();if(!q)return;$("q").value="";addMsg(q,"u");pulse();
-    const th=addMsg("…","j");
-    if(!CFG.api){th.innerHTML='<div class="who">Jarvis</div>Подключите бэкенд в Настройках, сэр. (Демо.)';return;}
-    try{const r=await fetch(CFG.api+"/chat",{method:"POST",headers:{"Content-Type":"application/json",...authH()},body:JSON.stringify({message:q,session_id:"dashboard"})});
-      const j=await r.json();th.innerHTML='<div class="who">Jarvis</div>'+(j.reply||"—").replace(/</g,"&lt;");
-    }catch(e){th.innerHTML='<div class="who">Jarvis</div>Сбой соединения, сэр.';}}
-
-  function connectServer(){const spec=prompt("MCP сервер — команда (stdio) или https URL (sse):");if(!spec)return;
-    if(!CFG.api){alert("Демо: в приложении это подключит сервер и смонтирует его инструменты.");return;}
-    fetch(CFG.api+"/dashboard/mcp",{method:"POST",headers:{"Content-Type":"application/json",...authH()},body:JSON.stringify({spec})}).then(loadState);}
-
+  // ---- chat + history ----
+  const HIST=[["Сегодня",[["Помощь с Python","12:30"],["Анализ кода","11:15"]]],["Вчера",[["Объяснение алгоритма","18:45"],["Идеи для проекта","17:20"],["Документация API","16:10"]]]];
+  function renderHist(){$("histList").innerHTML=HIST.map(([g,items])=>`<div class="hgrp">${g}</div>`+items.map((it,i)=>`<div class="item ${g==='Сегодня'&&i===0?'on':''}"><span>${it[0]}</span><time>${it[1]}</time></div>`).join("")).join("");}
+  renderHist();
+  function newChat(){$("stream").innerHTML='<div class="msg j"><div class="who">Jarvis</div>Новый диалог. Чем могу помочь, сэр?</div>';}
+  function addMsg(t,who){const el=document.createElement("div");el.className="msg "+(who==="u"?"u":"j");el.innerHTML=`<div class="who">${who==="u"?"Вы":"Jarvis"}</div>`+t.replace(/</g,"&lt;");$("stream").appendChild(el);$("stream").scrollTop=$("stream").scrollHeight;return el;}
+  async function sendMsg(){const q=$("q").value.trim();if(!q)return;$("q").value="";addMsg(q,"u");pulse();const th=addMsg("…","j");
+    if(!CFG.api){th.innerHTML='<div class="who">Jarvis</div>Подключите бэкенд в Настройках → Подключение, сэр. (Демо.)';return;}
+    try{const r=await fetch(CFG.api+"/chat",{method:"POST",headers:{"Content-Type":"application/json",...authH()},body:JSON.stringify({message:q,session_id:"dashboard"})});const j=await r.json();th.innerHTML='<div class="who">Jarvis</div>'+(j.reply||"—").replace(/</g,"&lt;");}catch(e){th.innerHTML='<div class="who">Jarvis</div>Сбой соединения, сэр.';}}
+  function connectServer(){const spec=prompt("MCP сервер — команда (stdio) или https URL (sse):");if(!spec)return;if(!CFG.api){alert("Демо: в приложении это подключит сервер и смонтирует инструменты.");return;}fetch(CFG.api+"/dashboard/mcp",{method:"POST",headers:{"Content-Type":"application/json",...authH()},body:JSON.stringify({spec})}).then(loadState);}
   function pulse(){document.querySelectorAll(".viz i").forEach(b=>{b.style.animationDuration="0.6s";setTimeout(()=>b.style.animationDuration="1.1s",900);});}
 
-  // settings: accent / motion / connection
-  const savedAccent=localStorage.getItem("jarvis.accent"); if(savedAccent) applyAccent(savedAccent);
-  function applyAccent(hex){document.documentElement.style.setProperty("--accent",hex);localStorage.setItem("jarvis.accent",hex);
-    document.querySelectorAll("#swatches .sw").forEach(s=>s.setAttribute("aria-pressed",String(s.dataset.a.toLowerCase()===hex.toLowerCase())));}
-  document.addEventListener("click",e=>{const b=e.target.closest("#swatches .sw"); if(b) applyAccent(b.dataset.a);});
-  const motionTog=$("motionTog");
-  if(localStorage.getItem("jarvis.motion")==="off"){document.body.classList.add("nomotion");motionTog.setAttribute("aria-pressed","false");}
-  function toggleMotion(){const on=motionTog.getAttribute("aria-pressed")!=="true";motionTog.setAttribute("aria-pressed",String(on));
-    document.body.classList.toggle("nomotion",!on);localStorage.setItem("jarvis.motion",on?"on":"off");}
-  $("api").value=CFG.api; $("key").value=CFG.key;
-  function saveConn(){CFG.api=$("api").value.trim();CFG.key=$("key").value.trim();
-    localStorage.setItem("jarvis.api",CFG.api);localStorage.setItem("jarvis.key",CFG.key);loadState();}
+  // ---- settings (sub-nav + panels) ----
+  const SET_NAV=[["iface","Интерфейс"],["ai","AI"],["system","Система"],["memory","Память"],["voice","Голос"],["security","Безопасность"],["conn","Подключение"],["advanced","Расширенные"]];
+  let setTab="iface";
+  const P={};
+  P.iface=()=>`<div class="card"><header><h3>Интерфейс</h3></header><div class="body">
+    ${srow("Язык","Язык интерфейса",`<select onchange="localStorage.setItem('jarvis.lang',this.value)"><option>Русский</option><option>English</option><option>O'zbek</option></select>`)}
+    ${srow("Тема","Оформление","<select><option>Тёмная</option><option>Уголь</option><option>Полночь</option></select>")}
+    ${srowTog("Уведомления","Всплывающие оповещения","notif")}
+    ${srowTog("Анимации","Плавность и эффекты","motion")}
+    ${srowTog("Звук","Звуковые сигналы","sound")}
+  </div></div>
+  <div class="card"><header><h3>Внешний вид</h3></header><div class="body">
+    ${srow("Цвет акцента","Основной цвет системы",`<div class="swatches" id="swatches">${["#E8B341","#3FD9B0","#9B8CFF","#6EC1E4","#C6CDD1"].map(h=>`<button class="sw" data-a="${h}" style="background:${h}" aria-pressed="false"></button>`).join("")}</div>`)}
+    ${srow("Размер шрифта","Масштаб текста",`<select id="fsSel" onchange="setFS(this.value)"><option value="sm">Малый</option><option value="md">Средний</option><option value="lg">Крупный</option></select>`)}
+    ${srow("Плотность","Компактность интерфейса",`<select id="denSel" onchange="setDen(this.value)"><option value="compact">Компактная</option><option value="cozy">Комфортная</option><option value="roomy">Просторная</option></select>`)}
+  </div></div>`;
+  P.ai=()=>`<div class="card"><header><h3>Провайдер AI</h3></header><div class="body">
+    ${srow("Провайдер","Движок по умолчанию","<select><option>Anthropic (Claude)</option><option>OpenAI</option><option>OpenRouter</option><option>Локальный (Ollama/vLLM)</option></select>")}
+    ${srow("Модель","Активная модель",`<input class="tinput" value="claude-sonnet-4" />`)}
+    ${srowTog("AI-роутер","Простое → быстрая, сложное → сильная","router")}
+  </div></div>
+  <div class="card"><header><h3>Поиск в интернете</h3></header><div class="body">
+    ${srow("Провайдер поиска","AI-search → web → браузер","<select><option>Авто</option><option>Tavily</option><option>Exa</option><option>Perplexity</option><option>Brave</option><option>DuckDuckGo</option></select>")}
+  </div></div>`;
+  P.system=()=>panelInfo("Система","CPU/RAM, аптайм и активные инструменты показаны на Главной. Логи и диагностика — через <code>/doctor</code> и API <code>/health</code>.");
+  P.memory=()=>panelInfo("Память","Семантическая память включена. Факты извлекаются автоматически; секреты редактируются перед сохранением. Управление — в боте.");
+  P.voice=()=>`<div class="card"><header><h3>Голос</h3></header><div class="body">
+    ${srowTog("Голосовые ответы","Озвучивать ответы","voice")}
+    ${srow("Голос TTS","Синтез речи","<select><option>alloy</option><option>edge</option><option>gTTS</option></select>")}
+  </div></div>`;
+  P.security=()=>`<div class="card"><header><h3>Безопасность</h3></header><div class="body">
+    ${srowTog("Запись файлов","Разрешить изменение файлов","secW")}
+    ${srowTog("Выполнение команд","Разрешить shell","secS")}
+    ${srowTog("Управление ПК","Клавиатура/мышь/скриншот","secD")}
+    <div class="set-row"><div><div class="t">Редакция секретов</div><div class="d">Токены/ключи не сохраняются в память</div></div><span class="badge up">включено</span></div>
+  </div></div>`;
+  P.conn=()=>`<div class="card"><header><h3>Подключение</h3></header><div class="body">
+    <div class="field"><label>API endpoint</label><input class="tinput" id="api" placeholder="http://localhost:8000" /></div>
+    <div class="field"><label>API ключ</label><input class="tinput" id="key" type="password" placeholder="необязательно" /></div>
+    <button class="btn" onclick="saveConn()">Сохранить и переподключиться</button>
+  </div></div>`;
+  P.advanced=()=>panelInfo("Расширенные","Экспорт диалогов, сброс памяти и очистка кэша появятся здесь. Полная конфигурация — через <code>.env</code> и Configuration Manager.");
+  function srow(t,d,ctrl){return `<div class="set-row"><div><div class="t">${t}</div><div class="d">${d}</div></div><div>${ctrl}</div></div>`;}
+  function srowTog(t,d,key){const on=localStorage.getItem("jarvis."+key)!=="off";return `<div class="set-row"><div><div class="t">${t}</div><div class="d">${d}</div></div><button class="toggle" aria-pressed="${on}" onclick="tog('${key}',this)"></button></div>`;}
+  function panelInfo(h,txt){return `<div class="card"><header><h3>${h}</h3></header><div class="body" style="color:var(--muted); font-size:14px">${txt}</div></div>`;}
+  function renderSettings(){
+    $("snav").innerHTML=SET_NAV.map(([id,nm])=>`<div class="sitem ${id===setTab?'on':''}" onclick="setTab='${id}';renderSettings()">${nm}</div>`).join("");
+    $("spanel").innerHTML=P[setTab]();
+    if(setTab==="iface"){syncAccent(); $("fsSel").value=document.documentElement.dataset.fs; $("denSel").value=document.documentElement.dataset.density;}
+    if(setTab==="conn"){$("api").value=CFG.api;$("key").value=CFG.key;}
+  }
+  function tog(key,el){const on=el.getAttribute("aria-pressed")!=="true";el.setAttribute("aria-pressed",String(on));localStorage.setItem("jarvis."+key,on?"on":"off");
+    if(key==="motion")document.body.classList.toggle("nomotion",!on);}
+  function setFS(v){document.documentElement.dataset.fs=v;localStorage.setItem("jarvis.fs",v);}
+  function setDen(v){document.documentElement.dataset.density=v;localStorage.setItem("jarvis.den",v);}
+  function applyAccent(h){document.documentElement.style.setProperty("--accent",h);localStorage.setItem("jarvis.accent",h);syncAccent();}
+  function syncAccent(){const cur=(localStorage.getItem("jarvis.accent")||"#E8B341").toLowerCase();document.querySelectorAll("#swatches .sw").forEach(s=>s.setAttribute("aria-pressed",String(s.dataset.a.toLowerCase()===cur)));}
+  document.addEventListener("click",e=>{const b=e.target.closest("#swatches .sw");if(b)applyAccent(b.dataset.a);});
+  function saveConn(){CFG.api=$("api").value.trim();CFG.key=$("key").value.trim();localStorage.setItem("jarvis.api",CFG.api);localStorage.setItem("jarvis.key",CFG.key);loadState();}
+
+  // restore persisted prefs
+  (function restore(){const a=localStorage.getItem("jarvis.accent");if(a)document.documentElement.style.setProperty("--accent",a);
+    const fs=localStorage.getItem("jarvis.fs");if(fs)document.documentElement.dataset.fs=fs;
+    const den=localStorage.getItem("jarvis.den");if(den)document.documentElement.dataset.density=den;
+    if(localStorage.getItem("jarvis.motion")==="off")document.body.classList.add("nomotion");})();
 </script>
 </body>
 </html>
