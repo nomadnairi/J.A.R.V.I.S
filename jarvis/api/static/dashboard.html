@@ -373,9 +373,10 @@
     $("caps").innerHTML=s.capabilities.map(([n,st])=>`<span class="cap"><span class="s ${st}"></span>${n}</span>`).join("");
     $("mcpList").innerHTML=s.mcp.length? s.mcp.map(m=>`<div class="mcp-srv"><span class="nm">${m.up?'🟢':'🔴'} ${m.name}</span><span style="font-family:var(--mono);color:var(--muted)">${m.tools} 🔧</span><span class="badge ${m.up?'up':'down'}">${m.up?'up':'down'}</span></div>`).join('') : '<div style="color:var(--dim);font-family:var(--mono);font-size:13px;padding:8px">Серверы не настроены</div>';
   }
+  function authH(){return CFG.key?{"X-API-Key":CFG.key,"Authorization":"Bearer "+CFG.key}:{};}
   async function loadState(){
     if(!CFG.api){ render(DEMO); return; }
-    try{ const r=await fetch(CFG.api+"/dashboard/state",{headers:CFG.key?{"X-API-Key":CFG.key}:{}});
+    try{ const r=await fetch(CFG.api+"/dashboard/state",{headers:authH()});
       if(!r.ok) throw 0; const s=await r.json(); s.online=true; render(s);
     }catch(e){ render(DEMO); }
   }
@@ -396,13 +397,13 @@
   async function sendMsg(){const q=$("q").value.trim();if(!q)return;$("q").value="";addMsg(q,"u");pulse();
     const th=addMsg("…","j");
     if(!CFG.api){th.innerHTML='<div class="who">Jarvis</div>Подключите бэкенд в Настройках, сэр. (Демо.)';return;}
-    try{const r=await fetch(CFG.api+"/chat",{method:"POST",headers:{"Content-Type":"application/json",...(CFG.key?{"X-API-Key":CFG.key}:{})},body:JSON.stringify({message:q,session_id:"dashboard"})});
+    try{const r=await fetch(CFG.api+"/chat",{method:"POST",headers:{"Content-Type":"application/json",...authH()},body:JSON.stringify({message:q,session_id:"dashboard"})});
       const j=await r.json();th.innerHTML='<div class="who">Jarvis</div>'+(j.reply||"—").replace(/</g,"&lt;");
     }catch(e){th.innerHTML='<div class="who">Jarvis</div>Сбой соединения, сэр.';}}
 
   function connectServer(){const spec=prompt("MCP сервер — команда (stdio) или https URL (sse):");if(!spec)return;
     if(!CFG.api){alert("Демо: в приложении это подключит сервер и смонтирует его инструменты.");return;}
-    fetch(CFG.api+"/dashboard/mcp",{method:"POST",headers:{"Content-Type":"application/json",...(CFG.key?{"X-API-Key":CFG.key}:{})},body:JSON.stringify({spec})}).then(loadState);}
+    fetch(CFG.api+"/dashboard/mcp",{method:"POST",headers:{"Content-Type":"application/json",...authH()},body:JSON.stringify({spec})}).then(loadState);}
 
   function pulse(){document.querySelectorAll(".viz i").forEach(b=>{b.style.animationDuration="0.6s";setTimeout(()=>b.style.animationDuration="1.1s",900);});}
 

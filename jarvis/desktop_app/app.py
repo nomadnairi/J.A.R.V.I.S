@@ -169,6 +169,7 @@ def run_app() -> int:
             self.setMinimumSize(880, 600)
 
             tabs = QTabWidget()
+            tabs.addTab(self._deck_tab(), "🛰  Command Deck")
             tabs.addTab(self._chat_tab(), tr("tab_chat", loc))
             tabs.addTab(self._wrap(self._voice_tab(), tr("tab_voice", loc)),
                         tr("tab_voice", loc))
@@ -350,6 +351,70 @@ def run_app() -> int:
             scroll.setWidget(host)
             outer.addWidget(scroll)
             return page
+
+        # -- command deck (web dashboard) --------------------------------
+
+        @staticmethod
+        def _deck_html() -> str:
+            """Read the packaged dashboard, working in dev and frozen builds."""
+            import sys
+            from pathlib import Path
+            candidates = []
+            base = getattr(sys, "_MEIPASS", None)
+            if base:
+                candidates.append(Path(base) / "jarvis" / "api" / "static" / "dashboard.html")
+            candidates.append(
+                Path(__file__).resolve().parents[1] / "api" / "static" / "dashboard.html")
+            for p in candidates:
+                if p.is_file():
+                    return p.read_text(encoding="utf-8")
+            return "<h1 style='color:#eee;font-family:sans-serif'>Command Deck not bundled.</h1>"
+
+        def _deck_conn(self) -> tuple[str, str]:
+            """API endpoint + key to hand the dashboard (remote mode only)."""
+            if config.mode == "remote" and config.server_url:
+                return config.server_url, config.auth_token or ""
+            return "", ""
+
+        def _deck_tab(self) -> "QWidget":
+            from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
+            page = QWidget()
+            lay = QVBoxLayout(page)
+            lay.setContentsMargins(0, 0, 0, 0)
+            try:
+                from PySide6.QtCore import QUrl
+                from PySide6.QtWebEngineWidgets import QWebEngineView
+            except Exception:  # noqa: BLE001 - WebEngine excluded from lean builds
+                lbl = QLabel("Command Deck opens in your browser.\n"
+                            "(A full in-window build needs PySide6 QtWebEngine.)")
+                lbl.setWordWrap(True)
+                btn = QPushButton("🛰  Open Command Deck")
+                btn.clicked.connect(self._open_deck_browser)
+                lay.setContentsMargins(36, 30, 36, 30)
+                lay.addWidget(lbl)
+                lay.addWidget(btn)
+                lay.addStretch(1)
+                return page
+            view = QWebEngineView()
+            view.setHtml(self._deck_html(), QUrl("http://localhost/"))
+            api, key = self._deck_conn()
+
+            def _inject(ok: bool) -> None:
+                if ok and (api or key):
+                    view.page().runJavaScript(
+                        f"CFG.api={api!r};CFG.key={key!r};loadState();")
+
+            view.loadFinished.connect(_inject)
+            lay.addWidget(view)
+            return page
+
+        def _open_deck_browser(self) -> None:
+            import tempfile
+            import webbrowser
+            from pathlib import Path
+            tmp = Path(tempfile.gettempdir()) / "jarvis_command_deck.html"
+            tmp.write_text(self._deck_html(), encoding="utf-8")
+            webbrowser.open(tmp.as_uri())
 
         # -- chat tab -----------------------------------------------------
 
