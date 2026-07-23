@@ -34,6 +34,28 @@ def test_root_and_health():
         assert "ok" in health and isinstance(health["checks"], list)
 
 
+def test_dashboard_page_served():
+    with TestClient(_app()) as client:
+        r = client.get("/app")
+        assert r.status_code == 200
+        assert "J.A.R.V.I.S." in r.text and "reactor" in r.text
+
+
+def test_dashboard_state_shape():
+    with TestClient(_app()) as client:
+        s = client.get("/dashboard/state").json()
+        assert "capabilities" in s and "mcp" in s
+        assert "cpu" in s and "uptime" in s and "tools" in s
+        assert isinstance(s["capabilities"], list)
+
+
+def test_dashboard_state_requires_key_when_set():
+    with TestClient(_app(api_key="secret")) as client:
+        assert client.get("/dashboard/state").status_code == 401
+        ok = client.get("/dashboard/state", headers={"X-API-Key": "secret"})
+        assert ok.status_code == 200
+
+
 def test_chat_open_when_no_key():
     with TestClient(_app()) as client:
         resp = client.post("/chat", json={"message": "hello"})

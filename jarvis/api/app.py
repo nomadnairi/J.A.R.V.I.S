@@ -190,6 +190,82 @@ def create_app(engine: JarvisEngine | None = None,
         except WebSocketDisconnect:
             return
 
+    # -- dashboard (Command Deck web UI) -----------------------------------
+
+    import time as _time
+    from pathlib import Path as _Path
+
+    _STARTED = _time.time()
+    _STATIC = _Path(__file__).parent / "static"
+
+    @app.get("/app")
+    async def dashboard_page():
+        from fastapi.responses import FileResponse, JSONResponse
+        page = _STATIC / "dashboard.html"
+        if not page.is_file():
+            return JSONResponse({"error": "dashboard not built"}, status_code=404)
+        return FileResponse(str(page))
+
+    def _system_stats() -> dict:
+        try:
+            import psutil
+            cpu = int(psutil.cpu_percent(interval=0.0))
+            ram = int(psutil.virtual_memory().percent)
+        except Exception:  # noqa: BLE001 - psutil optional
+            cpu, ram = 0, 0
+        secs = int(_time.time() - _STARTED)
+        uptime = f"{secs // 3600:02d}:{secs % 3600 // 60:02d}:{secs % 60:02d}"
+        return {"cpu": cpu, "ram": ram, "uptime": uptime,
+                "tools": len(engine.skills.tool_specs()), "session": 1}
+
+    @app.get("/dashboard/state")
+    async def dashboard_state(_: str = Depends(require_principal)) -> dict:
+        from jarvis.core.capabilities import CapabilityManager
+        cap_state = {"enabled": "on", "restricted": "res", "disabled": "off"}
+        caps = [[c.label, cap_state.get(c.state.value, "off")]
+                for c in CapabilityManager(settings).all()]
+        mcp = []
+        if getattr(engine, "mcp", None) is not None:
+            mcp = [{"name": s.name, "up": s.connected, "tools": s.tool_count}
+                for s in engine.mcp.statuses()]
+        return {
+            **_system_stats(),
+            "capabilities": caps,
+            "mcp": mcp,
+            "weather": {"temp": "—", "loc": settings.user_name or "Local",
+                        "cond": "telemetry", "glyph": "🛰"},
+        }
+
+    class _McpIn(BaseModel):
+        spec: str
+
+    @app.post("/dashboard/mcp")
+    async def dashboard_add_mcp(body: _McpIn,
+                            _: str = Depends(require_principal)) -> dict:
+        """Connect an MCP server at runtime and mount its tools."""
+        from jarvis.mcp.base import MCPServerConfig
+        from jarvis.mcp.manager import MCPManager
+        spec = body.spec.strip()
+        if spec.startswith("http"):
+            cfg = MCPServerConfig(name=spec.split("//")[-1][:20],
+                                transport="sse", url=spec)
+        else:
+            parts = spec.split()
+            cfg = MCPServerConfig(name=parts[0], command=parts[0],
+                                args=parts[1:])
+        mgr = MCPManager([cfg])
+        try:
+            skills = await mgr.start()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502,
+                                detail=f"Could not connect: {exc}") from exc
+        for skill in skills:
+            try:
+                engine.skills.register(skill)
+            except Exception:  # noqa: BLE001 - ignore duplicates
+                pass
+        return {"connected": True, "server": cfg.name, "tools": len(skills)}
+
     if service is not None:
         install_auth_routes(app, settings, service)
         if settings.billing_enabled and settings.billing_webhook_secret:

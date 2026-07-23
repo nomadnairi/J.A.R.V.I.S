@@ -52,6 +52,8 @@ include = ["jarvis*"]
 [tool.setuptools.package-data]
 # Ship static assets (e.g. the Tariffs banner) inside the package.
 "jarvis.interfaces" = ["assets/*.png"]
+# Ship the Command Deck dashboard served by the API.
+"jarvis.api" = ["static/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
