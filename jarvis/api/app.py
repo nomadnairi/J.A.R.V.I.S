@@ -264,6 +264,28 @@ def create_app(engine: JarvisEngine | None = None,
                 for _pid, name, count in mr.providers_with_models()]
         return {"models": models, "categories": cats, "providers": provs}
 
+    @app.get("/dashboard/update")
+    async def dashboard_update(_: str = Depends(require_principal)) -> dict:
+        """Check for a newer release and whether auto-update is allowed here."""
+        import asyncio as _asyncio
+
+        from jarvis import __version__
+        from jarvis.core.updater import UpdateInfo, check_github
+        if settings.update_channel == "off":
+            info = UpdateInfo(current=__version__, latest=__version__,
+                            available=False, channel="off")
+        else:
+            info = await _asyncio.to_thread(
+                check_github, __version__, repo=settings.update_repo,
+                include_prerelease=(settings.update_channel == "early"))
+        # Self-hosted owner (no accounts) always may auto-update; a hosted,
+        # multi-user deployment gates it behind an active subscription.
+        auto_allowed = service is None
+        return {**info.as_dict(),
+                "channel_mode": settings.update_channel,
+                "telegram_channel": settings.update_telegram_channel,
+                "auto_allowed": auto_allowed}
+
     class _McpIn(BaseModel):
         spec: str
 

@@ -65,6 +65,27 @@ def test_dashboard_state_has_ai_and_security():
         assert s["security"]["shell"] is False
 
 
+def test_dashboard_update_check():
+    # update_channel defaults to "early"; check should return a shape even
+    # though the network call is stubbed to fail offline (soft -> not available).
+    with TestClient(_app()) as client:
+        u = client.get("/dashboard/update").json()
+        assert "current" in u and "available" in u and "auto_allowed" in u
+        # Self-hosted (no accounts) -> auto-update allowed.
+        assert u["auto_allowed"] is True
+
+
+def test_dashboard_update_off_channel():
+    settings = Settings(anthropic_api_key="k", log_file="", memory_enabled=False,
+                        integrations_enabled=False, goals_enabled=False,
+                        rate_limit_enabled=False, update_channel="off")
+    engine = JarvisEngine(container=ServiceContainer(
+        settings, llm_client=LLMClient(primary=FakeProvider())))
+    with TestClient(create_app(engine=engine, settings=settings)) as client:
+        u = client.get("/dashboard/update").json()
+        assert u["available"] is False and u["channel"] == "off"
+
+
 def test_dashboard_models_from_registry():
     with TestClient(_app()) as client:
         d = client.get("/dashboard/models").json()

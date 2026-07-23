@@ -56,6 +56,8 @@ class Plan:
     support: str
     #: Telegram Stars price (0 = free).
     price_stars: int
+    #: Whether this tier may enable one-tap auto-update (paid privilege).
+    auto_update: bool = False
 
     @property
     def unlimited(self) -> bool:
@@ -97,12 +99,14 @@ def default_plans() -> dict[str, Plan]:
             daily_messages=100, monthly_messages=2000,
             all_models=True, images=True, api_access=True, byok=True,
             integrations=6, support="priority", price_stars=2500,
+            auto_update=True,
         ),
         PRO: Plan(
             name=PRO, emoji="💎",
             daily_messages=0, monthly_messages=0,  # unlimited
             all_models=True, images=True, api_access=True, byok=True,
             integrations=0, support="premium", price_stars=8000,  # unlimited
+            auto_update=True,
         ),
     }
 

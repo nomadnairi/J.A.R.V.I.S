@@ -454,7 +454,7 @@
   function pulse(){document.querySelectorAll(".viz i").forEach(b=>{b.style.animationDuration="0.6s";setTimeout(()=>b.style.animationDuration="1.1s",900);});}
 
   // ---- settings (sub-nav + panels) ----
-  const SET_NAV=[["iface","Интерфейс"],["ai","AI"],["system","Система"],["memory","Память"],["voice","Голос"],["security","Безопасность"],["conn","Подключение"],["advanced","Расширенные"]];
+  const SET_NAV=[["iface","Интерфейс"],["ai","AI"],["updates","Обновления"],["system","Система"],["memory","Память"],["voice","Голос"],["security","Безопасность"],["conn","Подключение"],["advanced","Расширенные"]];
   let setTab="iface";
   const P={};
   P.iface=()=>`<div class="card"><header><h3>Интерфейс</h3></header><div class="body">
@@ -482,6 +482,21 @@
     ${srow("Провайдер поиска","AI-search → web → браузер",a.search==="off"?'<span class="badge down">выкл</span>':`<span class="tag">${a.search}</span>`)}
     <div class="set-row"><div class="d">Меняется в <code>.env</code> сервера. Здесь показано реальное состояние.</div></div>
   </div></div>`;};
+  P.updates=()=>`<div class="card"><header><h3>Обновления</h3></header><div class="body">
+    <div class="set-row"><div><div class="t">Текущая версия</div><div class="d">Установленная сборка</div></div><code id="updCur">1.7.0</code></div>
+    <div class="set-row"><div><div class="t">Последняя версия</div><div class="d" id="updChan">Канал: ранний доступ</div></div><span id="updLatest" class="tag">—</span></div>
+    <div class="set-row"><div><div class="t">Автообновление</div><div class="d" id="updAutoHint">Обновляться сразу, как выходит релиз</div></div>
+      <button class="toggle" id="updAutoTog" aria-pressed="false" onclick="toggleAuto(this)"></button></div>
+    <div style="display:flex; gap:10px; margin-top:14px">
+      <button class="btn" onclick="checkUpdate()">🔄 Проверить обновления</button>
+      <button class="btn" id="updNow" style="display:none" onclick="doUpdate()">⬇️ Обновить сейчас</button>
+    </div>
+    <div id="updBox" style="color:var(--muted); font-size:13px; margin-top:12px"></div>
+  </div></div>
+  <div class="card"><header><h3>Канал обновлений</h3></header><div class="body">
+    ${srow("Источник","Откуда брать обновления",`<select id="updSrc"><option value="early">GitHub · ранний доступ</option><option value="stable">GitHub · стабильные</option><option value="channel">Telegram-канал</option></select>`)}
+    <div class="set-row"><div class="d">Ранний доступ (pre-release) — новые фичи первыми. Стабильные — только проверенные.</div></div>
+  </div></div>`;
   P.system=()=>panelInfo("Система","CPU/RAM, аптайм и активные инструменты показаны на Главной. Логи и диагностика — через <code>/doctor</code> и API <code>/health</code>.");
   P.memory=()=>panelInfo("Память","Семантическая память включена. Факты извлекаются автоматически; секреты редактируются перед сохранением. Управление — в боте.");
   P.voice=()=>`<div class="card"><header><h3>Голос</h3></header><div class="body">
@@ -511,6 +526,47 @@
     $("spanel").innerHTML=P[setTab]();
     if(setTab==="iface"){syncAccent(); $("fsSel").value=document.documentElement.dataset.fs; $("denSel").value=document.documentElement.dataset.density;}
     if(setTab==="conn"){$("api").value=CFG.api;$("key").value=CFG.key;}
+    if(setTab==="updates"){initUpdates(); checkUpdate();}
+  }
+
+  // ---- updates ----
+  let UPD=null;
+  function initUpdates(){
+    const auto=localStorage.getItem("jarvis.autoupdate")==="on";
+    $("updAutoTog").setAttribute("aria-pressed",String(auto));
+    const src=localStorage.getItem("jarvis.updsrc")||"early";
+    if($("updSrc")){$("updSrc").value=src;$("updSrc").onchange=e=>localStorage.setItem("jarvis.updsrc",e.target.value);}
+  }
+  function toggleAuto(el){
+    if(UPD&&UPD.auto_allowed===false){alert("Автообновление доступно по подписке (Plus/Pro). Оформите тариф, чтобы включить.");return;}
+    const on=el.getAttribute("aria-pressed")!=="true";el.setAttribute("aria-pressed",String(on));
+    localStorage.setItem("jarvis.autoupdate",on?"on":"off");
+  }
+  async function checkUpdate(){
+    const box=$("updBox");if(!box)return;
+    if(!CFG.api){box.innerHTML='Демо-режим: обновления берутся из GitHub-релизов. Подключите бэкенд в разделе «Подключение».';return;}
+    box.textContent="Проверяю…";
+    try{const r=await fetch(CFG.api+"/dashboard/update",{headers:authH()});UPD=await r.json();renderUpd();}
+    catch(e){box.textContent="Не удалось проверить обновления.";}
+  }
+  function renderUpd(){
+    const u=UPD||{};const box=$("updBox");
+    $("updCur").textContent=u.current||"1.7.0";
+    $("updLatest").textContent=u.latest||"—";
+    $("updLatest").className="tag "+(u.available?"pop":"");
+    $("updChan").textContent="Канал: "+({early:"ранний доступ",stable:"стабильные",off:"выключено"}[u.channel_mode]||u.channel_mode||"—");
+    $("updNow").style.display=u.available?"inline-flex":"none";
+    if(u.auto_allowed===false){
+      $("updAutoTog").setAttribute("aria-pressed","false");
+      $("updAutoHint").innerHTML='🔒 Доступно по подписке (Plus/Pro)';
+    }
+    box.innerHTML=u.available
+      ? `🎉 Доступна новая версия <b>${u.latest}</b>! Нажмите «Обновить сейчас».`
+      : (u.channel_mode==="off"?"Проверка обновлений выключена.":"✅ У вас последняя версия.");
+  }
+  function doUpdate(){
+    const u=UPD||{};const link=u.download_url||u.url;
+    if(link)window.open(link,"_blank");
   }
   function tog(key,el){const on=el.getAttribute("aria-pressed")!=="true";el.setAttribute("aria-pressed",String(on));localStorage.setItem("jarvis."+key,on?"on":"off");
     if(key==="motion")document.body.classList.toggle("nomotion",!on);}

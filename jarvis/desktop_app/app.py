@@ -57,6 +57,7 @@ def run_app() -> int:
         done = Signal(str, str)  # reply, error
         chunk = Signal(str)      # one streamed piece of the reply
         voice = Signal(str, str, str, str)  # transcript, reply, audio_path, error
+        update_ready = Signal(bool, str, str, bool)  # available, latest, url, explicit
 
     # -- login dialog ---------------------------------------------------------
 
@@ -161,6 +162,7 @@ def run_app() -> int:
             self.bridge = ReplyBridge()
             self.bridge.done.connect(self._on_reply)
             self.bridge.chunk.connect(self._on_chunk)
+            self.bridge.update_ready.connect(self._on_update)
             self._streaming = False
             loc = config.language
 
@@ -206,6 +208,9 @@ def run_app() -> int:
             if config.mode == "local":
                 self._start_local_engine()
                 self._init_voice()
+            # Auto-update opt-in: quietly check on launch.
+            if getattr(config, "auto_update", False):
+                self._check_updates(explicit=False)
 
         # -- system tray ------------------------------------------------------
 
@@ -236,6 +241,8 @@ def run_app() -> int:
             menu = QMenu()
             show = menu.addAction(tr("tray_show", loc))
             show.triggered.connect(self._restore)
+            upd = menu.addAction("🔄 " + tr("check_updates", loc))
+            upd.triggered.connect(lambda: self._check_updates(explicit=True))
             quit_action = menu.addAction(tr("tray_quit", loc))
             quit_action.triggered.connect(self._quit)
             self.tray.setContextMenu(menu)
@@ -247,6 +254,45 @@ def run_app() -> int:
             from PySide6.QtWidgets import QSystemTrayIcon
             if reason == QSystemTrayIcon.ActivationReason.Trigger:
                 self._restore()
+
+        # -- updates ----------------------------------------------------------
+
+        def _check_updates(self, *, explicit: bool = False) -> None:
+            """Check GitHub for a newer release; offer to open the download."""
+            import threading
+
+            from jarvis import __version__
+            from jarvis.core.updater import check_github
+
+            def _work() -> None:
+                info = check_github(
+                    __version__,
+                    include_prerelease=(config.update_channel != "stable"))
+                self.bridge.update_ready.emit(info.available, info.latest,
+                                            info.download_url or info.url,
+                                            explicit)
+
+            threading.Thread(target=_work, daemon=True).start()
+
+        def _on_update(self, available: bool, latest: str, url: str,
+                    explicit: bool) -> None:
+            from PySide6.QtWidgets import QMessageBox
+            if not available:
+                if explicit:
+                    QMessageBox.information(self, "J.A.R.V.I.S.",
+                                            "У вас последняя версия.")
+                return
+            # Auto-update (opt-in): open the download straight away; otherwise ask.
+            if config.auto_update and url:
+                import webbrowser
+                webbrowser.open(url)
+                return
+            ans = QMessageBox.question(
+                self, "Доступно обновление",
+                f"Вышла версия {latest}. Скачать сейчас?")
+            if ans == QMessageBox.StandardButton.Yes and url:
+                import webbrowser
+                webbrowser.open(url)
 
         def _restore(self) -> None:
             self.showNormal()

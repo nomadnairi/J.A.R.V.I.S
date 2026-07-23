@@ -44,6 +44,10 @@ class AppConfig:
     notifications: bool = True
     #: Set once the first-run onboarding has been shown.
     onboarded: bool = False
+    #: Check GitHub for updates on launch and open the download automatically.
+    auto_update: bool = False
+    #: "early" (include pre-releases) or "stable" (full releases only).
+    update_channel: str = "early"
     #: "local" (engine runs on this PC) or "remote" (talk to a server API).
     mode: str = "local"
 

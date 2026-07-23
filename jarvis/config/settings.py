@@ -187,6 +187,15 @@ class Settings(BaseSettings):
     homeassistant_url: str = ""
     homeassistant_token: str = ""
 
+    # --- Updates ---
+    #: Repository that releases are published to (owner/name).
+    update_repo: str = "nomadnairi/J.A.R.V.I.S"
+    #: Which release channel to track: "early" includes pre-releases (grey
+    #: access), "stable" only full releases, "off" disables update checks.
+    update_channel: Literal["early", "stable", "off"] = "early"
+    #: Optional Telegram channel to point users at for update announcements.
+    update_telegram_channel: str = ""
+
     # --- MCP (Model Context Protocol) — mount external agent skills as tools ---
     #: Connect to MCP servers (the agentskills.io / Hermes / Claude standard) and
     #: expose their tools as J.A.R.V.I.S. skills the model can call.
