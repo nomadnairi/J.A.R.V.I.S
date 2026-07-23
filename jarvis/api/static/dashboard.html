@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="ru" data-theme="dark">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>J.A.R.V.I.S. — Command Deck</title>
 <style>
   :root{
-    --bg:#0A0F0D; --bg-2:#0C1311;
+    --bg:#0A0F0D; --bg-2:#0C1311; --rail:#0D1513;
     --panel:rgba(19,27,24,.66); --panel-solid:#111917;
     --line:rgba(232,179,65,.16); --line-soft:rgba(234,240,236,.07);
     --ink:#EAF0EC; --muted:#8A9691; --dim:#5C6864;
@@ -18,369 +18,406 @@
   }
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{
-    margin:0; background:
-      radial-gradient(1200px 600px at 50% -10%, rgba(232,179,65,.06), transparent 60%),
-      radial-gradient(900px 500px at 50% 120%, rgba(63,217,176,.05), transparent 60%),
-      var(--bg);
-    color:var(--ink); font-family:var(--sans);
-    font-size:15px; line-height:1.5; overflow:hidden;
-  }
+  body{margin:0; background:
+      radial-gradient(1100px 560px at 60% -12%, rgba(232,179,65,.06), transparent 60%),
+      radial-gradient(800px 460px at 40% 120%, rgba(63,217,176,.05), transparent 60%), var(--bg);
+    color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.5; overflow:hidden}
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  body.nomotion *{animation:none!important}
+  button{font-family:inherit}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 
-  /* ---- shell ---- */
-  .deck{display:grid; grid-template-rows:auto 1fr; height:100vh}
-  .topbar{
-    display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
-    gap:16px; padding:14px 22px; border-bottom:1px solid var(--line-soft);
-    background:linear-gradient(180deg,rgba(12,19,17,.9),transparent);
-  }
-  .wordmark{display:flex; align-items:center; gap:12px; font-weight:800;
-    letter-spacing:.42em; font-size:15px; text-transform:uppercase}
-  .wordmark b{color:var(--accent); font-weight:800}
-  .pill{display:inline-flex; align-items:center; gap:7px; font:600 11px/1 var(--sans);
-    letter-spacing:.12em; text-transform:uppercase; color:var(--good);
-    padding:5px 10px; border:1px solid rgba(63,217,176,.3); border-radius:999px;
-    background:rgba(63,217,176,.06)}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--good);
-    box-shadow:0 0 0 0 rgba(63,217,176,.6); animation:beat 2.4s infinite}
+  .app{display:grid; grid-template-columns:auto 1fr; grid-template-rows:1fr auto; height:100vh}
+
+  /* ---- sidebar rail: expands on hover (slides open from the left) ---- */
+  .rail{grid-row:1/2; width:66px; background:linear-gradient(180deg,var(--rail),#0a1110);
+    border-right:1px solid var(--line-soft); display:flex; flex-direction:column; gap:4px;
+    padding:14px 10px; overflow:hidden; transition:width .3s cubic-bezier(.22,.8,.2,1); z-index:20}
+  .rail:hover{width:236px; box-shadow:30px 0 60px -30px rgba(0,0,0,.8)}
+  .brand{display:flex; align-items:center; gap:12px; padding:6px 8px 14px; white-space:nowrap}
+  .brand .mk{min-width:40px;height:40px;border-radius:12px; display:grid; place-items:center;
+    background:radial-gradient(circle at 50% 40%, rgba(246,207,122,.35), transparent 70%);
+    border:1px solid var(--line)}
+  .brand b{font-weight:800; letter-spacing:.28em; font-size:13px; text-transform:uppercase; opacity:0; transition:.25s}
+  .brand small{display:block; color:var(--dim); letter-spacing:.1em; font-size:9px; text-transform:uppercase}
+  .rail:hover .brand b{opacity:1}
+  .grp{color:var(--dim); font:700 9px/1 var(--sans); letter-spacing:.18em; text-transform:uppercase;
+    padding:12px 12px 6px; white-space:nowrap; opacity:0; transition:.2s; height:0; overflow:hidden}
+  .rail:hover .grp{opacity:1; height:auto}
+  .nav{display:flex; align-items:center; gap:13px; padding:10px 11px; border-radius:11px; cursor:pointer;
+    color:var(--muted); white-space:nowrap; border:1px solid transparent; transition:.15s}
+  .nav svg{min-width:20px}
+  .nav span{opacity:0; transition:.25s; font-weight:600; font-size:14px}
+  .rail:hover .nav span{opacity:1}
+  .nav:hover{color:var(--ink); background:rgba(234,240,236,.05)}
+  .nav.active{color:var(--accent); background:rgba(232,179,65,.09); border-color:var(--line)}
+  .rail .foot{margin-top:auto; display:flex; flex-direction:column; gap:4px}
+  .status-pill{display:flex; align-items:center; gap:10px; padding:9px 11px; white-space:nowrap; color:var(--good); font-size:13px; font-weight:600}
+  .status-pill .d{min-width:8px;height:8px;border-radius:50%;background:var(--good);animation:beat 2.4s infinite}
   @keyframes beat{0%{box-shadow:0 0 0 0 rgba(63,217,176,.5)}70%{box-shadow:0 0 0 7px rgba(63,217,176,0)}100%{box-shadow:0 0 0 0 rgba(63,217,176,0)}}
-  .clock{display:flex; align-items:center; justify-content:center; gap:14px;
-    font-family:var(--mono); font-variant-numeric:tabular-nums}
-  .clock .t{font-size:22px; letter-spacing:.06em; color:var(--ink)}
-  .clock .sep{color:var(--dim)}
-  .clock .d{font-size:12px; color:var(--muted); letter-spacing:.14em; text-transform:uppercase}
-  .topright{display:flex; align-items:center; justify-content:flex-end; gap:12px}
-  .chip{display:inline-flex; align-items:center; gap:8px; padding:6px 12px;
-    border:1px solid var(--line); border-radius:999px; color:var(--muted);
-    font:600 12px/1 var(--mono); background:var(--panel)}
-  .icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--line-soft);
-    background:var(--panel); color:var(--muted); cursor:pointer; display:grid; place-items:center;
-    transition:.16s}
-  .icon-btn:hover{color:var(--accent); border-color:var(--line)}
-  .icon-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 
-  /* ---- main grid ---- */
-  .grid{display:grid; grid-template-columns:320px 1fr 360px; gap:16px;
-    padding:16px 22px 22px; min-height:0}
-  .col{display:flex; flex-direction:column; gap:16px; min-height:0}
-  .col.scroll{overflow:auto}
-  .col.scroll::-webkit-scrollbar{width:8px}
-  .col.scroll::-webkit-scrollbar-thumb{background:var(--line-soft); border-radius:8px}
+  /* ---- content ---- */
+  .main{grid-row:1/2; display:flex; flex-direction:column; min-width:0; overflow:hidden}
+  .head{display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:16px 24px; border-bottom:1px solid var(--line-soft)}
+  .head h1{margin:0; font:800 20px/1.1 var(--sans); letter-spacing:.01em; text-wrap:balance}
+  .head .sub{color:var(--muted); font-size:13px; margin-top:3px}
+  .head .clock{font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--muted); font-size:14px}
+  .view{flex:1; overflow:auto; padding:22px 24px}
+  .view::-webkit-scrollbar{width:9px}.view::-webkit-scrollbar-thumb{background:var(--line-soft);border-radius:8px}
+  .view[hidden]{display:none}
 
-  .card{border:1px solid var(--line-soft); border-radius:var(--r);
-    background:var(--panel); backdrop-filter:blur(8px);
-    box-shadow:0 1px 0 rgba(255,255,255,.02) inset, 0 18px 40px -30px rgba(0,0,0,.9)}
-  .card > header{display:flex; align-items:center; justify-content:space-between;
-    padding:12px 14px; border-bottom:1px solid var(--line-soft)}
-  .card h3{margin:0; font:700 12px/1 var(--sans); letter-spacing:.16em;
-    text-transform:uppercase; color:var(--muted); display:flex; gap:8px; align-items:center}
-  .card h3 svg{color:var(--accent)}
-  .card .body{padding:14px}
-  .refresh{color:var(--dim); cursor:pointer; background:none; border:0; padding:2px}
-  .refresh:hover{color:var(--accent)}
+  .card{border:1px solid var(--line-soft); border-radius:var(--r); background:var(--panel);
+    backdrop-filter:blur(8px); box-shadow:0 18px 40px -30px rgba(0,0,0,.9)}
+  .card > header{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--line-soft)}
+  .card h3{margin:0; font:700 12px/1 var(--sans); letter-spacing:.16em; text-transform:uppercase; color:var(--muted); display:flex; gap:8px; align-items:center}
+  .card h3 svg{color:var(--accent)} .card .body{padding:14px}
+  .refresh{color:var(--dim); cursor:pointer; background:none; border:0}.refresh:hover{color:var(--accent)}
 
-  /* ---- telemetry rows ---- */
+  /* ---- home / reactor ---- */
+  .home{display:grid; grid-template-columns:300px 1fr 300px; gap:18px; height:100%}
+  .col{display:flex; flex-direction:column; gap:18px; min-height:0; overflow:auto}
+  .core{display:flex; flex-direction:column; align-items:center; justify-content:center}
+  .reactor{position:relative; width:min(42vh,340px); aspect-ratio:1}
+  .ring{position:absolute; inset:0; border-radius:50%; border:1px solid var(--line)}
+  .ring.r2{inset:10%; border-color:rgba(232,179,65,.26); border-style:dashed}
+  .ring.r3{inset:22%; border-color:rgba(232,179,65,.18)}
+  .ring.spin{animation:spin 24s linear infinite}.ring.spin.rev{animation-direction:reverse;animation-duration:34s}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ticks{position:absolute; inset:4%; border-radius:50%;
+    background:conic-gradient(from 0deg, transparent 0 6deg, rgba(232,179,65,.35) 6deg 7deg, transparent 7deg 15deg);
+    -webkit-mask:radial-gradient(circle, transparent 60%, #000 61%); mask:radial-gradient(circle, transparent 60%, #000 61%); animation:spin 60s linear infinite}
+  .hub{position:absolute; inset:31%; border-radius:50%;
+    background:radial-gradient(circle at 50% 40%, rgba(246,207,122,.5), rgba(232,179,65,.12) 55%, transparent 70%);
+    box-shadow:0 0 60px rgba(232,179,65,.28), inset 0 0 40px rgba(232,179,65,.35); display:grid; place-items:center; animation:glow 4.5s ease-in-out infinite}
+  @keyframes glow{0%,100%{box-shadow:0 0 50px rgba(232,179,65,.22), inset 0 0 34px rgba(232,179,65,.3)}50%{box-shadow:0 0 80px rgba(232,179,65,.4), inset 0 0 48px rgba(232,179,65,.5)}}
+  .viz{display:flex; align-items:flex-end; gap:4px; height:34px}
+  .viz i{width:4px; background:var(--accent); border-radius:2px; height:10px; animation:eq 1.1s ease-in-out infinite}
+  .viz i:nth-child(2){animation-delay:.15s}.viz i:nth-child(3){animation-delay:.3s}.viz i:nth-child(4){animation-delay:.45s}.viz i:nth-child(5){animation-delay:.6s}
+  @keyframes eq{0%,100%{height:8px}50%{height:30px}}
+  .core .name{margin-top:24px; font-weight:800; letter-spacing:.46em; font-size:24px; text-transform:uppercase}
+  .core .name b{color:var(--accent)}
+  .status{margin-top:12px; display:inline-flex; align-items:center; gap:9px; color:var(--good); font:600 12px/1 var(--sans); letter-spacing:.14em; text-transform:uppercase; padding:7px 14px; border:1px solid rgba(63,217,176,.28); border-radius:999px; background:rgba(63,217,176,.05)}
+  .status.offline{color:var(--warn); border-color:rgba(242,166,90,.3); background:rgba(242,166,90,.05)}
+  .dock{margin-top:24px; display:flex; gap:12px}
+  .dockbtn{width:50px;height:50px;border-radius:15px; border:1px solid var(--line); background:var(--panel); color:var(--muted); cursor:pointer; display:grid; place-items:center; transition:.16s}
+  .dockbtn:hover{color:var(--accent); border-color:var(--accent); transform:translateY(-2px)}
+  .dockbtn.primary{background:linear-gradient(180deg,rgba(232,179,65,.16),rgba(232,179,65,.05)); color:var(--accent)}
+
   .meter{margin:10px 0}
-  .meter .lab{display:flex; justify-content:space-between; font:600 12px/1 var(--sans);
-    color:var(--muted); margin-bottom:6px}
+  .meter .lab{display:flex; justify-content:space-between; font:600 12px/1 var(--sans); color:var(--muted); margin-bottom:6px}
   .meter .lab b{color:var(--ink); font-family:var(--mono); font-variant-numeric:tabular-nums}
   .track{height:6px; border-radius:6px; background:rgba(234,240,236,.06); overflow:hidden}
-  .fill{height:100%; border-radius:6px;
-    background:linear-gradient(90deg,var(--accent),#f6cf7a); transition:width .8s cubic-bezier(.2,.7,.2,1)}
+  .fill{height:100%; border-radius:6px; background:linear-gradient(90deg,var(--accent),#f6cf7a); transition:width .8s cubic-bezier(.2,.7,.2,1)}
   .fill.good{background:linear-gradient(90deg,var(--good),#7ff0d3)}
   .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px}
   .stat{border:1px solid var(--line-soft); border-radius:10px; padding:10px; text-align:center}
   .stat .k{font:600 10px/1 var(--sans); letter-spacing:.12em; text-transform:uppercase; color:var(--dim)}
   .stat .v{margin-top:6px; font-family:var(--mono); font-size:15px; color:var(--ink); font-variant-numeric:tabular-nums}
-
-  /* ---- weather ---- */
   .wx{display:flex; align-items:flex-start; justify-content:space-between}
-  .wx .temp{font-family:var(--mono); font-size:40px; line-height:1; color:var(--ink); font-variant-numeric:tabular-nums}
-  .wx .loc{color:var(--muted); font-size:13px; margin-top:6px}
-  .wx .cond{color:var(--dim); font-size:12px; text-transform:capitalize}
-  .wx .glyph{font-size:34px}
-
-  /* ---- capabilities / mcp ---- */
+  .wx .temp{font-family:var(--mono); font-size:38px; line-height:1; font-variant-numeric:tabular-nums}
+  .wx .loc{color:var(--muted); font-size:13px; margin-top:6px}.wx .cond{color:var(--dim); font-size:12px}
   .caps{display:flex; flex-wrap:wrap; gap:7px}
-  .cap{display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:8px;
-    font:600 11px/1 var(--sans); letter-spacing:.02em; border:1px solid var(--line-soft); color:var(--muted)}
-  .cap .s{width:6px;height:6px;border-radius:50%}
-  .cap .s.on{background:var(--good)} .cap .s.res{background:var(--warn)} .cap .s.off{background:var(--dim)}
-  .mcp-list{display:flex; flex-direction:column; gap:8px}
-  .mcp-srv{display:flex; align-items:center; justify-content:space-between; gap:8px;
-    padding:9px 11px; border:1px solid var(--line-soft); border-radius:10px}
-  .mcp-srv .nm{display:flex; align-items:center; gap:9px; font-weight:600}
-  .mcp-srv .tools{font-family:var(--mono); font-size:12px; color:var(--muted)}
-  .badge{font:600 10px/1 var(--sans); letter-spacing:.1em; text-transform:uppercase;
-    padding:4px 7px; border-radius:6px}
-  .badge.up{color:var(--good); background:rgba(63,217,176,.1)}
-  .badge.down{color:var(--crit); background:rgba(255,107,90,.1)}
-  .btn{display:inline-flex; align-items:center; gap:8px; cursor:pointer;
-    font:700 12px/1 var(--sans); letter-spacing:.04em; padding:10px 14px; border-radius:10px;
-    border:1px solid var(--line); color:var(--accent); background:rgba(232,179,65,.06); width:100%; justify-content:center}
-  .btn:hover{background:rgba(232,179,65,.12)}
-  .btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .cap{display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:8px; font:600 11px/1 var(--sans); border:1px solid var(--line-soft); color:var(--muted)}
+  .cap .s{width:6px;height:6px;border-radius:50%}.cap .s.on{background:var(--good)}.cap .s.res{background:var(--warn)}.cap .s.off{background:var(--dim)}
+  .quick{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .qbtn{display:flex; align-items:center; gap:10px; padding:12px; border:1px solid var(--line-soft); border-radius:11px; background:var(--panel); color:var(--ink); cursor:pointer; text-align:left; transition:.15s}
+  .qbtn:hover{border-color:var(--line); color:var(--accent)}
+  .qbtn svg{color:var(--accent)} .qbtn small{display:block; color:var(--dim); font-size:11px; font-weight:400}
 
-  /* ---- reactor core ---- */
-  .core{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0;
-    position:relative; min-height:0}
-  .reactor{position:relative; width:min(46vh,360px); aspect-ratio:1}
-  .ring{position:absolute; inset:0; border-radius:50%; border:1px solid var(--line)}
-  .ring.r2{inset:10%; border-color:rgba(232,179,65,.26); border-style:dashed}
-  .ring.r3{inset:22%; border-color:rgba(232,179,65,.18)}
-  .ring.spin{animation:spin 24s linear infinite}
-  .ring.spin.rev{animation-direction:reverse; animation-duration:34s}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .ticks{position:absolute; inset:4%; border-radius:50%;
-    background:conic-gradient(from 0deg, transparent 0 6deg, rgba(232,179,65,.35) 6deg 7deg, transparent 7deg 15deg);
-    -webkit-mask:radial-gradient(circle, transparent 60%, #000 61%); mask:radial-gradient(circle, transparent 60%, #000 61%);
-    animation:spin 60s linear infinite}
-  .hub{position:absolute; inset:31%; border-radius:50%;
-    background:radial-gradient(circle at 50% 40%, rgba(246,207,122,.5), rgba(232,179,65,.12) 55%, transparent 70%);
-    box-shadow:0 0 60px rgba(232,179,65,.28), inset 0 0 40px rgba(232,179,65,.35);
-    display:grid; place-items:center; animation:glow 4.5s ease-in-out infinite}
-  @keyframes glow{0%,100%{box-shadow:0 0 50px rgba(232,179,65,.22), inset 0 0 34px rgba(232,179,65,.3)}
-    50%{box-shadow:0 0 80px rgba(232,179,65,.4), inset 0 0 48px rgba(232,179,65,.5)}}
-  .viz{display:flex; align-items:flex-end; gap:4px; height:34px}
-  .viz i{width:4px; background:var(--accent); border-radius:2px; height:10px; opacity:.85;
-    animation:eq 1.1s ease-in-out infinite}
-  .viz i:nth-child(2){animation-delay:.15s}.viz i:nth-child(3){animation-delay:.3s}
-  .viz i:nth-child(4){animation-delay:.45s}.viz i:nth-child(5){animation-delay:.6s}
-  @keyframes eq{0%,100%{height:8px}50%{height:30px}}
-  .core .name{margin-top:26px; font-weight:800; letter-spacing:.5em; font-size:26px; text-transform:uppercase; text-wrap:balance}
-  .core .name b{color:var(--accent)}
-  .status{margin-top:12px; display:inline-flex; align-items:center; gap:9px; color:var(--good);
-    font:600 12px/1 var(--sans); letter-spacing:.14em; text-transform:uppercase;
-    padding:7px 14px; border:1px solid rgba(63,217,176,.28); border-radius:999px; background:rgba(63,217,176,.05)}
-  .status.offline{color:var(--warn); border-color:rgba(242,166,90,.3); background:rgba(242,166,90,.05)}
-  .dock{margin-top:26px; display:flex; gap:12px}
-  .dockbtn{width:52px;height:52px;border-radius:16px; border:1px solid var(--line);
-    background:var(--panel); color:var(--muted); cursor:pointer; display:grid; place-items:center; transition:.16s}
-  .dockbtn:hover{color:var(--accent); border-color:var(--accent); transform:translateY(-2px)}
-  .dockbtn.primary{background:linear-gradient(180deg,rgba(232,179,65,.16),rgba(232,179,65,.05)); color:var(--accent)}
-  .dockbtn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-
-  /* ---- conversation ---- */
-  .chat{display:flex; flex-direction:column; min-height:0; flex:1}
-  .chat .stream{flex:1; overflow:auto; padding:14px; display:flex; flex-direction:column; gap:12px}
-  .chat .stream::-webkit-scrollbar{width:8px}
-  .chat .stream::-webkit-scrollbar-thumb{background:var(--line-soft); border-radius:8px}
-  .msg{max-width:88%; padding:11px 13px; border-radius:14px; font-size:14px; line-height:1.5}
-  .msg.j{align-self:flex-start; background:rgba(232,179,65,.08); border:1px solid var(--line);
-    border-bottom-left-radius:5px}
-  .msg.u{align-self:flex-end; background:rgba(234,240,236,.06); border:1px solid var(--line-soft);
-    border-bottom-right-radius:5px}
+  /* ---- chat ---- */
+  .chatwrap{display:flex; flex-direction:column; height:100%; max-width:900px; margin:0 auto}
+  .stream{flex:1; overflow:auto; display:flex; flex-direction:column; gap:12px; padding-bottom:12px}
+  .msg{max-width:80%; padding:11px 14px; border-radius:14px; font-size:14px}
+  .msg.j{align-self:flex-start; background:rgba(232,179,65,.08); border:1px solid var(--line); border-bottom-left-radius:5px}
+  .msg.u{align-self:flex-end; background:rgba(234,240,236,.06); border:1px solid var(--line-soft); border-bottom-right-radius:5px}
   .msg .who{font:700 10px/1 var(--sans); letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:6px}
   .msg.j .who{color:var(--accent)}
-  .composer{display:flex; gap:8px; padding:12px; border-top:1px solid var(--line-soft)}
-  .composer input{flex:1; background:var(--bg-2); border:1px solid var(--line-soft); color:var(--ink);
-    border-radius:11px; padding:11px 13px; font-family:var(--sans); font-size:14px}
+  .composer{display:flex; gap:8px; padding-top:12px; border-top:1px solid var(--line-soft)}
+  .composer input{flex:1; background:var(--bg-2); border:1px solid var(--line-soft); color:var(--ink); border-radius:11px; padding:12px 14px; font-size:14px}
   .composer input:focus{outline:none; border-color:var(--line)}
-  .send{width:44px; border-radius:11px; border:1px solid var(--line); background:rgba(232,179,65,.1);
-    color:var(--accent); cursor:pointer; display:grid; place-items:center}
-  .send:hover{background:rgba(232,179,65,.18)}
+  .send{width:46px; border-radius:11px; border:1px solid var(--line); background:rgba(232,179,65,.1); color:var(--accent); cursor:pointer; display:grid; place-items:center}
 
-  .card.tall{flex:1; display:flex; flex-direction:column; min-height:0}
-  @media (max-width:1080px){.grid{grid-template-columns:1fr; overflow:auto; height:auto}
-    body{overflow:auto} .reactor{width:min(70vw,320px)}}
+  /* ---- models ---- */
+  .mrow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px; border:1px solid var(--line-soft); border-radius:12px; margin-bottom:10px}
+  .mrow .l{display:flex; align-items:center; gap:14px}
+  .mrow .ic{width:40px;height:40px;border-radius:11px; display:grid; place-items:center; background:rgba(232,179,65,.08); border:1px solid var(--line); font-weight:800; color:var(--accent)}
+  .mrow .nm{font-weight:700}.mrow .pv{color:var(--dim); font-size:12px}
+  .tag{font:600 10px/1 var(--sans); letter-spacing:.06em; padding:4px 8px; border-radius:6px; background:rgba(63,217,176,.1); color:var(--good)}
+  .tag.free{background:rgba(110,193,228,.12); color:#8fd0ee}
+  .star{color:var(--accent); font-family:var(--mono)}
+  .filters{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap}
+  .fbtn{padding:7px 13px; border-radius:9px; border:1px solid var(--line-soft); background:var(--panel); color:var(--muted); cursor:pointer; font-weight:600; font-size:13px}
+  .fbtn.on{color:var(--accent); border-color:var(--line); background:rgba(232,179,65,.08)}
+
+  /* ---- mcp / settings shared ---- */
+  .mcp-srv{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; border:1px solid var(--line-soft); border-radius:11px; margin-bottom:10px}
+  .mcp-srv .nm{display:flex; align-items:center; gap:9px; font-weight:600}
+  .badge{font:600 10px/1 var(--sans); letter-spacing:.1em; text-transform:uppercase; padding:4px 7px; border-radius:6px}
+  .badge.up{color:var(--good); background:rgba(63,217,176,.1)}.badge.down{color:var(--crit); background:rgba(255,107,90,.1)}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; font:700 12px/1 var(--sans); padding:11px 16px; border-radius:11px; border:1px solid var(--line); color:var(--accent); background:rgba(232,179,65,.06)}
+  .btn:hover{background:rgba(232,179,65,.12)}
+  .setgrid{display:grid; grid-template-columns:1fr 1fr; gap:18px; max-width:900px}
+  .swatches{display:flex; gap:10px}
+  .sw{width:32px;height:32px;border-radius:10px; cursor:pointer; border:2px solid transparent}
+  .sw[aria-pressed="true"]{border-color:var(--ink)}
+  .field{display:flex; flex-direction:column; gap:6px; margin-bottom:14px}
+  .field label{font:600 11px/1 var(--sans); letter-spacing:.08em; text-transform:uppercase; color:var(--dim)}
+  .field input,.field select{background:var(--bg-2); border:1px solid var(--line-soft); color:var(--ink); border-radius:9px; padding:10px 12px; font-family:var(--mono); font-size:13px}
+  .field input:focus,.field select:focus{outline:none; border-color:var(--line)}
+  .row-toggle{display:flex; align-items:center; justify-content:space-between; padding:8px 0}
+  .toggle{width:44px;height:24px;border-radius:999px; background:rgba(234,240,236,.12); border:0; cursor:pointer; position:relative; transition:.2s}
+  .toggle::after{content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:var(--muted); transition:.2s}
+  .toggle[aria-pressed="true"]{background:rgba(232,179,65,.3)}.toggle[aria-pressed="true"]::after{left:23px; background:var(--accent)}
+
+  /* ---- status bar ---- */
+  .statusbar{grid-column:1/3; grid-row:2/3; display:flex; align-items:center; gap:20px; padding:8px 20px;
+    border-top:1px solid var(--line-soft); background:var(--rail); font:600 12px/1 var(--mono); color:var(--muted)}
+  .statusbar .sp{margin-left:auto}
+  .statusbar b{color:var(--ink); font-weight:600}
+  .statusbar .ok{color:var(--good)}
+
+  @media (max-width:1100px){.home{grid-template-columns:1fr} .setgrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="deck">
-  <!-- top bar -->
-  <div class="topbar">
-    <div class="wordmark">J<b>·</b>A<b>·</b>R<b>·</b>V<b>·</b>I<b>·</b>S
-      <span class="pill"><span class="dot"></span> Online</span>
+<div class="app">
+  <!-- rail -->
+  <nav class="rail" id="rail">
+    <div class="brand"><div class="mk"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></div>
+      <b>J.A.R.V.I.S<small>Command Deck</small></b></div>
+
+    <div class="nav active" data-view="home" onclick="go('home')" title="Главная">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span>Главная</span></div>
+
+    <div class="grp">Общение</div>
+    <div class="nav" data-view="chat" onclick="go('chat')" title="Чат">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Чат</span></div>
+
+    <div class="grp">Интеллект</div>
+    <div class="nav" data-view="models" onclick="go('models')" title="Модели">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg><span>Модели</span></div>
+    <div class="nav" data-view="memory" onclick="go('memory')" title="Память">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3a3 3 0 0 0-3 3 3 3 0 0 0-3 3 3 3 0 0 0 2 2.8V18a3 3 0 0 0 6 0V3zM15 3a3 3 0 0 1 3 3 3 3 0 0 1 3 3 3 3 0 0 1-2 2.8V18a3 3 0 0 1-6 0"/></svg><span>Память</span></div>
+
+    <div class="grp">Инструменты</div>
+    <div class="nav" data-view="internet" onclick="go('internet')" title="Интернет">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg><span>Интернет</span></div>
+    <div class="nav" data-view="mcp" onclick="go('mcp')" title="MCP серверы">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span>MCP серверы</span></div>
+
+    <div class="grp">Система</div>
+    <div class="nav" data-view="settings" onclick="go('settings')" title="Настройки">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3.9a7 7 0 0 0-1.7-1l-.4-2.5h-4l-.4 2.5a7 7 0 0 0-1.7 1L4.1 5 2 8.5 4 10a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.3.9 2-3.4-2-1.5a7 7 0 0 0 .1-1z"/></svg><span>Настройки</span></div>
+    <div class="nav" data-view="about" onclick="go('about')" title="О системе">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span>О системе</span></div>
+
+    <div class="foot"><div class="status-pill"><span class="d"></span><span id="railStatus">Онлайн</span></div></div>
+  </nav>
+
+  <!-- main -->
+  <div class="main">
+    <div class="head">
+      <div><h1 id="vTitle">Главная</h1><div class="sub" id="vSub">Добро пожаловать, сэр</div></div>
+      <div class="clock" id="clock">--:--:--</div>
     </div>
-    <div class="clock">
-      <span class="t" id="time">--:--:--</span>
-      <span class="sep">|</span>
-      <span class="d" id="date">—</span>
-    </div>
-    <div class="topright">
-      <span class="chip" id="loc">◍ —</span>
-      <button class="icon-btn" title="Settings" aria-label="Settings">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 2.6h.1A1.6 1.6 0 0 0 12 1.1V1a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 17 4.6a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.1 2.9H23a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.1z"/></svg>
-      </button>
-    </div>
+
+    <!-- HOME -->
+    <section class="view" id="view-home">
+      <div class="home">
+        <div class="col">
+          <section class="card"><header><h3>Система</h3><button class="refresh" onclick="loadState()">↻</button></header>
+            <div class="body">
+              <div class="meter"><div class="lab">CPU <b id="cpu">—</b></div><div class="track"><div class="fill" id="cpuBar" style="width:0"></div></div></div>
+              <div class="meter"><div class="lab">Память <b id="ram">—</b></div><div class="track"><div class="fill good" id="ramBar" style="width:0"></div></div></div>
+              <div class="stat-row"><div class="stat"><div class="k">Сессия</div><div class="v" id="sess">1</div></div>
+                <div class="stat"><div class="k">Tools</div><div class="v" id="tools">—</div></div>
+                <div class="stat"><div class="k">Uptime</div><div class="v" id="up">00:00</div></div></div>
+            </div></section>
+          <section class="card"><header><h3>Погода</h3></header><div class="body">
+            <div class="wx"><div><div class="temp" id="wxT">—</div><div class="loc" id="wxL">—</div><div class="cond" id="wxC">—</div></div><div style="font-size:32px" id="wxG">🛰</div></div>
+          </div></section>
+        </div>
+
+        <div class="col core">
+          <div class="reactor"><div class="ring r1 spin"></div><div class="ring r2 spin rev"></div><div class="ring r3"></div><div class="ticks"></div><div class="hub"><div class="viz"><i></i><i></i><i></i><i></i><i></i></div></div></div>
+          <div class="name">J<b>.</b>A<b>.</b>R<b>.</b>V<b>.</b>I<b>.</b>S</div>
+          <div class="status" id="status"><span style="width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block"></span> Слушаю команду…</div>
+          <div class="dock">
+            <button class="dockbtn" title="Камера"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+            <button class="dockbtn primary" title="Голос" onclick="pulse()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button>
+            <button class="dockbtn" title="Чат" onclick="go('chat')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+          </div>
+        </div>
+
+        <div class="col">
+          <section class="card"><header><h3>Возможности</h3></header><div class="body"><div class="caps" id="caps"></div></div></section>
+          <section class="card"><header><h3>Быстрые действия</h3></header><div class="body">
+            <div class="quick">
+              <button class="qbtn" onclick="go('chat')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><div>Новый чат<small>Спросить AI</small></div></button>
+              <button class="qbtn" onclick="go('models')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M2 12h4"/></svg><div>Модели<small>Каталог AI</small></div></button>
+              <button class="qbtn" onclick="go('mcp')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 12h16M4 17h10"/></svg><div>MCP<small>Инструменты</small></div></button>
+              <button class="qbtn" onclick="go('settings')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/></svg><div>Настройки<small>Внешний вид</small></div></button>
+            </div>
+          </div></section>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHAT -->
+    <section class="view" id="view-chat" hidden>
+      <div class="chatwrap">
+        <div class="stream" id="stream"><div class="msg j"><div class="who">Jarvis</div>Добрый день, сэр. Все системы в норме. Чем могу помочь?</div></div>
+        <div class="composer"><input id="q" placeholder="Введите сообщение…" onkeydown="if(event.key==='Enter')sendMsg()" />
+          <button class="send" onclick="sendMsg()" aria-label="Отправить"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button></div>
+      </div>
+    </section>
+
+    <!-- MODELS -->
+    <section class="view" id="view-models" hidden>
+      <div class="filters" id="filters"></div>
+      <div id="modelList"></div>
+    </section>
+
+    <!-- MEMORY / INTERNET (light) -->
+    <section class="view" id="view-memory" hidden><div class="card"><div class="body">Управление памятью: контекст диалогов сохраняется автоматически. Полные настройки — в боте и API.</div></div></section>
+    <section class="view" id="view-internet" hidden><div class="card"><div class="body">Веб-поиск подключается как инструмент AI (Search Manager). Провайдеры настраиваются в <code>.env</code> и видны в разделе Настройки.</div></div></section>
+
+    <!-- MCP -->
+    <section class="view" id="view-mcp" hidden>
+      <div id="mcpList" style="max-width:760px"></div>
+      <button class="btn" style="max-width:760px; width:100%; margin-top:6px" onclick="connectServer()">＋ Подключить MCP-сервер</button>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="view-settings" hidden>
+      <div class="setgrid">
+        <section class="card"><header><h3>Внешний вид</h3></header><div class="body">
+          <div class="field"><label>Цвет акцента</label>
+            <div class="swatches" id="swatches">
+              <button class="sw" data-a="#E8B341" style="background:#E8B341" aria-pressed="true"></button>
+              <button class="sw" data-a="#3FD9B0" style="background:#3FD9B0" aria-pressed="false"></button>
+              <button class="sw" data-a="#9B8CFF" style="background:#9B8CFF" aria-pressed="false"></button>
+              <button class="sw" data-a="#6EC1E4" style="background:#6EC1E4" aria-pressed="false"></button>
+              <button class="sw" data-a="#C6CDD1" style="background:#C6CDD1" aria-pressed="false"></button>
+            </div></div>
+          <div class="row-toggle"><span>Анимации</span><button class="toggle" id="motionTog" aria-pressed="true" onclick="toggleMotion()"></button></div>
+          <div class="field" style="margin-top:12px"><label>Язык</label><select id="lang"><option value="ru">Русский</option><option value="en">English</option><option value="uz">O'zbek</option></select></div>
+        </div></section>
+        <section class="card"><header><h3>Подключение</h3></header><div class="body">
+          <div class="field"><label>API endpoint</label><input id="api" placeholder="http://localhost:8000" /></div>
+          <div class="field"><label>API ключ</label><input id="key" type="password" placeholder="необязательно" /></div>
+          <button class="btn" onclick="saveConn()">Сохранить и переподключиться</button>
+        </div></section>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section class="view" id="view-about" hidden>
+      <div class="card" style="max-width:520px"><div class="body" style="text-align:center; padding:32px">
+        <div style="font-size:40px">🛡</div>
+        <div style="font-weight:800; letter-spacing:.4em; font-size:22px; margin-top:12px">J.A.R.V.I.S</div>
+        <div style="color:var(--dim); font-size:13px; margin-top:6px">Just A Rather Very Intelligent System</div>
+        <div style="color:var(--muted); font-family:var(--mono); margin-top:14px">Версия 1.7.0</div>
+        <div style="color:var(--dim); font-size:12px; margin-top:18px">Провайдер-независимый ассистент · MCP · тарифы · Telegram · десктоп</div>
+      </div></div>
+    </section>
   </div>
 
-  <!-- deck -->
-  <div class="grid">
-    <!-- left rail -->
-    <div class="col scroll">
-      <section class="card">
-        <header><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg> System</h3>
-          <button class="refresh" onclick="loadState()" aria-label="Refresh">↻</button></header>
-        <div class="body">
-          <div class="meter"><div class="lab">CPU Load <b id="cpu">—</b></div><div class="track"><div class="fill" id="cpuBar" style="width:0"></div></div></div>
-          <div class="meter"><div class="lab">Memory <b id="ram">—</b></div><div class="track"><div class="fill good" id="ramBar" style="width:0"></div></div></div>
-          <div class="stat-row">
-            <div class="stat"><div class="k">Session</div><div class="v" id="sess">1</div></div>
-            <div class="stat"><div class="k">Tools</div><div class="v" id="tools">—</div></div>
-            <div class="stat"><div class="k">Uptime</div><div class="v" id="up">00:00</div></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
-        <header><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 15a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.5A4 4 0 0 1 18 15z"/></svg> Weather</h3></header>
-        <div class="body">
-          <div class="wx">
-            <div><div class="temp" id="wxT">—</div><div class="loc" id="wxL">—</div><div class="cond" id="wxC">—</div></div>
-            <div class="glyph" id="wxG">☁️</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
-        <header><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2 4 6v6c0 5 3.4 8 8 10 4.6-2 8-5 8-10V6z"/></svg> Capabilities</h3></header>
-        <div class="body"><div class="caps" id="caps"><span class="cap"><span class="s off"></span> loading…</span></div></div>
-      </section>
-
-      <section class="card">
-        <header><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M4 12h16M4 17h10"/></svg> MCP Servers</h3>
-          <button class="refresh" onclick="loadState()" aria-label="Refresh">↻</button></header>
-        <div class="body">
-          <div class="mcp-list" id="mcp"></div>
-          <button class="btn" style="margin-top:12px" onclick="connectServer()">＋ Connect MCP server</button>
-        </div>
-      </section>
-    </div>
-
-    <!-- center core -->
-    <div class="col core">
-      <div class="reactor">
-        <div class="ring r1 spin"></div>
-        <div class="ring r2 spin rev"></div>
-        <div class="ring r3"></div>
-        <div class="ticks"></div>
-        <div class="hub"><div class="viz"><i></i><i></i><i></i><i></i><i></i></div></div>
-      </div>
-      <div class="name">J<b>.</b>A<b>.</b>R<b>.</b>V<b>.</b>I<b>.</b>S</div>
-      <div class="status" id="status"><span class="dot"></span> Listening for wake word…</div>
-      <div class="dock">
-        <button class="dockbtn" title="Camera" aria-label="Camera"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
-        <button class="dockbtn primary" title="Voice" aria-label="Voice" onclick="pulse()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button>
-        <button class="dockbtn" title="Keyboard" aria-label="Keyboard" onclick="document.getElementById('q').focus()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg></button>
-      </div>
-    </div>
-
-    <!-- right conversation -->
-    <div class="col">
-      <section class="card tall">
-        <header><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Conversation</h3>
-          <button class="refresh" onclick="clearChat()">Clear</button></header>
-        <div class="chat">
-          <div class="stream" id="stream">
-            <div class="msg j"><div class="who">Jarvis</div>Good day, sir. All systems are nominal. How may I assist you?</div>
-          </div>
-          <div class="composer">
-            <input id="q" placeholder="Type a message…" autocomplete="off" onkeydown="if(event.key==='Enter')sendMsg()" />
-            <button class="send" onclick="sendMsg()" aria-label="Send"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
-          </div>
-        </div>
-      </section>
-    </div>
+  <!-- status bar -->
+  <div class="statusbar">
+    <span>J.A.R.V.I.S <b>1.7.0</b></span>
+    <span>Python <b>3.11</b></span>
+    <span>API <b class="ok" id="sbApi">—</b></span>
+    <span>Память <b id="sbMem">—</b></span>
+    <span class="sp" id="sbClock">--:--:--</span>
   </div>
 </div>
 
 <script>
-  // ---- config: the desktop shell can inject window.JARVIS = {api, key} ----
   const CFG = Object.assign({api:"", key:""}, window.JARVIS||{});
+  CFG.api = CFG.api || localStorage.getItem("jarvis.api") || "";
+  CFG.key = CFG.key || localStorage.getItem("jarvis.key") || "";
   const $ = id => document.getElementById(id);
+  const SUB = {home:"Добро пожаловать, сэр", chat:"Диалог с ассистентом", models:"Каталог моделей",
+    memory:"Управление памятью", internet:"Веб-поиск", mcp:"Внешние инструменты (MCP)",
+    settings:"Персонализация", about:"О системе"};
+  const TITLE = {home:"Главная", chat:"Чат", models:"Модели", memory:"Память", internet:"Интернет",
+    mcp:"MCP серверы", settings:"Настройки", about:"О системе"};
 
-  // ---- clock ----
-  function tick(){
-    const d = new Date();
-    $("time").textContent = d.toLocaleTimeString([], {hour12:false});
-    $("date").textContent = d.toLocaleDateString([], {month:"short", day:"numeric", year:"numeric"});
+  function go(view){
+    document.querySelectorAll(".view").forEach(v=>v.hidden = v.id !== "view-"+view);
+    document.querySelectorAll(".nav").forEach(n=>n.classList.toggle("active", n.dataset.view===view));
+    $("vTitle").textContent = TITLE[view]; $("vSub").textContent = SUB[view];
+    if(view==="models") renderModels();
   }
-  setInterval(tick, 1000); tick();
 
-  // ---- demo fallback so the deck looks alive offline (like the screenshot) ----
-  const DEMO = {
-    online:false,
-    cpu:8, ram:44, tools:22, uptime:"00:07:19", session:1,
+  function tick(){ const d=new Date(), t=d.toLocaleTimeString([],{hour12:false});
+    $("clock").textContent=t; $("sbClock").textContent=t; }
+  setInterval(tick,1000); tick();
+
+  const DEMO = {online:false, cpu:8, ram:44, tools:22, uptime:"00:07:19", session:1,
     weather:{temp:"25.2°", loc:"Quezon City, PH", cond:"overcast clouds", glyph:"☁️"},
-    capabilities:[["Memory","on"],["Voice","on"],["Search","on"],["Images","res"],
-                  ["Files","res"],["Coding","res"],["MCP","on"],["Agents","on"]],
-    mcp:[{name:"filesystem",up:true,tools:6},{name:"hermes",up:true,tools:14},
-        {name:"brave-search",up:false,tools:0}]
-  };
+    capabilities:[["🧠 Память","on"],["🎙 Голос","on"],["🌍 Поиск","on"],["🎨 Картинки","res"],["📂 Файлы","res"],["🧩 MCP","on"],["🤝 Агенты","on"]],
+    mcp:[{name:"filesystem",up:true,tools:6},{name:"hermes",up:true,tools:14},{name:"brave-search",up:false,tools:0}]};
 
   function render(s){
-    $("status").innerHTML = s.online
-      ? '<span class="dot"></span> Listening for wake word…'
-      : '⚠ Backend offline — showing last known state';
+    $("status").innerHTML = s.online ? '<span style="width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block"></span> Слушаю команду…' : '⚠ Бэкенд офлайн — демо-режим';
     $("status").classList.toggle("offline", !s.online);
-    $("cpu").textContent = s.cpu+"%"; $("cpuBar").style.width = s.cpu+"%";
-    $("ram").textContent = s.ram+"%"; $("ramBar").style.width = s.ram+"%";
-    $("tools").textContent = s.tools; $("up").textContent = s.uptime; $("sess").textContent = s.session;
-    const w = s.weather; $("wxT").textContent = w.temp; $("wxL").textContent = w.loc;
-    $("wxC").textContent = w.cond; $("wxG").textContent = w.glyph;
-    $("loc").textContent = "◍ "+w.loc.split(",")[0];
-    $("caps").innerHTML = s.capabilities.map(([n,st])=>
-      `<span class="cap"><span class="s ${st}"></span>${n}</span>`).join("");
-    $("mcp").innerHTML = s.mcp.length ? s.mcp.map(m=>
-      `<div class="mcp-srv"><span class="nm">${m.up?'🟢':'🔴'} ${m.name}</span>
-        <span class="tools">${m.tools} 🔧</span>
-        <span class="badge ${m.up?'up':'down'}">${m.up?'up':'down'}</span></div>`).join("")
-      : '<div class="tools" style="color:var(--dim);font-family:var(--mono);font-size:12px">No servers configured</div>';
+    $("railStatus").textContent = s.online?"Онлайн":"Офлайн";
+    $("sbApi").textContent = s.online?"Онлайн":"Офлайн"; $("sbApi").className = s.online?"ok":"";
+    $("cpu").textContent=s.cpu+"%"; $("cpuBar").style.width=s.cpu+"%";
+    $("ram").textContent=s.ram+"%"; $("ramBar").style.width=s.ram+"%"; $("sbMem").textContent=s.ram+"%";
+    $("tools").textContent=s.tools; $("up").textContent=s.uptime; $("sess").textContent=s.session;
+    const w=s.weather; $("wxT").textContent=w.temp; $("wxL").textContent=w.loc; $("wxC").textContent=w.cond; $("wxG").textContent=w.glyph;
+    $("caps").innerHTML=s.capabilities.map(([n,st])=>`<span class="cap"><span class="s ${st}"></span>${n}</span>`).join("");
+    $("mcpList").innerHTML=s.mcp.length? s.mcp.map(m=>`<div class="mcp-srv"><span class="nm">${m.up?'🟢':'🔴'} ${m.name}</span><span style="font-family:var(--mono);color:var(--muted)">${m.tools} 🔧</span><span class="badge ${m.up?'up':'down'}">${m.up?'up':'down'}</span></div>`).join('') : '<div style="color:var(--dim);font-family:var(--mono);font-size:13px;padding:8px">Серверы не настроены</div>';
   }
-
   async function loadState(){
     if(!CFG.api){ render(DEMO); return; }
-    try{
-      const r = await fetch(CFG.api+"/dashboard/state",
-        {headers: CFG.key?{"X-API-Key":CFG.key}:{}});
-      if(!r.ok) throw 0;
-      const s = await r.json(); s.online = true; render(s);
+    try{ const r=await fetch(CFG.api+"/dashboard/state",{headers:CFG.key?{"X-API-Key":CFG.key}:{}});
+      if(!r.ok) throw 0; const s=await r.json(); s.online=true; render(s);
     }catch(e){ render(DEMO); }
   }
   loadState();
 
-  // ---- chat ----
-  function addMsg(text, who){
-    const el = document.createElement("div");
-    el.className = "msg "+(who==="u"?"u":"j");
-    el.innerHTML = `<div class="who">${who==="u"?"You":"Jarvis"}</div>`+
-      text.replace(/</g,"&lt;");
-    $("stream").appendChild(el); $("stream").scrollTop = $("stream").scrollHeight;
-    return el;
-  }
-  async function sendMsg(){
-    const q = $("q").value.trim(); if(!q) return;
-    $("q").value = ""; addMsg(q, "u"); pulse();
-    const thinking = addMsg("…", "j");
-    if(!CFG.api){ thinking.innerHTML = '<div class="who">Jarvis</div>Connect me to a backend to reply, sir. (Demo mode.)'; return; }
-    try{
-      const r = await fetch(CFG.api+"/chat", {method:"POST",
-        headers:{"Content-Type":"application/json", ...(CFG.key?{"X-API-Key":CFG.key}:{})},
-        body: JSON.stringify({message:q, session_id:"dashboard"})});
-      const j = await r.json();
-      thinking.innerHTML = '<div class="who">Jarvis</div>'+(j.reply||"—").replace(/</g,"&lt;");
-    }catch(e){ thinking.innerHTML = '<div class="who">Jarvis</div>Connection failed, sir.'; }
-    $("stream").scrollTop = $("stream").scrollHeight;
-  }
-  function clearChat(){ $("stream").innerHTML =
-    '<div class="msg j"><div class="who">Jarvis</div>Conversation cleared, sir.</div>'; }
-
-  function connectServer(){
-    const spec = prompt("MCP server — command (stdio) or https URL (sse):");
-    if(!spec) return;
-    if(!CFG.api){ alert("Demo mode: in the app this connects the server and mounts its tools."); return; }
-    fetch(CFG.api+"/dashboard/mcp", {method:"POST",
-      headers:{"Content-Type":"application/json", ...(CFG.key?{"X-API-Key":CFG.key}:{})},
-      body: JSON.stringify({spec})}).then(loadState);
+  // models (demo catalog; real one can come from /models)
+  const MODELS=[["A","Claude Sonnet 4","Anthropic","5.0",0],["G","GPT-5","OpenAI","4.9",0],
+    ["◆","Gemini 2.5 Pro","Google","4.8",0],["≋","DeepSeek R1","DeepSeek","4.7",1],["Q","Qwen 3","Qwen","4.6",1]];
+  let mFilter="Все";
+  function renderModels(){
+    $("filters").innerHTML=["Все","Кодинг","Reasoning","Vision","Быстрые"].map(f=>`<button class="fbtn ${f===mFilter?'on':''}" onclick="mFilter='${f}';renderModels()">${f}</button>`).join("");
+    $("modelList").innerHTML=MODELS.map(([ic,nm,pv,st,free])=>`<div class="mrow"><div class="l"><div class="ic">${ic}</div><div><div class="nm">${nm}</div><div class="pv">${pv} · <span class="tag ${free?'free':''}">${free?'Бесплатная':'Premium'}</span></div></div></div><div class="star">★ ${st}</div></div>`).join("");
   }
 
-  function pulse(){
-    document.querySelectorAll(".viz i").forEach(b=>{
-      b.style.animationDuration = "0.6s"; setTimeout(()=>b.style.animationDuration="1.1s", 900);
-    });
-  }
+  function addMsg(t,who){const el=document.createElement("div");el.className="msg "+(who==="u"?"u":"j");
+    el.innerHTML=`<div class="who">${who==="u"?"Вы":"Jarvis"}</div>`+t.replace(/</g,"&lt;");
+    $("stream").appendChild(el);$("stream").scrollTop=$("stream").scrollHeight;return el;}
+  async function sendMsg(){const q=$("q").value.trim();if(!q)return;$("q").value="";addMsg(q,"u");pulse();
+    const th=addMsg("…","j");
+    if(!CFG.api){th.innerHTML='<div class="who">Jarvis</div>Подключите бэкенд в Настройках, сэр. (Демо.)';return;}
+    try{const r=await fetch(CFG.api+"/chat",{method:"POST",headers:{"Content-Type":"application/json",...(CFG.key?{"X-API-Key":CFG.key}:{})},body:JSON.stringify({message:q,session_id:"dashboard"})});
+      const j=await r.json();th.innerHTML='<div class="who">Jarvis</div>'+(j.reply||"—").replace(/</g,"&lt;");
+    }catch(e){th.innerHTML='<div class="who">Jarvis</div>Сбой соединения, сэр.';}}
+
+  function connectServer(){const spec=prompt("MCP сервер — команда (stdio) или https URL (sse):");if(!spec)return;
+    if(!CFG.api){alert("Демо: в приложении это подключит сервер и смонтирует его инструменты.");return;}
+    fetch(CFG.api+"/dashboard/mcp",{method:"POST",headers:{"Content-Type":"application/json",...(CFG.key?{"X-API-Key":CFG.key}:{})},body:JSON.stringify({spec})}).then(loadState);}
+
+  function pulse(){document.querySelectorAll(".viz i").forEach(b=>{b.style.animationDuration="0.6s";setTimeout(()=>b.style.animationDuration="1.1s",900);});}
+
+  // settings: accent / motion / connection
+  const savedAccent=localStorage.getItem("jarvis.accent"); if(savedAccent) applyAccent(savedAccent);
+  function applyAccent(hex){document.documentElement.style.setProperty("--accent",hex);localStorage.setItem("jarvis.accent",hex);
+    document.querySelectorAll("#swatches .sw").forEach(s=>s.setAttribute("aria-pressed",String(s.dataset.a.toLowerCase()===hex.toLowerCase())));}
+  document.addEventListener("click",e=>{const b=e.target.closest("#swatches .sw"); if(b) applyAccent(b.dataset.a);});
+  const motionTog=$("motionTog");
+  if(localStorage.getItem("jarvis.motion")==="off"){document.body.classList.add("nomotion");motionTog.setAttribute("aria-pressed","false");}
+  function toggleMotion(){const on=motionTog.getAttribute("aria-pressed")!=="true";motionTog.setAttribute("aria-pressed",String(on));
+    document.body.classList.toggle("nomotion",!on);localStorage.setItem("jarvis.motion",on?"on":"off");}
+  $("api").value=CFG.api; $("key").value=CFG.key;
+  function saveConn(){CFG.api=$("api").value.trim();CFG.key=$("key").value.trim();
+    localStorage.setItem("jarvis.api",CFG.api);localStorage.setItem("jarvis.key",CFG.key);loadState();}
 </script>
 </body>
 </html>
