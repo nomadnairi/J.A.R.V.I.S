@@ -122,12 +122,12 @@ jobs:
       # release itself (the Action's GITHUB_TOKEN has contents: write), so a
       # tag can be cut without local tag-push access. Windows job carries the
       # exe + installer.
-      - name: Publish v1.7.0 release (manual dispatch)
+      - name: Publish release (manual dispatch)
         if: github.event_name == 'workflow_dispatch' && matrix.target == 'windows-amd64'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.7.0
-          name: "J.A.R.V.I.S. v1.7.0 — Enterprise Update"
-          body_path: docs/RELEASE_NOTES_v1.7.0.md
+          tag_name: v1.8.0
+          name: "J.A.R.V.I.S. v1.8.0"
+          body_path: docs/RELEASE_NOTES_v1.8.0.md
           prerelease: true
           files: dist/*
