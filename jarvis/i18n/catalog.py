@@ -285,6 +285,9 @@ CATALOG: dict[str, dict[str, str]] = {
             "🔗 To link your account, get a pairing code in the app "
             "(Settings → Link Telegram) and send: /link CODE"
         ),
+        "app_login_btn": "🖥 App login code",
+        "app_login_code": "🖥 Your app login code (valid 10 min):\n\n{code}\n\nEnter it in the app via Sign in with Telegram.",
+        "app_login_off": "ℹ️ App login is not enabled on this bot.",
         "link_success": "✅ Telegram linked to your account <b>{username}</b>.",
         "link_invalid": "❌ That code is invalid or has expired. Get a new one in the app.",
         "link_disabled": "ℹ️ Account linking is not enabled on this server.",
@@ -560,6 +563,9 @@ CATALOG: dict[str, dict[str, str]] = {
             "🔗 Чтобы привязать аккаунт, получите код в приложении "
             "(Настройки → Привязать Telegram) и отправьте: /link КОД"
         ),
+        "app_login_btn": "🖥 Код для входа в приложение",
+        "app_login_code": "🖥 Код для входа в приложение (действует 10 мин):\n\n{code}\n\nВведите его в приложении: Войти через Telegram.",
+        "app_login_off": "ℹ️ Вход в приложение не включён на этом боте.",
         "link_success": "✅ Telegram привязан к вашему аккаунту <b>{username}</b>.",
         "link_invalid": "❌ Код неверный или истёк. Получите новый в приложении.",
         "link_disabled": "ℹ️ Привязка аккаунтов на этом сервере не включена.",
@@ -840,6 +846,9 @@ CATALOG: dict[str, dict[str, str]] = {
             "🔗 Hisobingizni bog'lash uchun ilovada kod oling "
             "(Sozlamalar → Telegram bog'lash) va yuboring: /link KOD"
         ),
+        "app_login_btn": "🖥 Ilovaga kirish kodi",
+        "app_login_code": "🖥 Ilovaga kirish kodi (10 daqiqa):\n\n{code}\n\nIlovada Telegram orqali kiring.",
+        "app_login_off": "ℹ️ Ilovaga kirish bu botda yoqilmagan.",
         "link_success": "✅ Telegram <b>{username}</b> hisobingizga bog'landi.",
         "link_invalid": "❌ Kod noto'g'ri yoki muddati o'tgan. Ilovada yangisini oling.",
         "link_disabled": "ℹ️ Bu serverda hisob bog'lash yoqilmagan.",

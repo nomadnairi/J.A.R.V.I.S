@@ -366,6 +366,22 @@ def create_app(engine: JarvisEngine | None = None,
                 "telegram_channel": settings.update_telegram_channel,
                 "auto_allowed": auto_allowed}
 
+    class _TgLoginIn(BaseModel):
+        code: str
+
+    @app.post("/auth/telegram")
+    async def auth_telegram(body: _TgLoginIn) -> dict:
+        """Exchange a bot-issued login code for an auth token (Telegram login)."""
+        if service is None:
+            raise HTTPException(status_code=400,
+                                detail="Accounts are not enabled on this server.")
+        result = service.redeem_telegram_login(body.code)
+        if result is None:
+            raise HTTPException(status_code=401,
+                                detail="Invalid or expired code.")
+        token, username = result
+        return {"token": token, "username": username}
+
     class _McpIn(BaseModel):
         spec: str
 

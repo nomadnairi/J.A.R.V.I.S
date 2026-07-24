@@ -42,6 +42,21 @@ def _seed(client) -> str:
     return "arcreactor"
 
 
+def test_telegram_login_exchanges_code_for_token():
+    app = _app()
+    with TestClient(app) as client:
+        # The bot would issue this; use the app's own service here.
+        code = app.state.license_service.create_telegram_login_code(4242)
+        r = client.post("/auth/telegram", json={"code": code})
+        assert r.status_code == 200
+        token = r.json()["token"]
+        ok = client.post("/chat", json={"message": "hi"},
+                        headers={"Authorization": f"Bearer {token}"})
+        assert ok.status_code == 200
+        assert client.post("/auth/telegram",
+                        json={"code": "000000"}).status_code == 401
+
+
 def test_admin_requires_key():
     with TestClient(_app()) as client:
         r = client.post("/admin/accounts",

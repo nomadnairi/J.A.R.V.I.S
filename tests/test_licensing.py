@@ -127,3 +127,29 @@ def test_require_telegram_flag_on_login(svc: LicenseService):
     acc = svc.create_account("carol", "marvel")
     svc.issue_license(acc.id)
     assert svc.get_account_by_telegram(1234) is None
+
+
+def test_telegram_login_creates_account_and_token(svc: LicenseService):
+    code = svc.create_telegram_login_code(555001)
+    assert len(code) == 6 and code.isdigit()
+    result = svc.redeem_telegram_login(code)
+    assert result is not None
+    token, username = result
+    # Token is valid and maps to an account bound to the Telegram user.
+    acc = svc.validate_token(token)
+    assert acc is not None and acc.username == username
+    assert svc.get_account_by_telegram(555001).username == username
+    # Single-use: a second redeem fails.
+    assert svc.redeem_telegram_login(code) is None
+
+
+def test_telegram_login_reuses_existing_account(svc: LicenseService):
+    c1 = svc.create_telegram_login_code(555002)
+    _t1, u1 = svc.redeem_telegram_login(c1)
+    c2 = svc.create_telegram_login_code(555002)
+    _t2, u2 = svc.redeem_telegram_login(c2)
+    assert u1 == u2                    # same person → same account
+
+
+def test_telegram_login_bad_code(svc: LicenseService):
+    assert svc.redeem_telegram_login("000000") is None

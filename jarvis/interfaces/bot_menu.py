@@ -679,9 +679,13 @@ def screen_help(locale: str) -> tuple[str, Rows]:
     return text, [_back(locale)]
 
 
-def screen_link(locale: str) -> tuple[str, Rows]:
+def screen_link(locale: str, *, app_login: bool = False) -> tuple[str, Rows]:
     text = f"🔗 <b>{t('menu_link', locale)}</b>\n\n{t('link_usage', locale)}"
-    return text, [_back(locale)]
+    rows: Rows = []
+    if app_login:
+        rows.append([_b(t("app_login_btn", locale), "appcode")])
+    rows.append(_back(locale))
+    return text, rows
 
 
 # -- info cards (text only; the bot appends a Back button) --------------------

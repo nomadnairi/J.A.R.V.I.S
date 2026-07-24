@@ -954,7 +954,15 @@ async def run(settings: Settings | None = None) -> None:
         elif action == "help":
             await _edit(callback, *bm.screen_help(locale))
         elif action == "link":
-            await _edit(callback, *bm.screen_link(locale))
+            await _edit(callback, *bm.screen_link(
+                locale, app_login=license_service is not None))
+        elif action == "appcode":
+            if license_service is None:
+                await callback.message.answer(t("app_login_off", locale))
+            else:
+                code = license_service.create_telegram_login_code(user.id)
+                await callback.message.answer(
+                    t("app_login_code", locale, code=code), parse_mode=None)
         elif action == "model":
             await _edit(callback, *bm.screen_model(
                 locale, engine.llm.list_profiles(), prefs.get_model(user.id) or ""))

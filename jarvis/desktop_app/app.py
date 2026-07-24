@@ -143,10 +143,37 @@ def run_app() -> int:
             buttons.addWidget(local, stretch=1)
             layout.addLayout(buttons)
 
+            tg = QPushButton(tr("sign_in_telegram", loc))
+            tg.setMinimumHeight(40)
+            tg.clicked.connect(self._telegram_login)
+            layout.addWidget(tg)
+
         def _local(self) -> None:
             config.mode = "local"
             config.role = "admin"      # owner on their own machine
             config.save()
+            self.accept()
+
+        def _telegram_login(self) -> None:
+            from PySide6.QtWidgets import QInputDialog
+            loc = config.language
+            code, ok = QInputDialog.getText(
+                self, tr("sign_in_telegram", loc), tr("tg_code_prompt", loc))
+            if not ok or not code.strip():
+                return
+            client = JarvisApiClient(self.server.text().strip())
+            try:
+                client.login_with_telegram_code(code.strip())
+            except ApiError as exc:
+                QMessageBox.warning(self, tr("login_title", loc),
+                                    tr("login_failed", loc, error=exc.detail))
+                return
+            config.mode = "remote"
+            config.role = "user"
+            config.server_url = client.base_url
+            config.auth_token = client.token
+            config.save()
+            self.client = client
             self.accept()
 
         def _sign_in(self) -> None:

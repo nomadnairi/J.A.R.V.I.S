@@ -345,6 +345,54 @@ class LicenseService:
         self._conn.commit()
         return code
 
+    def _ensure_login_codes_table(self) -> None:
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS tg_login_codes ("
+            " code TEXT PRIMARY KEY, telegram_user_id INTEGER NOT NULL,"
+            " expires_at REAL NOT NULL, used INTEGER NOT NULL DEFAULT 0)")
+
+    def create_telegram_login_code(self, telegram_user_id: int, *,
+                                ttl_seconds: int = 600) -> str:
+        """A short code a Telegram user redeems to sign into a desktop/app."""
+        self._ensure_login_codes_table()
+        code = "".join(secrets.choice("0123456789") for _ in range(6))
+        self._conn.execute(
+            "INSERT OR REPLACE INTO tg_login_codes "
+            "(code, telegram_user_id, expires_at, used) VALUES (?, ?, ?, 0)",
+            (code, int(telegram_user_id), time.time() + ttl_seconds))
+        self._conn.commit()
+        return code
+
+    def redeem_telegram_login(self, code: str) -> tuple[str, str] | None:
+        """Redeem a login code → (token, username).
+
+        Creates an account bound to the Telegram user on first use, so a person
+        can sign in with Telegram alone (no password).
+        """
+        self._ensure_login_codes_table()
+        code = (code or "").strip()
+        row = self._conn.execute(
+            "SELECT telegram_user_id FROM tg_login_codes WHERE code = ? AND "
+            "used = 0 AND expires_at > ?", (code, time.time())).fetchone()
+        if row is None:
+            return None
+        tg = int(row["telegram_user_id"])
+        self._conn.execute(
+            "UPDATE tg_login_codes SET used = 1 WHERE code = ?", (code,))
+        self._conn.commit()
+        acc = self.get_account_by_telegram(tg)
+        if acc is None:
+            username = f"tg{tg}"
+            if self.get_account(username) is not None:
+                username = f"tg{tg}_{secrets.token_hex(2)}"
+            acc = self.create_account(username, secrets.token_urlsafe(16))
+            self._conn.execute(
+                "UPDATE accounts SET telegram_user_id = ?, telegram_verified = 1 "
+                "WHERE id = ?", (tg, acc.id))
+            self._conn.commit()
+            acc = self._account_row(acc.id)
+        return self.issue_token(acc.id), acc.username
+
     def confirm_pairing(self, code: str, telegram_user_id: int) -> Account | None:
         """Bind *telegram_user_id* to the account for a valid pairing code."""
         code = code.strip().upper()
