@@ -133,6 +133,29 @@ async def generate_reply(engine: JarvisEngine, user_id: int, text: str,
         return t("error", locale, error=str(exc))
 
 
+async def with_typing(bot, chat_id, coro):
+    """Await ``coro`` while keeping Telegram's "typing…" indicator alive.
+
+    A single chat action lasts ~5s, so a long reply looks frozen. Re-send it
+    every few seconds until the reply is ready — the user always sees activity.
+    """
+    from aiogram.enums import ChatAction
+
+    async def _ping() -> None:
+        while True:
+            try:
+                await bot.send_chat_action(chat_id, ChatAction.TYPING)
+            except Exception:  # noqa: BLE001 - never let the pinger crash the reply
+                pass
+            await asyncio.sleep(4.0)
+
+    pinger = asyncio.create_task(_ping())
+    try:
+        return await coro
+    finally:
+        pinger.cancel()
+
+
 def _is_allowed(settings: Settings, user_id: int) -> bool:
     allowlist = settings.telegram_allowlist()
     return not allowlist or user_id in allowlist
@@ -1214,15 +1237,15 @@ async def run(settings: Settings | None = None) -> None:
         if session.scratch.pop("awaiting_image", False):
             await _make_image(message, message.text, locale)
             return
-        await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
-        reply = await generate_reply(
+        # Keep "typing…" alive for the whole (possibly tool-using) generation.
+        reply = await with_typing(message.bot, message.chat.id, generate_reply(
             engine, message.from_user.id, message.text, locale,
             model_profile=prefs.get_model(message.from_user.id),
             model_id=prefs.get_model_id(message.from_user.id),
             byok=prefs.get_byok(message.from_user.id),
             assistant_name=prefs.get_assistant_name(message.from_user.id),
             usage=usage,
-        )
+        ))
         # LLM output is plain text — disable HTML parsing to avoid entity errors.
         for chunk in split_message(reply):
             await message.answer(chunk, parse_mode=None)

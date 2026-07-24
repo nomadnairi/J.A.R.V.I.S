@@ -36,14 +36,19 @@ def test_brave_parse():
     assert res[0].url == "https://t.com" and res[0].source == "brave"
 
 
-def test_duckduckgo_parse_flattens_topics():
-    raw = {"RelatedTopics": [
-        {"FirstURL": "https://x.com", "Text": "X thing"},
-        {"Topics": [{"FirstURL": "https://y.com", "Text": "Y thing"}]},
-        {"Text": "no url"},
-    ]}
-    res = DuckDuckGoProvider.parse(raw)
-    assert {r.url for r in res} == {"https://x.com", "https://y.com"}
+def test_duckduckgo_parse_html_results():
+    # A trimmed sample of DuckDuckGo's HTML results page.
+    page = (
+        '<a class="result__a" href="https://x.com/page">X <b>thing</b></a>'
+        '<a class="result__snippet">About X thing.</a>'
+        '<a class="result__a" href="//duckduckgo.com/l/?uddg='
+        'https%3A%2F%2Fy.com%2Fdoc&rut=1">Y thing</a>'
+        '<a class="result__snippet">Details on Y.</a>')
+    res = DuckDuckGoProvider.parse(page)
+    assert [r.url for r in res] == ["https://x.com/page", "https://y.com/doc"]
+    assert res[0].title == "X thing"                 # HTML tags stripped
+    assert res[0].snippet == "About X thing."
+    assert res[1].url == "https://y.com/doc"          # uddg redirect unwrapped
 
 
 # -- availability -------------------------------------------------------------

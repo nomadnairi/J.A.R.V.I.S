@@ -13,9 +13,13 @@ import json
 import urllib.request
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from jarvis.utils.exceptions import JarvisError
+
+#: A browser-like User-Agent — some endpoints reject the default urllib UA.
+_BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/122.0 Safari/537.36")
 
 
 class SearchError(JarvisError):
@@ -57,6 +61,26 @@ def request_json(url: str, *, method: str = "GET", headers: dict | None = None,
             from exc
 
 
+def request_text(url: str, *, method: str = "GET", headers: dict | None = None,
+                form: dict | None = None, timeout: int = 15) -> str:
+    """Blocking HTTP request returning the raw response text (for HTML scrape)."""
+    if not url.startswith("https://"):  # defensive: only https
+        raise SearchError("Refusing non-https search request.")
+    data = urlencode(form).encode() if form is not None else None
+    req = urllib.request.Request(
+        url, method=method, data=data,
+        headers={"User-Agent": _BROWSER_UA, **(headers or {})})
+    if data is not None:
+        req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310  # nosec B310
+            return resp.read().decode("utf-8", "replace")
+    except Exception as exc:  # noqa: BLE001
+        host = urlsplit(url).netloc or "search endpoint"
+        raise SearchError(f"HTTP request to {host} failed: {type(exc).__name__}") \
+            from exc
+
+
 class SearchProvider(ABC):
     """Base class for a search backend."""
 
@@ -80,6 +104,9 @@ class SearchProvider(ABC):
 
     async def _json(self, url: str, **kw) -> dict:
         return await asyncio.to_thread(request_json, url, **kw)
+
+    async def _text(self, url: str, **kw) -> str:
+        return await asyncio.to_thread(request_text, url, **kw)
 
     @abstractmethod
     async def search(self, query: str, *, limit: int = 5) -> list[SearchResult]:

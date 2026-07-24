@@ -8,38 +8,63 @@ just fetches then parses. Add a new backend by subclassing SearchProvider.
 
 from __future__ import annotations
 
-from urllib.parse import quote_plus
+import html as _html
+import re
+from urllib.parse import parse_qs, quote_plus, unquote, urlsplit
 
 from jarvis.search.base import SearchProvider, SearchResult
 
 
 class DuckDuckGoProvider(SearchProvider):
-    """No API key required — DuckDuckGo's Instant Answer API (best-effort)."""
+    """Keyless web search — DuckDuckGo's HTML endpoint (real results, no key).
+
+    The old Instant-Answer API returned almost nothing for ordinary queries;
+    this scrapes the same HTML results page a browser would get, so search
+    works out of the box without any API key.
+    """
 
     name = "duckduckgo"
     label = "DuckDuckGo"
     requires_key = False
     kind = "web"
 
+    _RESULT = re.compile(
+        r'<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>', re.S)
+    _SNIPPET = re.compile(
+        r'<a[^>]+class="result__snippet"[^>]*>(.*?)</a>', re.S)
+
     @staticmethod
-    def parse(raw: dict) -> list[SearchResult]:
+    def _clean_url(href: str) -> str:
+        href = _html.unescape(href)
+        if href.startswith("//"):
+            href = "https:" + href
+        # DDG wraps targets in /l/?uddg=<url-encoded real url>.
+        if "uddg=" in href:
+            uddg = parse_qs(urlsplit(href).query).get("uddg")
+            if uddg:
+                return unquote(uddg[0])
+        return href
+
+    @classmethod
+    def parse(cls, page: str) -> list[SearchResult]:
+        def strip(s: str) -> str:
+            return _html.unescape(re.sub(r"<[^>]+>", "", s)).strip()
+        snippets = [strip(s) for s in cls._SNIPPET.findall(page)]
         out: list[SearchResult] = []
-        for topic in raw.get("RelatedTopics", []):
-            # Nested groups also appear; flatten one level.
-            items = topic.get("Topics", [topic])
-            for it in items:
-                url = it.get("FirstURL")
-                text = it.get("Text")
-                if url and text:
-                    out.append(SearchResult(title=text[:80], url=url,
-                                            snippet=text, source="duckduckgo"))
+        for i, (href, title) in enumerate(cls._RESULT.findall(page)):
+            url = cls._clean_url(href)
+            if not url:
+                continue
+            out.append(SearchResult(
+                title=strip(title)[:120] or url, url=url,
+                snippet=(snippets[i] if i < len(snippets) else "")[:400],
+                source="duckduckgo"))
         return out
 
     async def search(self, query: str, *, limit: int = 5) -> list[SearchResult]:
-        url = (f"https://api.duckduckgo.com/?q={quote_plus(query)}"
-            "&format=json&no_html=1&no_redirect=1")
-        raw = await self._json(url)
-        return self._limit(self.parse(raw), limit)
+        page = await self._text("https://html.duckduckgo.com/html/",
+                                method="POST", form={"q": query})
+        return self._limit(self.parse(page), limit)
 
 
 class TavilyProvider(SearchProvider):
