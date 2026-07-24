@@ -57,3 +57,33 @@ def test_network_failure_is_soft():
         raise OSError("no network")
     info = check_github("1.7.0", fetch=boom)
     assert isinstance(info, UpdateInfo) and info.available is False
+
+
+def test_download_streams_to_file(tmp_path):
+    import io
+
+    from jarvis.core.updater import download
+
+    class FakeResp(io.BytesIO):
+        headers = {"Content-Length": "10"}
+        def __enter__(self): return self
+        def __exit__(self, *a): self.close()
+
+    class FakeOpener:
+        def open(self, req):
+            return FakeResp(b"0123456789")
+
+    seen = []
+    dest = tmp_path / "setup.exe"
+    out = download("https://x/setup.exe", str(dest), opener=FakeOpener(),
+                on_progress=lambda d, t: seen.append((d, t)))
+    assert out == str(dest)
+    assert dest.read_bytes() == b"0123456789"
+    assert seen[-1] == (10, 10)
+
+
+def test_download_rejects_non_https(tmp_path):
+    from jarvis.core.updater import download
+    import pytest as _pt
+    with _pt.raises(ValueError):
+        download("http://x/setup.exe", str(tmp_path / "s.exe"))

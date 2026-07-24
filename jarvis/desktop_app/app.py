@@ -282,17 +282,45 @@ def run_app() -> int:
                     QMessageBox.information(self, "J.A.R.V.I.S.",
                                             "У вас последняя версия.")
                 return
-            # Auto-update (opt-in): open the download straight away; otherwise ask.
+            # Auto-update (opt-in): apply straight away; otherwise ask.
             if config.auto_update and url:
-                import webbrowser
-                webbrowser.open(url)
+                self._apply_update(url, latest)
                 return
             ans = QMessageBox.question(
                 self, "Доступно обновление",
-                f"Вышла версия {latest}. Скачать сейчас?")
+                f"Вышла версия {latest}. Установить сейчас?")
             if ans == QMessageBox.StandardButton.Yes and url:
-                import webbrowser
+                self._apply_update(url, latest)
+
+        def _apply_update(self, url: str, latest: str = "") -> None:
+            """Download the Windows installer and launch it silently, then quit.
+
+            On non-Windows or for a non-installer URL, just open the download.
+            """
+            import sys
+            import tempfile
+            import webbrowser
+            from pathlib import Path
+
+            from jarvis.core.updater import download
+            if sys.platform != "win32" or not url.lower().endswith(".exe"):
                 webbrowser.open(url)
+                return
+            dest = Path(tempfile.gettempdir()) / "JARVIS-Setup.exe"
+            try:
+                download(url, str(dest))
+            except Exception:  # noqa: BLE001 - fall back to the browser
+                webbrowser.open(url)
+                return
+            import subprocess
+            try:
+                # Inno Setup silent install; it replaces files after we exit.
+                subprocess.Popen([str(dest), "/VERYSILENT", "/NORESTART"],
+                                close_fds=True)
+            except Exception:  # noqa: BLE001 - run the installer normally
+                import os
+                os.startfile(str(dest))  # type: ignore[attr-defined]  # noqa: S606
+            self._quit()
 
         def _restore(self) -> None:
             self.showNormal()

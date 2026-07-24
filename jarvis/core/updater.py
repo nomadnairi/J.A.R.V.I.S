@@ -71,6 +71,32 @@ def _http_json(url: str, timeout: int = 10):
         return json.loads(resp.read().decode("utf-8"))
 
 
+def download(url: str, dest: str, *, opener=None, chunk: int = 65536,
+            on_progress=None) -> str:
+    """Stream ``url`` to ``dest`` (installer download). Returns ``dest``.
+
+    ``on_progress(done, total)`` is called as bytes arrive (total may be 0 if
+    the server doesn't report a length). ``opener`` is injectable for testing.
+    """
+    if not url.startswith("https://"):
+        raise ValueError("Refusing non-https download.")
+    opener = opener or urllib.request.build_opener()
+    req = urllib.request.Request(url, headers={"User-Agent": "jarvis-updater"})
+    with opener.open(req) as resp:  # noqa: S310  # nosec B310
+        total = int((resp.headers.get("Content-Length") if resp.headers else 0) or 0)
+        done = 0
+        with open(dest, "wb") as fh:
+            while True:
+                block = resp.read(chunk)
+                if not block:
+                    break
+                fh.write(block)
+                done += len(block)
+                if on_progress:
+                    on_progress(done, total)
+    return dest
+
+
 def _pick_asset(assets: list[dict], prefer: str = ".exe") -> str:
     """Prefer an installer, then any matching-suffix asset, else the first."""
     for a in assets:
