@@ -119,25 +119,16 @@ python -m jarvis
 
 ---
 
-## Telegramda suhbat
+## Telegramda suhbat — to'liq versiya
 
-Eng qulay usul. Bu tugmali bot — hech qanday buyruqni yodlash shart emas — har
-kimga alohida sessiya bilan, shuning uchun sizni boshqalardan mustaqil eslaydi.
+KER dan foydalanishning eng qulay va eng to'liq yo'li — **tayyor bot**:
+**[@jar_v1_s](https://t.me/jar_v1_s)**. Hech narsa o'rnatish yoki ko'tarish shart
+emas — bu boshqariladigan mahsulot. Tugmali bot (buyruqsiz), har kimni alohida
+eslaydi, ovozda javob beradi, va tariflar (Free / Plus / Pro) premium
+imkoniyatlar hamda yuqori limitlarni ochadi.
 
-```bash
-pip install aiogram
-
-# .env:
-#   TELEGRAM_BOT_TOKEN=...   (@BotFather dan)
-#   ANTHROPIC_API_KEY=...    (yoki OPENAI_API_KEY, yoki lokal model)
-
-python -m jarvis.interfaces.telegram_bot     # yoki: jarvis-bot
-```
-
-Ichида — ozoda ichma-ich menyularga joylangan sozlamalar: til, yordamchi nomi,
-AI modeli, xotira, ovoz, integratsiyalar va boshqalar. Ovozli yuboring — ovozda
-javob beradi. Agar buni mahsulot sifatida ishga tushirmoqchi bo'lsangiz, tariflar
-(Free / Plus / Pro) va reja bo'yicha limitlar bor.
+Sozlamalar ozoda ichma-ich menyularda: til, yordamchi nomi, AI modeli, xotira,
+ovoz, integratsiyalar va boshqalar.
 
 ---
 
@@ -155,26 +146,24 @@ oladi. Ilova yangilanishlarni o'zi tekshirib o'rnata oladi.
 
 Yuklab olishlar (Windows o'rnatuvchisi + portativ yig'ma) —
 [**Releases**](https://github.com/nomadnairi/K.E.R/releases) sahifasida.
-`.exe` / `.apk` ni yig'ish — [docs/CLIENTS.md](docs/CLIENTS.md) da.
 
 ---
 
-## Serverga qo'yish
+## Raspberry Pi (tez orada)
 
-Bot va HTTP/WebSocket-API ni VPS da Docker orqali:
+Raspberry Pi da doim tinglaydigan ovozli yordamchi — xonaning istalgan
+joyidan nomi bilan chaqirasiz, u javob beradi (Toni Stark uslubida). O'rnatish
+qo'llanmasi va image shu yerda paydo bo'ladi.
 
-```bash
-cp .env.example .env      # kalitlaringizni kiriting
-docker compose up -d --build
-```
+---
 
-Bot long-polling orqali ishlaydi (kiruvchi port kerak emas), API `:8000` da
-tinglaydi, ikkalasi doimiy `data/` va `logs/` jildlarini ishlatadi. systemd-unit,
-nginx + TLS namunasi va xavfsizlik ro'yxati — [docs/DEPLOY.md](docs/DEPLOY.md) da.
+## Open core
 
-Boshqa ilovalar shu dvigatel bilan API orqali gaplasha oladi: `GET /health`,
-`POST /chat` va strim uchun `/ws/{session}` WebSocket. Ommaga ochishdan oldin
-`API_KEY` ni belgilang.
+Bu repozitoriy — **ochiq yadro**: dvigatel va desktop-mijoz, MIT ostida.
+**To'liq boshqariladigan mahsulot** (tayyor bot, obunalar, akkauntlar va
+yangilanishlar) — bu xizmat, [@jar_v1_s](https://t.me/jar_v1_s) orqali. Yadroni
+o'zingiz ham ishga tushirishingiz mumkin; siz tayyor xizmat qulayligi uchun
+to'laysiz.
 
 ---
 
