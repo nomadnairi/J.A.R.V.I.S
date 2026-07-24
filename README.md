@@ -115,25 +115,16 @@ Prefer `make`? `make install`, `make run`, `make test`, `make lint`.
 
 ---
 
-## Talk to it in Telegram
+## Talk to it in Telegram — the full version
 
-The friendliest way to use KER. It's a button-driven bot — no commands to
-memorise — with per-user sessions, so it remembers each person separately.
+The easiest and most complete way to use KER is the **hosted bot**:
+**[@jar_v1_s](https://t.me/jar_v1_s)**. Nothing to install or run — it's the
+managed product. Button-driven (no commands to memorise), it remembers each
+person separately, answers by voice, and has subscription tiers (Free / Plus /
+Pro) that unlock the premium features and higher limits.
 
-```bash
-pip install aiogram
-
-# .env:
-#   TELEGRAM_BOT_TOKEN=...   (from @BotFather)
-#   ANTHROPIC_API_KEY=...    (or OPENAI_API_KEY, or a local model)
-
-python -m jarvis.interfaces.telegram_bot     # or: jarvis-bot
-```
-
-Inside the bot you get settings tucked into tidy nested menus: language, the
-assistant's name, your AI model, memory, voice, integrations, and more. Send a
-voice note and it'll answer by voice. There are subscription tiers (Free / Plus
-/ Pro) with per-plan limits if you want to run it as a product.
+Settings live in tidy nested menus: language, the assistant's name, your AI
+model, memory, voice, integrations and more.
 
 ---
 
@@ -149,27 +140,25 @@ in with a username/password or a **Telegram login code** the bot hands them, and
 get a limited version. It can check for and install updates on its own.
 
 Downloads (Windows installer + portable build) are on the
-[**Releases**](https://github.com/nomadnairi/K.E.R/releases) page. Build
-details for the `.exe` / `.apk` are in [docs/CLIENTS.md](docs/CLIENTS.md).
+[**Releases**](https://github.com/nomadnairi/K.E.R/releases) page.
 
 ---
 
-## Put it on a server
+## Raspberry Pi (coming soon)
 
-Run the bot and the HTTP/WebSocket API on a VPS with Docker:
+An always-listening voice assistant on a Raspberry Pi — say the name from
+across the room and it answers, Tony-Stark style. Setup guide and image will
+land here.
 
-```bash
-cp .env.example .env      # fill in your keys
-docker compose up -d --build
-```
+---
 
-The bot uses long-polling (no inbound port), the API listens on `:8000`, and
-both share persistent `data/` and `logs/` volumes. A systemd unit, an nginx +
-TLS example and a security checklist are in [docs/DEPLOY.md](docs/DEPLOY.md).
+## Open core
 
-Other apps can talk to the same engine over the API — `GET /health`,
-`POST /chat`, and a `/ws/{session}` WebSocket for streaming. Set `API_KEY`
-before you expose it publicly.
+This repository is the **open core** — the engine and the desktop client, MIT
+licensed. The **full managed experience** (the hosted bot, subscriptions,
+accounts and updates) is the product, available through
+[@jar_v1_s](https://t.me/jar_v1_s). You're free to run the core yourself; you
+pay for the convenience of the hosted service.
 
 ---
 
