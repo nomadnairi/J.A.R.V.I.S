@@ -92,7 +92,7 @@ def run_app() -> int:
             layout.setSpacing(12)
             outer.addWidget(card)
 
-            wordmark = QLabel("J.A.R.V.I.S.")
+            wordmark = QLabel("KER")
             wordmark.setObjectName("Wordmark")
             title = QLabel(tr("login_title", loc))
             title.setObjectName("Title")
@@ -284,7 +284,7 @@ def run_app() -> int:
                 return
             loc = config.language
             self.tray = QSystemTrayIcon(self._tray_icon(), self)
-            self.tray.setToolTip("J.A.R.V.I.S.")
+            self.tray.setToolTip("KER")
             menu = QMenu()
             show = menu.addAction(tr("tray_show", loc))
             show.triggered.connect(self._restore)
@@ -326,7 +326,7 @@ def run_app() -> int:
             from PySide6.QtWidgets import QMessageBox
             if not available:
                 if explicit:
-                    QMessageBox.information(self, "J.A.R.V.I.S.",
+                    QMessageBox.information(self, "KER",
                                             "У вас последняя версия.")
                 return
             # Auto-update (opt-in): apply straight away; otherwise ask.
@@ -353,7 +353,7 @@ def run_app() -> int:
             if sys.platform != "win32" or not url.lower().endswith(".exe"):
                 webbrowser.open(url)
                 return
-            dest = Path(tempfile.gettempdir()) / "JARVIS-Setup.exe"
+            dest = Path(tempfile.gettempdir()) / "KER-Setup.exe"
             try:
                 download(url, str(dest))
             except Exception:  # noqa: BLE001 - fall back to the browser
@@ -385,7 +385,7 @@ def run_app() -> int:
             row = QHBoxLayout(bar)
             row.setContentsMargins(20, 0, 20, 0)
 
-            wordmark = QLabel("J.A.R.V.I.S.")
+            wordmark = QLabel("KER")
             wordmark.setObjectName("Wordmark")
             row.addWidget(wordmark)
 
@@ -592,7 +592,7 @@ def run_app() -> int:
             row = QHBoxLayout()
             row.setSpacing(10)
             self.input = QLineEdit()
-            self.input.setPlaceholderText("Message J.A.R.V.I.S. …")
+            self.input.setPlaceholderText("Message KER …")
             self.input.setMinimumHeight(44)
             self.input.returnPressed.connect(self._send)
             send = QPushButton(tr("send", loc))
@@ -773,7 +773,7 @@ def run_app() -> int:
             config.voice_replies = self.voice_enable.isChecked()
             config.voice_enabled = True
             config.save()
-            QMessageBox.information(self, "J.A.R.V.I.S.",
+            QMessageBox.information(self, "KER",
                                     tr("saved", config.language))
 
         def _update_voice_ui(self) -> None:
@@ -876,7 +876,7 @@ def run_app() -> int:
                 return
             self.voice_output.append(
                 f"<b>{tr('voice_you_said', loc)}:</b> {transcript}")
-            self.voice_output.append(f"<b>J.A.R.V.I.S.:</b> {reply}")
+            self.voice_output.append(f"<b>KER:</b> {reply}")
             # Mirror the exchange into the chat transcript.
             self._messages.append(("user", f"🎙 {transcript}"))
             self._messages.append(("assistant", reply))
@@ -930,7 +930,7 @@ def run_app() -> int:
             config.anthropic_api_key = self.anthropic_edit.text().strip()
             config.openai_api_key = self.openai_edit.text().strip()
             config.save()
-            QMessageBox.information(self, "J.A.R.V.I.S.",
+            QMessageBox.information(self, "KER",
                                     tr("saved", config.language))
 
         # -- capabilities tab (granular PC access) --------------------------
@@ -975,7 +975,7 @@ def run_app() -> int:
             config.allow_desktop_control = self.cap_desktop.isChecked()
             config.workspace_root = self.workspace_edit.text().strip()
             config.save()
-            QMessageBox.information(self, "J.A.R.V.I.S.",
+            QMessageBox.information(self, "KER",
                                     tr("saved", config.language))
 
         # -- integrations tab ---------------------------------------------
@@ -1022,7 +1022,7 @@ def run_app() -> int:
             config.telegram_channel = self.tg_channel.text().strip()
             config.telegram_send_enabled = self.tg_send.isChecked()
             config.save()
-            QMessageBox.information(self, "J.A.R.V.I.S.",
+            QMessageBox.information(self, "KER",
                                     tr("saved", config.language))
 
         # -- memory tab -----------------------------------------------------
@@ -1106,7 +1106,7 @@ def run_app() -> int:
                                     f'"{sys.executable}"')
             except Exception as exc:  # noqa: BLE001 - shown to the user
                 logger.warning("Autostart update failed: %s", exc)
-            QMessageBox.information(self, "J.A.R.V.I.S.",
+            QMessageBox.information(self, "KER",
                                     tr("saved", config.language))
 
         # -- logs tab ---------------------------------------------------------
@@ -1162,7 +1162,7 @@ def run_app() -> int:
                 event.ignore()
                 self.hide()
                 self.tray.showMessage(
-                    "J.A.R.V.I.S.", tr("tray_running", config.language))
+                    "KER", tr("tray_running", config.language))
                 return
             if self.engine_thread is not None:
                 self.engine_thread.stop()

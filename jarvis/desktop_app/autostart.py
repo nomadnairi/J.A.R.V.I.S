@@ -52,7 +52,7 @@ def _entry_body(platform: str, command: str) -> str:
     return (
         "[Desktop Entry]\n"
         "Type=Application\n"
-        "Name=J.A.R.V.I.S.\n"
+        "Name=KER\n"
         f"Exec={command}\n"
         "X-GNOME-Autostart-enabled=true\n"
     )
