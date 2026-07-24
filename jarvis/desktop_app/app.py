@@ -16,6 +16,19 @@ logger = get_logger(__name__)
 
 _LANGS = [("en", "English"), ("ru", "Русский"), ("uz", "O'zbek")]
 
+# Tabs everyone sees vs. owner-only (admin) tabs. A signed-in guest gets a
+# limited app — no access to engine/API config, capabilities or logs.
+_USER_TABS = ("deck", "chat", "voice", "memory")
+_ADMIN_TABS = ("assistant", "capabilities", "integrations", "general", "logs")
+
+
+def visible_tabs(role: str) -> tuple[str, ...]:
+    """Ordered tab ids visible for ``role`` ('admin' sees everything)."""
+    order = ("deck", "chat", "voice", "assistant", "capabilities",
+            "integrations", "memory", "general", "logs")
+    allowed = set(_USER_TABS) if role == "user" else set(_USER_TABS) | set(_ADMIN_TABS)
+    return tuple(t for t in order if t in allowed)
+
 # Chat memory caps — keep RAM bounded on long sessions.
 _MAX_RENDER = 150   # messages painted into the transcript widget
 _MAX_STORE = 400    # messages kept in memory
@@ -132,6 +145,7 @@ def run_app() -> int:
 
         def _local(self) -> None:
             config.mode = "local"
+            config.role = "admin"      # owner on their own machine
             config.save()
             self.accept()
 
@@ -145,6 +159,7 @@ def run_app() -> int:
                                     tr("login_failed", loc, error=exc.detail))
                 return
             config.mode = "remote"
+            config.role = "user"       # signed-in guest — limited app
             config.server_url = client.base_url
             config.username = self.user.text().strip()
             config.auth_token = client.token
@@ -171,23 +186,28 @@ def run_app() -> int:
             self.setMinimumSize(880, 600)
 
             tabs = QTabWidget()
-            tabs.addTab(self._deck_tab(), "🛰  Command Deck")
-            tabs.addTab(self._chat_tab(), tr("tab_chat", loc))
-            tabs.addTab(self._wrap(self._voice_tab(), tr("tab_voice", loc)),
-                        tr("tab_voice", loc))
-            tabs.addTab(self._wrap(self._assistant_tab(), tr("tab_assistant", loc)),
-                        tr("tab_assistant", loc))
-            tabs.addTab(
-                self._wrap(self._capabilities_tab(), tr("tab_capabilities", loc)),
-                tr("tab_capabilities", loc))
-            tabs.addTab(
-                self._wrap(self._integrations_tab(), tr("tab_integrations", loc)),
-                tr("tab_integrations", loc))
-            tabs.addTab(self._wrap(self._memory_tab(), tr("tab_memory", loc)),
-                        tr("tab_memory", loc))
-            tabs.addTab(self._wrap(self._general_tab(), tr("tab_general", loc)),
-                        tr("tab_general", loc))
-            tabs.addTab(self._logs_tab(), tr("tab_logs", loc))
+            builders = {
+                "deck": lambda: (self._deck_tab(), "🛰  Command Deck"),
+                "chat": lambda: (self._chat_tab(), tr("tab_chat", loc)),
+                "voice": lambda: (self._wrap(self._voice_tab(),
+                                tr("tab_voice", loc)), tr("tab_voice", loc)),
+                "assistant": lambda: (self._wrap(self._assistant_tab(),
+                                    tr("tab_assistant", loc)), tr("tab_assistant", loc)),
+                "capabilities": lambda: (self._wrap(self._capabilities_tab(),
+                                        tr("tab_capabilities", loc)),
+                                        tr("tab_capabilities", loc)),
+                "integrations": lambda: (self._wrap(self._integrations_tab(),
+                                        tr("tab_integrations", loc)),
+                                        tr("tab_integrations", loc)),
+                "memory": lambda: (self._wrap(self._memory_tab(),
+                                tr("tab_memory", loc)), tr("tab_memory", loc)),
+                "general": lambda: (self._wrap(self._general_tab(),
+                                tr("tab_general", loc)), tr("tab_general", loc)),
+                "logs": lambda: (self._logs_tab(), tr("tab_logs", loc)),
+            }
+            for key in visible_tabs(config.role):
+                widget, title = builders[key]()
+                tabs.addTab(widget, title)
 
             container = QWidget()
             root = QVBoxLayout(container)

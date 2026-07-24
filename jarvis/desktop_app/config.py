@@ -50,6 +50,8 @@ class AppConfig:
     update_channel: str = "early"
     #: "local" (engine runs on this PC) or "remote" (talk to a server API).
     mode: str = "local"
+    #: "admin" (owner — full app) or "user" (signed-in guest — limited UI).
+    role: str = "admin"
 
     # -- remote mode ----------------------------------------------------------
     server_url: str = ""
