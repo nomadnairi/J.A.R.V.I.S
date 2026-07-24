@@ -78,6 +78,8 @@
   .col{display:flex; flex-direction:column; gap:var(--gap); min-height:0; overflow:auto}
   .core{display:flex; flex-direction:column; align-items:center; justify-content:center}
   .reactor{position:relative; width:min(42vh,340px); aspect-ratio:1}
+  .rxcanvas{position:absolute; inset:-6%; width:112%; height:112%; border-radius:50%; z-index:0; opacity:0; transition:opacity .8s ease}
+  .rxcanvas.on{opacity:1}
   .ring{position:absolute; inset:0; border-radius:50%; border:1px solid var(--line)}
   .ring.r2{inset:10%; border-color:rgba(232,179,65,.26); border-style:dashed}
   .ring.r3{inset:22%; border-color:rgba(232,179,65,.18)}
@@ -275,7 +277,7 @@
           <section class="card"><header><h3>Погода</h3></header><div class="body"><div class="wx"><div><div class="temp" id="wxT">—</div><div class="loc" id="wxL">—</div><div class="cond" id="wxC">—</div></div><div style="font-size:32px" id="wxG">🛰</div></div></div></section>
         </div>
         <div class="col core">
-          <div class="reactor"><div class="ring r1 spin"></div><div class="ring r2 spin rev"></div><div class="ring r3"></div><div class="ticks"></div><div class="hub"><div class="viz"><i></i><i></i><i></i><i></i><i></i></div></div></div>
+          <div class="reactor"><canvas id="rx" class="rxcanvas"></canvas><div class="ring r1 spin"></div><div class="ring r2 spin rev"></div><div class="ring r3"></div><div class="ticks"></div><div class="hub"><div class="viz"><i></i><i></i><i></i><i></i><i></i></div></div></div>
           <div class="name" id="coreName">KER</div>
           <div class="status" id="status"><span style="width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block"></span> Слушаю команду…</div>
           <div class="dock"><button class="dockbtn" title="Камера"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button><button class="dockbtn primary" title="Голос" onclick="pulse()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button><button class="dockbtn" title="Чат" onclick="go('chat')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button></div>
@@ -351,13 +353,13 @@
       <div class="card" style="max-width:520px"><div class="body" style="text-align:center; padding:32px">
         <div style="font-size:40px">🛡</div><div id="aboutName" style="font-weight:800; letter-spacing:.4em; font-size:22px; margin-top:12px">KER</div>
         <div style="color:var(--dim); font-size:13px; margin-top:6px">Personal AI Assistant</div>
-        <div style="color:var(--muted); font-family:var(--mono); margin-top:14px">Версия 1.9.2</div>
+        <div style="color:var(--muted); font-family:var(--mono); margin-top:14px">Версия 1.9.3</div>
         <div style="color:var(--dim); font-size:12px; margin-top:18px">Провайдер-независимый ассистент · MCP · тарифы · Telegram · десктоп</div>
       </div></div>
     </section>
   </div>
 
-  <div class="statusbar"><span><b id="sbName">KER</b> <b>1.9.2</b></span><span>Python <b>3.11</b></span><span>API <b class="ok" id="sbApi">—</b></span><span>Память <b id="sbMem">—</b></span><span>Telegram <b class="ok">Онлайн</b></span><span class="sp" id="sbClock">--:--:--</span></div>
+  <div class="statusbar"><span><b id="sbName">KER</b> <b>1.9.3</b></span><span>Python <b id="sbPy">—</b></span><span>API <b id="sbApi">—</b></span><span>CPU <b id="sbCpu">—</b></span><span>Память <b id="sbMem">—</b></span><span>Сессии <b id="sbSess">—</b></span><span class="sp" id="sbClock">--:--:--</span></div>
 </div>
 
 <script>
@@ -382,10 +384,10 @@
     const iv=setInterval(()=>{p=Math.min(100,p+(reduce?100:7+Math.random()*9));pct.textContent="Загрузка модулей… "+Math.round(p)+"%";
       if(p>=100){clearInterval(iv);setTimeout(()=>el.classList.add("gone"),reduce?0:250);}},reduce?0:110);})();
 
-  const DEMO={online:false,cpu:8,ram:44,tools:22,uptime:"00:07:19",session:1,
-    weather:{temp:"25.2°",loc:"Quezon City, PH",cond:"overcast clouds",glyph:"☁️"},
-    capabilities:[["🧠 Память","on"],["🎙 Голос","on"],["🌍 Поиск","on"],["🎨 Картинки","res"],["📂 Файлы","res"],["🧩 MCP","on"],["🤝 Агенты","on"]],
-    mcp:[{name:"filesystem",up:true,tools:6},{name:"hermes",up:true,tools:14},{name:"brave-search",up:false,tools:0}]};
+  // Honest "no backend" state — dashes, not fabricated telemetry.
+  const OFFLINE={online:false,cpu:null,ram:null,tools:null,uptime:"—",session:null,
+    python:"—",weather:null,capabilities:[],mcp:[]};
+  const dash=v=>(v===null||v===undefined||v==="")?"—":v;
   function applyName(n){
     if(!n) return;
     ["brandName","coreName","sbName","bootName","aboutName"].forEach(id=>{
@@ -395,18 +397,25 @@
   }
   function render(s){
     if(s.name) applyName(s.name);
-    $("status").innerHTML=s.online?'<span style="width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block"></span> Слушаю команду…':'⚠ Бэкенд офлайн — демо-режим';
+    $("status").innerHTML=s.online?'<span style="width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block"></span> Слушаю команду…':'⚠ Нет связи с движком';
     $("status").classList.toggle("offline",!s.online);
-    $("railStatus").textContent=s.online?"Онлайн":"Офлайн"; $("sbApi").textContent=s.online?"Онлайн":"Офлайн"; $("sbApi").className=s.online?"ok":"";
-    $("cpu").textContent=s.cpu+"%";$("cpuBar").style.width=s.cpu+"%";$("ram").textContent=s.ram+"%";$("ramBar").style.width=s.ram+"%";$("sbMem").textContent=s.ram+"%";
-    $("tools").textContent=s.tools;$("up").textContent=s.uptime;$("sess").textContent=s.session;
-    const w=s.weather;$("wxT").textContent=w.temp;$("wxL").textContent=w.loc;$("wxC").textContent=w.cond;$("wxG").textContent=w.glyph;
-    $("caps").innerHTML=s.capabilities.map(([n,st])=>`<span class="cap"><span class="s ${st}"></span>${n}</span>`).join("");
-    $("mcpList").innerHTML=s.mcp.length?s.mcp.map(m=>`<div class="mcp-srv"><span class="nm">${m.up?'🟢':'🔴'} ${m.name}</span><span style="font-family:var(--mono);color:var(--muted)">${m.tools} 🔧</span><span class="badge ${m.up?'up':'down'}">${m.up?'up':'down'}</span></div>`).join(''):'<div style="color:var(--dim);font-family:var(--mono);font-size:13px;padding:8px 0">Серверы не настроены</div>';
+    $("railStatus").textContent=s.online?"Онлайн":"Офлайн";
+    $("sbApi").textContent=s.online?"Онлайн":"Офлайн"; $("sbApi").className=s.online?"ok":"";
+    const hasCpu=s.cpu!==null&&s.cpu!==undefined, hasRam=s.ram!==null&&s.ram!==undefined;
+    $("cpu").textContent=hasCpu?s.cpu+"%":"—"; $("cpuBar").style.width=(hasCpu?s.cpu:0)+"%";
+    $("ram").textContent=hasRam?s.ram+"%":"—"; $("ramBar").style.width=(hasRam?s.ram:0)+"%";
+    $("sbMem").textContent=hasRam?s.ram+"%":"—"; $("sbCpu").textContent=hasCpu?s.cpu+"%":"—";
+    $("tools").textContent=dash(s.tools); $("up").textContent=dash(s.uptime); $("sess").textContent=dash(s.session);
+    $("sbPy").textContent=dash(s.python); $("sbSess").textContent=dash(s.session);
+    const w=s.weather;
+    $("wxT").textContent=w?w.temp:"—"; $("wxL").textContent=w?w.loc:(s.online?"нет данных":"офлайн");
+    $("wxC").textContent=w?w.cond:""; $("wxG").textContent=w?w.glyph:"—";
+    $("caps").innerHTML=(s.capabilities||[]).length?s.capabilities.map(([n,st])=>`<span class="cap"><span class="s ${st}"></span>${n}</span>`).join(""):'<span style="color:var(--dim);font-family:var(--mono);font-size:12px">—</span>';
+    $("mcpList").innerHTML=(s.mcp||[]).length?s.mcp.map(m=>`<div class="mcp-srv"><span class="nm">${m.up?'🟢':'🔴'} ${m.name}</span><span style="font-family:var(--mono);color:var(--muted)">${m.tools} 🔧</span><span class="badge ${m.up?'up':'down'}">${m.up?'up':'down'}</span></div>`).join(''):'<div style="color:var(--dim);font-family:var(--mono);font-size:13px;padding:8px 0">Серверы не настроены</div>';
   }
-  let STATE=DEMO, WS=null;
-  async function loadState(){if(!CFG.api){STATE=DEMO;render(DEMO);return;}
-    try{const r=await fetch(CFG.api+"/dashboard/state",{headers:authH()});if(!r.ok)throw 0;const s=await r.json();s.online=true;STATE=s;render(s);}catch(e){STATE=DEMO;render(DEMO);}}
+  let STATE=OFFLINE, WS=null;
+  async function loadState(){if(!CFG.api){STATE=OFFLINE;render(OFFLINE);return;}
+    try{const r=await fetch(CFG.api+"/dashboard/state",{headers:authH()});if(!r.ok)throw 0;const s=await r.json();s.online=true;STATE=s;render(s);}catch(e){STATE=OFFLINE;render(OFFLINE);}}
   function connectWS(){
     if(!CFG.api||WS) return;
     const u=CFG.api.replace(/^http/,"ws")+"/dashboard/ws"+(CFG.key?("?key="+encodeURIComponent(CFG.key)):"");
@@ -420,14 +429,8 @@
   loadState(); connectWS();
 
   // ---- models catalog ----
-  const MODELS=[
-    ["A","Claude Sonnet 4","Anthropic","5.0",["pop","prem"],["reason","code","vision"]],
-    ["G","GPT-5","OpenAI","4.9",["pop"],["reason","code","vision","fast"]],
-    ["◆","Gemini 2.5 Pro","Google","4.8",["pop"],["vision","fast"]],
-    ["≋","DeepSeek R1","DeepSeek","4.7",["free"],["reason","code"]],
-    ["Q","Qwen 3","Qwen","4.6",["free"],["code","fast"]],
-    ["M","Mistral Large","Mistral","4.4",["free"],["fast","code"]],
-    ["L","Llama 4","Meta","4.5",["free"],["reason","fast"]]];
+  // The model catalogue is loaded live from the backend (/dashboard/models).
+  // No hardcoded list — offline shows an honest empty state.
   const FILTERS=[["all","Все"],["coding","Кодинг"],["reasoning","Reasoning"],["vision","Vision"],["fast","Быстрые"]];
   let mCat="all", mFilter="all", CATALOG=null;
   async function loadModels(){
@@ -441,10 +444,10 @@
     renderModels();
   }
   function renderModels(){
-    const M = CATALOG?CATALOG.models:MODELS;
+    const M = CATALOG?CATALOG.models:[];
     const count = id => id==="all"?M.length : id==="fav"?0 : M.filter(m=>m[4].includes(id)).length;
     const CATS=[["all","Все модели"],["fav","Избранные"],["pop","Популярные"],["prem","Premium"],["free","Бесплатные"]];
-    const PROVS = CATALOG?CATALOG.provs.map(p=>[p.name,p.count]):[["OpenRouter",45],["Anthropic",12],["OpenAI",15],["Google",8],["DeepSeek",6],["Qwen",7],["Mistral",5]];
+    const PROVS = CATALOG?CATALOG.provs.map(p=>[p.name,p.count]):[];
     $("mcats").innerHTML=CATS.map(([id,nm])=>`<div class="mcat ${id===mCat?'on':''}" onclick="mCat='${id}';renderModels()"><span>${id==='fav'?'★ ':''}${nm}</span><span class="n">${count(id)}</span></div>`).join("");
     $("mprovs").innerHTML=PROVS.map(([nm,n])=>`<div class="mcat"><span>${nm}</span><span class="n">${n}</span></div>`).join("");
     $("mfilters").innerHTML=FILTERS.map(([id,nm])=>`<button class="fbtn ${id===mFilter?'on':''}" onclick="mFilter='${id}';renderModels()">${nm}</button>`).join("");
@@ -456,11 +459,11 @@
       if(mFilter!=="all"&&!m[5].includes(mFilter))return false;
       if(q&&!m[1].toLowerCase().includes(q))return false; return true;});
     const tag=t=>t==="free"?'<span class="tag free">Бесплатная</span>':t==="prem"?'<span class="tag">Premium</span>':t==="pop"?'<span class="tag pop">Популярная</span>':'';
-    $("mlist").innerHTML=rows.length?rows.map(([ic,nm,pv,st,tags])=>`<div class="mrow"><div class="l"><div class="ic">${ic}</div><div><div class="nm">${nm}</div><div class="pv">${pv} ${tags.map(tag).join(" ")}</div></div></div><div class="r"><span class="mtools">⚙ 🔧 👁 ⚡</span><span class="star">★ ${st}</span></div></div>`).join(""):'<div style="color:var(--dim);padding:16px">Ничего не найдено</div>';
+    $("mlist").innerHTML=rows.length?rows.map(([ic,nm,pv,st,tags])=>`<div class="mrow"><div class="l"><div class="ic">${ic}</div><div><div class="nm">${nm}</div><div class="pv">${pv} ${tags.map(tag).join(" ")}</div></div></div><div class="r"><span class="mtools">⚙ 🔧 👁 ⚡</span><span class="star">★ ${st}</span></div></div>`).join(""):`<div style="color:var(--dim);padding:16px">${CATALOG?"Ничего не найдено":"Каталог моделей загрузится при подключении к движку"}</div>`;
   }
 
-  // ---- chat + history ----
-  const HIST_DEMO=[["Сегодня",[["Помощь с Python","12:30"],["Анализ кода","11:15"]]],["Вчера",[["Объяснение алгоритма","18:45"],["Идеи для проекта","17:20"],["Документация API","16:10"]]]];
+  // ---- chat + history ----  (loaded live; no fabricated conversations)
+  const HIST_EMPTY=[["История",[]]];
   function groupByDay(rows){
     const today=new Date().toDateString(), out={};
     rows.forEach(r=>{const d=new Date((r.last_ts||0)*1000);
@@ -469,13 +472,13 @@
     return Object.entries(out);
   }
   async function loadSessions(){
-    if(!CFG.api){renderHist(HIST_DEMO);return;}
+    if(!CFG.api){renderHist(HIST_EMPTY);return;}
     try{const r=await fetch(CFG.api+"/dashboard/sessions",{headers:authH()});const d=await r.json();
-      renderHist(d.sessions&&d.sessions.length?groupByDay(d.sessions):[["История",[]]]);}
-    catch(e){renderHist(HIST_DEMO);}
+      renderHist(d.sessions&&d.sessions.length?groupByDay(d.sessions):HIST_EMPTY);}
+    catch(e){renderHist(HIST_EMPTY);}
   }
   function renderHist(groups){$("histList").innerHTML=(groups||[]).map(([g,items])=>`<div class="hgrp">${g}</div>`+(items.length?items.map((it,i)=>`<div class="item ${g==='Сегодня'&&i===0?'on':''}"><span>${(it[0]||'').replace(/</g,'&lt;')}</span><time>${it[1]}</time></div>`).join(""):'<div class="item" style="color:var(--dim)">пусто</div>')).join("");}
-  renderHist(HIST_DEMO);
+  renderHist(HIST_EMPTY);
   function newChat(){$("stream").innerHTML='<div class="msg j"><div class="who">Jarvis</div>Новый диалог. Чем могу помочь, сэр?</div>';}
   function addMsg(t,who){const el=document.createElement("div");el.className="msg "+(who==="u"?"u":"j");el.innerHTML=`<div class="who">${who==="u"?"Вы":"Jarvis"}</div>`+t.replace(/</g,"&lt;");$("stream").appendChild(el);$("stream").scrollTop=$("stream").scrollHeight;return el;}
   async function sendMsg(){const q=$("q").value.trim();if(!q)return;$("q").value="";addMsg(q,"u");pulse();const th=addMsg("…","j");
@@ -514,7 +517,7 @@
     <div class="set-row"><div class="d">Меняется в <code>.env</code> сервера. Здесь показано реальное состояние.</div></div>
   </div></div>`;};
   P.updates=()=>`<div class="card"><header><h3>Обновления</h3></header><div class="body">
-    <div class="set-row"><div><div class="t">Текущая версия</div><div class="d">Установленная сборка</div></div><code id="updCur">1.9.2</code></div>
+    <div class="set-row"><div><div class="t">Текущая версия</div><div class="d">Установленная сборка</div></div><code id="updCur">1.9.3</code></div>
     <div class="set-row"><div><div class="t">Последняя версия</div><div class="d" id="updChan">Канал: ранний доступ</div></div><span id="updLatest" class="tag">—</span></div>
     <div class="set-row"><div><div class="t">Автообновление</div><div class="d" id="updAutoHint">Обновляться сразу, как выходит релиз</div></div>
       <button class="toggle" id="updAutoTog" aria-pressed="false" onclick="toggleAuto(this)"></button></div>
@@ -582,7 +585,7 @@
   }
   function renderUpd(){
     const u=UPD||{};const box=$("updBox");
-    $("updCur").textContent=u.current||"1.9.2";
+    $("updCur").textContent=u.current||"1.9.3";
     $("updLatest").textContent=u.latest||"—";
     $("updLatest").className="tag "+(u.available?"pop":"");
     $("updChan").textContent="Канал: "+({early:"ранний доступ",stable:"стабильные",off:"выключено"}[u.channel_mode]||u.channel_mode||"—");
@@ -614,6 +617,46 @@
     const fs=localStorage.getItem("jarvis.fs");if(fs)document.documentElement.dataset.fs=fs;
     const den=localStorage.getItem("jarvis.den");if(den)document.documentElement.dataset.density=den;
     if(localStorage.getItem("jarvis.motion")==="off")document.body.classList.add("nomotion");})();
+
+  // ---- real WebGL 3D reactor (graceful: falls back to the CSS reactor) ----
+  (function reactor3D(){
+    const cv=document.getElementById("rx"); if(!cv||!window.WebGLRenderingContext) return;
+    let gl; try{gl=cv.getContext("webgl",{alpha:true,premultipliedAlpha:false,antialias:true});}catch(e){}
+    if(!gl) return;
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    function size(){const r=cv.getBoundingClientRect();cv.width=Math.max(2,r.width*dpr|0);cv.height=Math.max(2,r.height*dpr|0);gl.viewport(0,0,cv.width,cv.height);}
+    const vs="attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
+    const fs="precision highp float;uniform vec2 R;uniform float T;uniform vec3 AC;"
+      +"mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,-s,s,c);}"
+      +"void main(){vec2 uv=(gl_FragCoord.xy*2.-R)/min(R.x,R.y);float r=length(uv);"
+      +"vec3 col=vec3(0.);col+=AC*exp(-r*3.6)*(0.55+0.45*sin(T*3.0))*1.5;"        // pulsing core
+      +"vec2 q=uv;q.y/=0.60;q*=rot(T*0.35);float rr=length(q);float ang=atan(q.y,q.x);"  // tilted 3D plane
+      +"for(int i=0;i<5;i++){float fi=float(i);float ri=0.30+fi*0.135;"
+      +"float ring=smoothstep(0.022,0.0,abs(rr-ri));"
+      +"float seg=0.45+0.55*sin(ang*6.0+T*(1.0+fi*0.3)+fi);"
+      +"col+=AC*ring*seg*0.55;}"
+      +"col+=AC*exp(-r*1.7)*0.10;"                                                 // halo
+      +"float a=clamp(max(max(col.r,col.g),col.b),0.,1.);gl_FragColor=vec4(col,a);}";
+    function sh(t,src){const o=gl.createShader(t);gl.shaderSource(o,src);gl.compileShader(o);return o;}
+    const pr=gl.createProgram();gl.attachShader(pr,sh(gl.VERTEX_SHADER,vs));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(pr);
+    if(!gl.getProgramParameter(pr,gl.LINK_STATUS))return;
+    gl.useProgram(pr);
+    const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    const loc=gl.getAttribLocation(pr,"p");gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    const uR=gl.getUniformLocation(pr,"R"),uT=gl.getUniformLocation(pr,"T"),uAC=gl.getUniformLocation(pr,"AC");
+    gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+    function accent(){const c=getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+      const m=/#([0-9a-f]{6})/i.exec(c);if(!m)return[0.91,0.70,0.25];const n=parseInt(m[1],16);
+      return[(n>>16&255)/255,(n>>8&255)/255,(n&255)/255];}
+    size();window.addEventListener("resize",size);cv.classList.add("on");
+    const t0=performance.now();
+    function frame(){const reduce=document.body.classList.contains("nomotion");
+      const t=reduce?0.6:(performance.now()-t0)/1000;
+      gl.uniform2f(uR,cv.width,cv.height);gl.uniform1f(uT,t);gl.uniform3fv(uAC,accent());
+      gl.drawArrays(gl.TRIANGLES,0,3);requestAnimationFrame(frame);}
+    requestAnimationFrame(frame);
+  })();
 </script>
 </body>
 </html>

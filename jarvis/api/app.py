@@ -208,16 +208,20 @@ def create_app(engine: JarvisEngine | None = None,
         return FileResponse(str(page))
 
     def _system_stats() -> dict:
+        import platform
+        cpu = ram = None
         try:
             import psutil
             cpu = int(psutil.cpu_percent(interval=0.0))
             ram = int(psutil.virtual_memory().percent)
-        except Exception:  # noqa: BLE001 - psutil optional
-            cpu, ram = 0, 0
+        except Exception:  # noqa: BLE001 - psutil optional; report null, not fake
+            cpu, ram = None, None
         secs = int(_time.time() - _STARTED)
         uptime = f"{secs // 3600:02d}:{secs % 3600 // 60:02d}:{secs % 60:02d}"
         return {"cpu": cpu, "ram": ram, "uptime": uptime,
-                "tools": len(engine.skills.tool_specs()), "session": 1}
+                "tools": len(engine.skills.tool_specs()),
+                "session": len(engine.sessions),
+                "python": platform.python_version()}
 
     _weather_cache: dict = {"at": 0.0, "data": None}
 
