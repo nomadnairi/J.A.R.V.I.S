@@ -43,6 +43,19 @@ kalitisiz ham ishlaydi.
 
 ---
 
+## Variantlar (Editions)
+
+KER dan qanchasini olishni tanlaysiz. Tariflar (Free / Plus / Pro) har qanday
+variant *ichida* ishlaydi — ular variantdan alohida.
+
+| Variant | Nima kiradi | Holati |
+|---|---|---|
+| 🤖 **KER Bot** | Telegram yordamchi | ✅ mavjud |
+| 💻 **KER Desktop** | Telegram-bot + desktop (`.exe`) | ✅ mavjud |
+| 🏠 **KER Home** | Telegram-bot + desktop + Raspberry Pi ovoz | 🔜 tez orada |
+
+---
+
 ## U nima qila oladi
 
 **Gaplashish va eslab qolish.** Matn yoki ovoz bilan suhbat. Uning haqiqiy
