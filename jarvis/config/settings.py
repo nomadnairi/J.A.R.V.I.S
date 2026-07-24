@@ -281,7 +281,9 @@ class Settings(BaseSettings):
 
     # --- Web / AI search (Search Manager) ---
     #: Enable the search service (the AI never hits the internet directly).
-    search_enabled: bool = False
+    #: On by default — the keyless DuckDuckGo backend works with no API key;
+    #: add a provider key for higher-quality results.
+    search_enabled: bool = True
     #: Preferred provider: "auto" picks the first available by priority.
     search_provider: str = "auto"
     #: Provider API keys (each empty = that provider is unavailable).
