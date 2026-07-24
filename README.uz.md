@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-1.9.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S/releases)
+[![Version](https://img.shields.io/badge/Version-1.9.1-orange)](https://github.com/nomadnairi/KER/releases)
 
 [English](README.md) · [Русский](README.ru.md) · **O'zbek**
 
@@ -103,8 +103,8 @@ ASSISTANT_ALIASES=Jarvis   # ixtiyoriy — ikkalasiga ham javob beradi
 **Kerak bo'ladi:** Python 3.10+ va API kalit (yoki lokal model).
 
 ```bash
-git clone https://github.com/nomadnairi/J.A.R.V.I.S.git
-cd J.A.R.V.I.S
+git clone https://github.com/nomadnairi/KER.git
+cd KER
 
 python -m venv venv
 source venv/bin/activate         # Windows: venv\Scripts\activate
@@ -154,7 +154,7 @@ parol yoki bot bergan **Telegram kirish kodi** bilan kirib, cheklangan versiyani
 oladi. Ilova yangilanishlarni o'zi tekshirib o'rnata oladi.
 
 Yuklab olishlar (Windows o'rnatuvchisi + portativ yig'ma) —
-[**Releases**](https://github.com/nomadnairi/J.A.R.V.I.S/releases) sahifasida.
+[**Releases**](https://github.com/nomadnairi/KER/releases) sahifasida.
 `.exe` / `.apk` ni yig'ish — [docs/CLIENTS.md](docs/CLIENTS.md) da.
 
 ---
@@ -210,6 +210,6 @@ iltimos, avval `make test` va `make lint` ni ishga tushiring.
 
 - Telegram: [@deathgu11](https://t.me/deathgu11)
 - Kanal: [@jar_v1_s](https://t.me/jar_v1_s)
-- Xatolar va g'oyalar: [GitHub Issues](https://github.com/nomadnairi/J.A.R.V.I.S/issues)
+- Xatolar va g'oyalar: [GitHub Issues](https://github.com/nomadnairi/KER/issues)
 
 Litsenziya — [MIT](LICENSE).

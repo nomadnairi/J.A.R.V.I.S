@@ -90,7 +90,7 @@ jobs:
 
       - name: Build
         env:
-          JARVIS_BUILD_NAME: JARVIS-${{ matrix.target }}
+          JARVIS_BUILD_NAME: KER-${{ matrix.target }}
         run: pyinstaller deploy/desktop/jarvis-desktop.spec
 
       - name: Build Windows installer
@@ -100,7 +100,7 @@ jobs:
           choco install innosetup --no-progress -y
           $exe = (Get-ChildItem dist -Filter *.exe | Select-Object -First 1).FullName
           $env:JARVIS_EXE = $exe
-          $ver = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" -replace '^v','' } else { "1.9.0" }
+          $ver = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" -replace '^v','' } else { "1.9.1" }
           $env:JARVIS_VERSION = $ver
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /Odist deploy/desktop/installer.iss
           Write-Host "Installer built:"; Get-ChildItem dist -Filter *Setup*.exe
@@ -108,7 +108,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v5
         with:
-          name: JARVIS-${{ matrix.target }}
+          name: KER-${{ matrix.target }}
           path: dist/*
           if-no-files-found: error
 
@@ -126,8 +126,8 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && matrix.target == 'windows-amd64'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.9.0
-          name: "KER v1.9.0"
-          body_path: docs/RELEASE_NOTES_v1.9.0.md
+          tag_name: v1.9.1
+          name: "KER v1.9.1"
+          body_path: docs/RELEASE_NOTES_v1.9.1.md
           prerelease: true
           files: dist/*

@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-1.9.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S/releases)
+[![Version](https://img.shields.io/badge/Version-1.9.1-orange)](https://github.com/nomadnairi/KER/releases)
 
 [English](README.md) · **Русский** · [O'zbek](README.uz.md)
 
@@ -102,8 +102,8 @@ ASSISTANT_ALIASES=Jarvis   # опционально — отзывается н�
 **Понадобится:** Python 3.10+ и API-ключ (или локальная модель).
 
 ```bash
-git clone https://github.com/nomadnairi/J.A.R.V.I.S.git
-cd J.A.R.V.I.S
+git clone https://github.com/nomadnairi/KER.git
+cd KER
 
 python -m venv venv
 source venv/bin/activate         # Windows: venv\Scripts\activate
@@ -154,7 +154,7 @@ Windows `.exe`) с живым веб-дашбордом внутри: домаш
 обновления.
 
 Загрузки (установщик для Windows + портативная сборка) — на странице
-[**Releases**](https://github.com/nomadnairi/J.A.R.V.I.S/releases). Как собирать
+[**Releases**](https://github.com/nomadnairi/KER/releases). Как собирать
 `.exe` / `.apk` — в [docs/CLIENTS.md](docs/CLIENTS.md).
 
 ---
@@ -212,6 +212,6 @@ Python 3.10+, всё асинхронно. Провайдер-независим
 
 - Telegram: [@deathgu11](https://t.me/deathgu11)
 - Канал: [@jar_v1_s](https://t.me/jar_v1_s)
-- Баги и идеи: [GitHub Issues](https://github.com/nomadnairi/J.A.R.V.I.S/issues)
+- Баги и идеи: [GitHub Issues](https://github.com/nomadnairi/KER/issues)
 
 Лицензия — [MIT](LICENSE).

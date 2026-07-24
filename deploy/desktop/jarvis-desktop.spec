@@ -1,10 +1,10 @@
-# PyInstaller spec for the J.A.R.V.I.S. desktop app (PyInstaller >= 6).
+# PyInstaller spec for the KER desktop app (PyInstaller >= 6).
 #
-# Local build (produces dist/JARVIS[.exe] for the OS/arch you run it on):
+# Local build (produces dist/KER[.exe] for the OS/arch you run it on):
 #   pip install ".[gui]" pyinstaller
 #   pyinstaller deploy/desktop/jarvis-desktop.spec
 #
-# CI builds set JARVIS_BUILD_NAME (e.g. JARVIS-windows-amd64) so artifacts
+# CI builds set JARVIS_BUILD_NAME (e.g. KER-windows-amd64) so artifacts
 # for every platform/arch can live side by side. PyInstaller cannot
 # cross-compile — each target is built on a matching runner
 # (.github/workflows/desktop-build.yml).
@@ -16,7 +16,7 @@
 import os
 from pathlib import Path
 
-name = os.environ.get("JARVIS_BUILD_NAME", "JARVIS")
+name = os.environ.get("JARVIS_BUILD_NAME", "KER")
 
 a = Analysis(
     ["../../jarvis/desktop_app/__main__.py"],
