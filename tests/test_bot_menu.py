@@ -91,7 +91,7 @@ def test_every_settings_submenu_offers_close():
 
 def test_main_menu_minimal():
     text, rows = screen_main("en")
-    assert "J.A.R.V.I.S." in text
+    assert "KER" in text
     flat = _flat(rows)
     assert "m:profile" in flat and "m:usage" in flat
     assert "m:settings" in flat and "m:memory" in flat

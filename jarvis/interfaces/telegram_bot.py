@@ -89,6 +89,7 @@ async def generate_reply(engine: JarvisEngine, user_id: int, text: str,
                         model_profile: str | None = None,
                         model_id: str | None = None,
                         byok: dict | None = None,
+                        assistant_name: str | None = None,
                         usage=None) -> str:
     """Produce the assistant's reply for a Telegram user (testable core).
 
@@ -114,6 +115,10 @@ async def generate_reply(engine: JarvisEngine, user_id: int, text: str,
         session.scratch["model_id"] = model_id
     else:
         session.scratch.pop("model_id", None)
+    if assistant_name:
+        session.scratch["assistant_name"] = assistant_name
+    else:
+        session.scratch.pop("assistant_name", None)
     if byok:
         session.scratch["byok"] = byok
     else:
@@ -314,6 +319,8 @@ async def run(settings: Settings | None = None) -> None:
             image_on=image_service is not None,
             referral_on=bool(bot_username),
             integrations_on=settings.integrations_enabled,
+            assistant_name=(prefs.get_assistant_name(user_id)
+                            or settings.assistant_name),
         )
 
     async def _is_subscribed(user_id: int) -> bool:
@@ -395,7 +402,8 @@ async def run(settings: Settings | None = None) -> None:
             engine, user_id, prompt, locale,
             model_profile=prefs.get_model(user_id),
             model_id=prefs.get_model_id(user_id),
-            byok=prefs.get_byok(user_id), usage=usage)
+            byok=prefs.get_byok(user_id),
+            assistant_name=prefs.get_assistant_name(user_id), usage=usage)
         for chunk in split_message(reply):
             await message.answer(chunk, parse_mode=None)
 
@@ -853,6 +861,12 @@ async def run(settings: Settings | None = None) -> None:
             await callback.message.answer(
                 t("proactive_on" if new_state else "proactive_off", locale))
             await _edit(callback, *_settings_prefs(locale, user.id))
+        elif action == "renamea":
+            engine.session(
+                session_id_for(user.id)).scratch["awaiting_assistant_name"] = True
+            current = prefs.get_assistant_name(user.id) or settings.assistant_name
+            await callback.message.answer(
+                t("rename_ask", locale, name=current))
         elif action == "support":
             engine.session(session_id_for(user.id)).scratch["awaiting_support"] = True
             await callback.message.answer(t("support_ask", locale))
@@ -1148,6 +1162,14 @@ async def run(settings: Settings | None = None) -> None:
         if session.scratch.pop("awaiting_support", False):
             await _send_support(message, locale)
             return
+        # A pending "rename your assistant" message sets the per-user name.
+        if session.scratch.pop("awaiting_assistant_name", False):
+            new_name = (message.text or "").strip()[:32]
+            if new_name:
+                prefs.set_assistant_name(message.from_user.id, new_name)
+                await message.answer(t("rename_done", locale, name=new_name))
+            await _open_menu(message, message.from_user.id, locale)
+            return
         # A pending marketplace search runs against the model registry.
         if session.scratch.pop("awaiting_market_search", False):
             import jarvis.interfaces.bot_menu as bm
@@ -1197,6 +1219,7 @@ async def run(settings: Settings | None = None) -> None:
             model_profile=prefs.get_model(message.from_user.id),
             model_id=prefs.get_model_id(message.from_user.id),
             byok=prefs.get_byok(message.from_user.id),
+            assistant_name=prefs.get_assistant_name(message.from_user.id),
             usage=usage,
         )
         # LLM output is plain text — disable HTML parsing to avoid entity errors.
@@ -1238,6 +1261,7 @@ async def run(settings: Settings | None = None) -> None:
             model_profile=prefs.get_model(message.from_user.id),
             model_id=prefs.get_model_id(message.from_user.id),
             byok=prefs.get_byok(message.from_user.id),
+            assistant_name=prefs.get_assistant_name(message.from_user.id),
             usage=usage,
         )
         for chunk in split_message(reply):
@@ -1385,7 +1409,8 @@ async def run(settings: Settings | None = None) -> None:
                     loc = normalize_locale(prefs.get_language(a["user_id"]))
                     try:
                         reply = await generate_reply(
-                            engine, int(a["user_id"]), a["prompt"], loc)
+                            engine, int(a["user_id"]), a["prompt"], loc,
+                            assistant_name=prefs.get_assistant_name(a["user_id"]))
                         await bot.send_message(
                             int(a["chat_id"]),
                             t("auto_fire", loc, prompt=a["prompt"][:60],

@@ -165,6 +165,7 @@ class ServiceContainer:
         return PromptBuilder(
             assistant_name=self._settings.assistant_name,
             user_name=self._settings.user_name,
+            aliases=self._settings.alias_list(),
         )
 
     @cached_property

@@ -29,3 +29,14 @@ def test_users_are_isolated():
     prefs.set_language(2, "uz")
     assert prefs.get_language(1) == "ru"
     assert prefs.get_language(2) == "uz"
+
+
+def test_assistant_name_set_and_get():
+    prefs = UserPreferences(":memory:")
+    assert prefs.get_assistant_name(7) is None
+    prefs.set_assistant_name(7, "Vesper")
+    assert prefs.get_assistant_name(7) == "Vesper"
+    # Overwrites, and stays isolated per user.
+    prefs.set_assistant_name(7, "Onyx")
+    assert prefs.get_assistant_name(7) == "Onyx"
+    assert prefs.get_assistant_name(8) is None

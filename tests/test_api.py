@@ -29,7 +29,7 @@ def _app(api_key: str = ""):
 
 def test_root_and_health():
     with TestClient(_app()) as client:
-        assert client.get("/").json()["name"] == "J.A.R.V.I.S."
+        assert client.get("/").json()["name"] == "KER"
         health = client.get("/health").json()
         assert "ok" in health and isinstance(health["checks"], list)
 
@@ -38,7 +38,7 @@ def test_dashboard_page_served():
     with TestClient(_app()) as client:
         r = client.get("/app")
         assert r.status_code == 200
-        assert "J.A.R.V.I.S." in r.text and "reactor" in r.text
+        assert "KER" in r.text and "reactor" in r.text
 
 
 def test_dashboard_state_shape():

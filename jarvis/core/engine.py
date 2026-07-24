@@ -211,6 +211,7 @@ class JarvisEngine:
         system = self.prompts.system_prompt(
             extra_context=await self._context(request.text, session.session_id),
             language=self._language(session),
+            assistant_name=self._assistant_name(session),
         )
         await self.state.transition(AssistantState.THINKING)
         await self.bus.emit(EventType.LLM_REQUEST, source=self.settings.llm_provider)
@@ -318,6 +319,7 @@ class JarvisEngine:
         system = self.prompts.system_prompt(
             extra_context=await self._context(request.text, session.session_id),
             language=self._language(session),
+            assistant_name=self._assistant_name(session),
         )
         tools = self.skills.tool_specs()
         model_id, profile = self._model_selection(session)
@@ -402,6 +404,11 @@ class JarvisEngine:
         """Human-readable language the assistant should reply in, if set."""
         code = session.scratch.get("language")
         return language_name(code) if code else None
+
+    @staticmethod
+    def _assistant_name(session: SessionContext) -> str | None:
+        """A per-user assistant name (white-label override), if set."""
+        return session.scratch.get("assistant_name") or None
 
     async def _persist_turn(self, session_id: str, user: str, assistant: str, *,
                             semantic: bool) -> None:

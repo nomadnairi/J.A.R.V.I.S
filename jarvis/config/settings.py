@@ -89,8 +89,24 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: float = Field(default=60.0, gt=0)
 
     # --- Assistant persona ---
-    assistant_name: str = "J.A.R.V.I.S."
+    #: The assistant's name. Ships as "KER" but is white-label: each user can
+    #: rename their assistant, and operators can override the default here.
+    assistant_name: str = "KER"
+    #: Extra names the assistant also answers to (comma-separated), e.g. a
+    #: personal wake-word alias. Left blank in the shipping default so resold
+    #: copies carry no third-party name; set e.g. "Jarvis" for a personal build.
+    assistant_aliases: str = ""
     user_name: str = "Sir"
+
+    def alias_list(self) -> list[str]:
+        """The assistant's extra address names, parsed and de-duplicated."""
+        seen: list[str] = []
+        for raw in self.assistant_aliases.split(","):
+            name = raw.strip()
+            if name and name.lower() != self.assistant_name.lower() \
+                    and name not in seen:
+                seen.append(name)
+        return seen
 
     # --- Logging ---
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"

@@ -138,7 +138,7 @@ def test_api_client_against_real_api():
         svc.issue_license(acc.id)
 
         client = JarvisApiClient("http://127.0.0.1:8765")
-        assert client.info()["name"] == "J.A.R.V.I.S."
+        assert client.info()["name"] == "KER"
 
         with pytest.raises(ApiError) as excinfo:
             client.login("tony", "wrong")

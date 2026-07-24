@@ -40,8 +40,9 @@ class UserPreferences:
         if "model_id" not in columns:
             self._conn.execute(
                 "ALTER TABLE user_prefs ADD COLUMN model_id TEXT")
-        # Bring-your-own-key: the user's own provider credentials.
-        for col in ("byok_provider", "byok_key", "byok_model", "chat_id"):
+        # Bring-your-own-key + a per-user assistant name (white-label).
+        for col in ("byok_provider", "byok_key", "byok_model", "chat_id",
+                    "assistant_name"):
             if col not in columns:
                 self._conn.execute(
                     f"ALTER TABLE user_prefs ADD COLUMN {col} TEXT")
@@ -69,6 +70,22 @@ class UserPreferences:
                 "ON CONFLICT(user_id) DO UPDATE SET language = excluded.language",
                 (str(user_id), language),
             )
+            self._conn.commit()
+
+    def get_assistant_name(self, user_id: int | str) -> str | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT assistant_name FROM user_prefs WHERE user_id = ?",
+                (str(user_id),)).fetchone()
+        return row["assistant_name"] if row and row["assistant_name"] else None
+
+    def set_assistant_name(self, user_id: int | str, name: str) -> None:
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO user_prefs (user_id, assistant_name) VALUES (?, ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET "
+                "assistant_name = excluded.assistant_name",
+                (str(user_id), name))
             self._conn.commit()
 
     def get_model(self, user_id: int | str) -> str | None:

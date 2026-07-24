@@ -92,10 +92,10 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
                 voice_on: bool = False, channel: str = "", name: str = "Sir",
                 plan=None, used_today: int = 0,
                 image_on: bool = False, referral_on: bool = False,
-                integrations_on: bool = False,
+                integrations_on: bool = False, assistant_name: str = "KER",
                 ) -> tuple[str, Rows]:
     header = (
-        f"🤖 <b>J.A.R.V.I.S.</b>\n"
+        f"🤖 <b>{assistant_name}</b>\n"
         f"<i>{t('menu_greeting', locale, name=name)}</i>"
     )
     if plan is not None:
@@ -472,6 +472,7 @@ def screen_settings_prefs(locale: str, *, proactive: bool) -> tuple[str, Rows]:
     text = f"🎨 <b>{t('set_cat_prefs', locale)}</b>"
     rows: Rows = [
         [_b(t("menu_language", locale), "language")],
+        [_b(t("menu_rename", locale), "renamea")],
         [_b(f"{t('menu_proactive', locale)}: {_yn(proactive)}", "proactive")],
         _nav(locale, "settings"),
     ]

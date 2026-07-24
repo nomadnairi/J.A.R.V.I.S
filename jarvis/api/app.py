@@ -85,7 +85,8 @@ def create_app(engine: JarvisEngine | None = None,
             if service is not None:
                 service.close()
 
-    app = FastAPI(title="J.A.R.V.I.S. API", version=__version__, lifespan=lifespan)
+    app = FastAPI(title=f"{settings.assistant_name} API", version=__version__,
+                  lifespan=lifespan)
 
     def _principal(provided: str | None) -> str | None:
         return resolve_principal(provided, settings, service)
@@ -122,7 +123,7 @@ def create_app(engine: JarvisEngine | None = None,
     @app.get("/")
     async def root() -> dict:
         return {
-            "name": "J.A.R.V.I.S.",
+            "name": settings.assistant_name,
             "version": __version__,
             "status": "online",
             "auth": "accounts" if service is not None else "shared-key",
@@ -263,6 +264,7 @@ def create_app(engine: JarvisEngine | None = None,
         }.get(settings.llm_provider, settings.llm_model)
         return {
             **_system_stats(),
+            "name": settings.assistant_name,
             "capabilities": caps,
             "mcp": mcp,
             "ai": {"provider": settings.llm_provider, "model": active_model,
