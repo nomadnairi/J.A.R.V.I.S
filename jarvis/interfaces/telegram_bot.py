@@ -794,7 +794,8 @@ async def run(settings: Settings | None = None) -> None:
             else:
                 from jarvis.interfaces.admin_panel import (
                     panel_text, sales_report_text)
-                body = (panel_text(license_service, billing)
+                body = (panel_text(license_service, billing,
+                                   settings.assistant_name)
                         if action == "adminpanel"
                         else sales_report_text(license_service, billing))
                 await _edit(callback, body, back)
@@ -1043,7 +1044,7 @@ async def run(settings: Settings | None = None) -> None:
         if tier in plans and tier != "free":
             price = plans[tier].price_stars
             payload = f"jarvis-plan:{tier}"
-            title = f"J.A.R.V.I.S. {t(f'plan_{tier}', locale)}"
+            title = f"{settings.assistant_name} {t(f'plan_{tier}', locale)}"
         else:
             price = settings.billing_price_stars
             payload = "jarvis-license"
@@ -1322,7 +1323,8 @@ async def run(settings: Settings | None = None) -> None:
             who = f"@{me.username}"
         except Exception as exc:  # noqa: BLE001
             who = f"<unknown: {exc}>"
-        logger.info("J.A.R.V.I.S. bot %s starting as %s", __version__, who)
+        logger.info("%s bot %s starting as %s",
+                    settings.assistant_name, __version__, who)
         # Active LLM configuration at a glance (which model actually runs).
         active_model = {
             "openrouter": settings.openrouter_model,

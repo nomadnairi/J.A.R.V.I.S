@@ -53,11 +53,11 @@ def _fmt_money(revenue: dict[str, int]) -> str:
 
 
 def panel_text(licenses: LicenseService,
-            billing: BillingService | None) -> str:
+            billing: BillingService | None, name: str = "KER") -> str:
     """The /admin overview: stats, recent users, recent payments, commands."""
     stats = licenses.stats()
     lines = [
-        "🛠 <b>J.A.R.V.I.S. — admin</b>",
+        f"🛠 <b>{name} — admin</b>",
         "",
         "📊 <b>Stats</b>",
         f"• Users: {stats['accounts']} (active: {stats['active_accounts']})",
@@ -231,7 +231,7 @@ def revoke_license_text(licenses: LicenseService, key: str) -> str:
 
 def handle_admin_command(licenses: LicenseService,
                         billing: BillingService | None,
-                        text: str) -> str | None:
+                        text: str, name: str = "KER") -> str | None:
     """Route an /admin* message to its handler; ``None`` = not an admin command.
 
     ``/admin_post`` is intentionally NOT handled here — it needs the bot to
@@ -244,7 +244,7 @@ def handle_admin_command(licenses: LicenseService,
     args = parts[1:]
 
     if command == "/admin":
-        return panel_text(licenses, billing)
+        return panel_text(licenses, billing, name)
     if command == "/admin_sales":
         return sales_report_text(licenses, billing)
     if command == "/admin_add":
