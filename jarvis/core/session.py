@@ -53,10 +53,6 @@ class SessionManager:
         logger.debug("Created session %r (total=%d)", session_id, len(self._sessions))
         return ctx
 
-    def __len__(self) -> int:
-        """Number of live sessions currently held in memory."""
-        return len(self._sessions)
-
     def get(self, session_id: str) -> SessionContext | None:
         return self._sessions.get(session_id)
 
