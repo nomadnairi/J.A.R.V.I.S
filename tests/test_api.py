@@ -65,6 +65,12 @@ def test_dashboard_state_has_ai_and_security():
         assert s["security"]["shell"] is False
 
 
+def test_dashboard_sessions_shape():
+    with TestClient(_app()) as client:
+        s = client.get("/dashboard/sessions").json()
+        assert "sessions" in s and isinstance(s["sessions"], list)
+
+
 def test_dashboard_update_check():
     # update_channel defaults to "early"; check should return a shape even
     # though the network call is stubbed to fail offline (soft -> not available).

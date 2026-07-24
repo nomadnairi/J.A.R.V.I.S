@@ -183,6 +183,8 @@ class Settings(BaseSettings):
     integrations_enabled: bool = True
     #: Weather integration (Open-Meteo, free, no key).
     weather_enabled: bool = True
+    #: City shown on the dashboard's weather panel (empty = no live weather).
+    weather_city: str = ""
     #: Home Assistant (smart home) — both are required to enable it.
     homeassistant_url: str = ""
     homeassistant_token: str = ""

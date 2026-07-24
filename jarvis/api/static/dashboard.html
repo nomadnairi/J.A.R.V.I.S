@@ -370,7 +370,7 @@
   function go(v){document.querySelectorAll(".view").forEach(x=>x.hidden=x.id!=="view-"+v);
     document.querySelectorAll(".nav").forEach(n=>n.classList.toggle("active",n.dataset.view===v));
     $("vTitle").textContent=TITLE[v]; $("vSub").textContent=SUB[v];
-    if(v==="models") loadModels(); if(v==="settings") renderSettings();}
+    if(v==="models") loadModels(); if(v==="settings") renderSettings(); if(v==="chat") loadSessions();}
 
   function authH(){return CFG.key?{"X-API-Key":CFG.key,"Authorization":"Bearer "+CFG.key}:{};}
   function tick(){const t=new Date().toLocaleTimeString([],{hour12:false});$("clock").textContent=t;$("sbClock").textContent=t;}
@@ -442,9 +442,22 @@
   }
 
   // ---- chat + history ----
-  const HIST=[["Сегодня",[["Помощь с Python","12:30"],["Анализ кода","11:15"]]],["Вчера",[["Объяснение алгоритма","18:45"],["Идеи для проекта","17:20"],["Документация API","16:10"]]]];
-  function renderHist(){$("histList").innerHTML=HIST.map(([g,items])=>`<div class="hgrp">${g}</div>`+items.map((it,i)=>`<div class="item ${g==='Сегодня'&&i===0?'on':''}"><span>${it[0]}</span><time>${it[1]}</time></div>`).join("")).join("");}
-  renderHist();
+  const HIST_DEMO=[["Сегодня",[["Помощь с Python","12:30"],["Анализ кода","11:15"]]],["Вчера",[["Объяснение алгоритма","18:45"],["Идеи для проекта","17:20"],["Документация API","16:10"]]]];
+  function groupByDay(rows){
+    const today=new Date().toDateString(), out={};
+    rows.forEach(r=>{const d=new Date((r.last_ts||0)*1000);
+      const key=d.toDateString()===today?"Сегодня":d.toLocaleDateString([],{day:"numeric",month:"short"});
+      (out[key]=out[key]||[]).push([r.title, d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})]);});
+    return Object.entries(out);
+  }
+  async function loadSessions(){
+    if(!CFG.api){renderHist(HIST_DEMO);return;}
+    try{const r=await fetch(CFG.api+"/dashboard/sessions",{headers:authH()});const d=await r.json();
+      renderHist(d.sessions&&d.sessions.length?groupByDay(d.sessions):[["История",[]]]);}
+    catch(e){renderHist(HIST_DEMO);}
+  }
+  function renderHist(groups){$("histList").innerHTML=(groups||[]).map(([g,items])=>`<div class="hgrp">${g}</div>`+(items.length?items.map((it,i)=>`<div class="item ${g==='Сегодня'&&i===0?'on':''}"><span>${(it[0]||'').replace(/</g,'&lt;')}</span><time>${it[1]}</time></div>`).join(""):'<div class="item" style="color:var(--dim)">пусто</div>')).join("");}
+  renderHist(HIST_DEMO);
   function newChat(){$("stream").innerHTML='<div class="msg j"><div class="who">Jarvis</div>Новый диалог. Чем могу помочь, сэр?</div>';}
   function addMsg(t,who){const el=document.createElement("div");el.className="msg "+(who==="u"?"u":"j");el.innerHTML=`<div class="who">${who==="u"?"Вы":"Jarvis"}</div>`+t.replace(/</g,"&lt;");$("stream").appendChild(el);$("stream").scrollTop=$("stream").scrollHeight;return el;}
   async function sendMsg(){const q=$("q").value.trim();if(!q)return;$("q").value="";addMsg(q,"u");pulse();const th=addMsg("…","j");

@@ -218,6 +218,36 @@ def create_app(engine: JarvisEngine | None = None,
         return {"cpu": cpu, "ram": ram, "uptime": uptime,
                 "tools": len(engine.skills.tool_specs()), "session": 1}
 
+    _weather_cache: dict = {"at": 0.0, "data": None}
+
+    async def _weather() -> dict:
+        """Live weather for settings.weather_city, cached for 10 minutes."""
+        city = settings.weather_city.strip()
+        if not city or engine.integrations is None:
+            return {"temp": "—", "loc": settings.user_name or "Local",
+                    "cond": "telemetry", "glyph": "🛰"}
+        if _time.time() - _weather_cache["at"] < 600 and _weather_cache["data"]:
+            return _weather_cache["data"]
+        try:
+            wx = engine.integrations.get("weather")
+            data = await wx.current(city) if wx is not None else None
+        except Exception:  # noqa: BLE001 - weather must never break the dashboard
+            data = None
+        if not data:
+            data = {"temp": "—", "loc": city, "cond": "—", "glyph": "🛰"}
+        _weather_cache.update(at=_time.time(), data=data)
+        return data
+
+    @app.get("/dashboard/sessions")
+    async def dashboard_sessions(_: str = Depends(require_principal)) -> dict:
+        """Recent conversations (real history) for the chat sidebar."""
+        import asyncio as _a
+        mem = getattr(engine, "memory", None)
+        if mem is None or getattr(mem, "conversations", None) is None:
+            return {"sessions": []}
+        rows = await _a.to_thread(mem.conversations.recent, 20)
+        return {"sessions": rows}
+
     @app.get("/dashboard/state")
     async def dashboard_state(_: str = Depends(require_principal)) -> dict:
         from jarvis.core.capabilities import CapabilityManager
@@ -244,8 +274,7 @@ def create_app(engine: JarvisEngine | None = None,
                         "shell": settings.allow_shell,
                         "desktop": settings.allow_desktop_control,
                         "redact": settings.memory_redact_secrets},
-            "weather": {"temp": "—", "loc": settings.user_name or "Local",
-                        "cond": "telemetry", "glyph": "🛰"},
+            "weather": await _weather(),
         }
 
     @app.get("/dashboard/models")

@@ -89,6 +89,29 @@ class SQLiteConversationStore:
             ).fetchall()
         return [row["session_id"] for row in rows]
 
+    def recent(self, limit: int = 20) -> list[dict]:
+        """Recent sessions, newest first: id, title, message count, last time.
+
+        ``title`` is the first user message (a natural conversation title).
+        """
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT session_id, MAX(timestamp) AS last_ts, COUNT(*) AS n, "
+                "(SELECT content FROM messages m2 WHERE m2.session_id = m.session_id "
+                " AND m2.role = 'user' ORDER BY m2.id ASC LIMIT 1) AS title "
+                "FROM messages m GROUP BY session_id "
+                "ORDER BY last_ts DESC LIMIT ?",
+                (max(1, limit),),
+            ).fetchall()
+        out: list[dict] = []
+        for r in rows:
+            title = (r["title"] or "").strip() or "Диалог"
+            out.append({"session_id": r["session_id"],
+                        "title": title[:60],
+                        "count": int(r["n"]),
+                        "last_ts": r["last_ts"]})
+        return out
+
     def count(self, session_id: str | None = None) -> int:
         with self._lock:
             if session_id is None:
