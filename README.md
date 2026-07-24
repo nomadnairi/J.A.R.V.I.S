@@ -42,6 +42,19 @@ without an API key.
 
 ---
 
+## Editions
+
+Pick how much of KER you want. Subscription tiers (Free / Plus / Pro) apply
+*inside* any edition — they're separate from the edition you choose.
+
+| Edition | What's included | Status |
+|---|---|---|
+| 🤖 **KER Bot** | The Telegram assistant | ✅ available |
+| 💻 **KER Desktop** | Telegram bot + desktop app (`.exe`) | ✅ available |
+| 🏠 **KER Home** | Telegram bot + desktop + Raspberry Pi voice | 🔜 coming soon |
+
+---
+
 ## What it can do
 
 **Talk & remember.** Chat by text or voice. It keeps a real memory — it
