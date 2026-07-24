@@ -396,10 +396,20 @@
     $("caps").innerHTML=s.capabilities.map(([n,st])=>`<span class="cap"><span class="s ${st}"></span>${n}</span>`).join("");
     $("mcpList").innerHTML=s.mcp.length?s.mcp.map(m=>`<div class="mcp-srv"><span class="nm">${m.up?'🟢':'🔴'} ${m.name}</span><span style="font-family:var(--mono);color:var(--muted)">${m.tools} 🔧</span><span class="badge ${m.up?'up':'down'}">${m.up?'up':'down'}</span></div>`).join(''):'<div style="color:var(--dim);font-family:var(--mono);font-size:13px;padding:8px 0">Серверы не настроены</div>';
   }
-  let STATE=DEMO;
+  let STATE=DEMO, WS=null;
   async function loadState(){if(!CFG.api){STATE=DEMO;render(DEMO);return;}
     try{const r=await fetch(CFG.api+"/dashboard/state",{headers:authH()});if(!r.ok)throw 0;const s=await r.json();s.online=true;STATE=s;render(s);}catch(e){STATE=DEMO;render(DEMO);}}
-  loadState();
+  function connectWS(){
+    if(!CFG.api||WS) return;
+    const u=CFG.api.replace(/^http/,"ws")+"/dashboard/ws"+(CFG.key?("?key="+encodeURIComponent(CFG.key)):"");
+    try{
+      WS=new WebSocket(u);
+      WS.onmessage=e=>{try{const s=JSON.parse(e.data);s.online=true;STATE=s;render(s);}catch(_){}};
+      WS.onclose=()=>{WS=null;setTimeout(connectWS,8000);};   // live updates, auto-reconnect
+      WS.onerror=()=>{try{WS.close();}catch(_){}};
+    }catch(e){WS=null;}
+  }
+  loadState(); connectWS();
 
   // ---- models catalog ----
   const MODELS=[
@@ -588,7 +598,8 @@
   function applyAccent(h){document.documentElement.style.setProperty("--accent",h);localStorage.setItem("jarvis.accent",h);syncAccent();}
   function syncAccent(){const cur=(localStorage.getItem("jarvis.accent")||"#E8B341").toLowerCase();document.querySelectorAll("#swatches .sw").forEach(s=>s.setAttribute("aria-pressed",String(s.dataset.a.toLowerCase()===cur)));}
   document.addEventListener("click",e=>{const b=e.target.closest("#swatches .sw");if(b)applyAccent(b.dataset.a);});
-  function saveConn(){CFG.api=$("api").value.trim();CFG.key=$("key").value.trim();localStorage.setItem("jarvis.api",CFG.api);localStorage.setItem("jarvis.key",CFG.key);loadState();}
+  function saveConn(){CFG.api=$("api").value.trim();CFG.key=$("key").value.trim();localStorage.setItem("jarvis.api",CFG.api);localStorage.setItem("jarvis.key",CFG.key);
+    if(WS){try{WS.close();}catch(_){}WS=null;}loadState();connectWS();}
 
   // restore persisted prefs
   (function restore(){const a=localStorage.getItem("jarvis.accent");if(a)document.documentElement.style.setProperty("--accent",a);

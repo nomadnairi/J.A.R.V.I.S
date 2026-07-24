@@ -33,8 +33,9 @@ a = Analysis(
         # The bundled local API (Command Deck) — uvicorn's dynamic imports.
         "uvicorn.loops.auto", "uvicorn.loops.asyncio",
         "uvicorn.protocols.http.auto", "uvicorn.protocols.http.h11_impl",
-        "uvicorn.protocols.websockets.auto", "uvicorn.lifespan.off",
-        "uvicorn.logging",
+        "uvicorn.protocols.websockets.auto",
+        "uvicorn.protocols.websockets.websockets_impl",
+        "uvicorn.lifespan.off", "uvicorn.logging", "websockets",
     ],
     hookspath=[],
     runtime_hooks=[],

@@ -248,8 +248,7 @@ def create_app(engine: JarvisEngine | None = None,
         rows = await _a.to_thread(mem.conversations.recent, 20)
         return {"sessions": rows}
 
-    @app.get("/dashboard/state")
-    async def dashboard_state(_: str = Depends(require_principal)) -> dict:
+    async def _state_payload() -> dict:
         from jarvis.core.capabilities import CapabilityManager
         cap_state = {"enabled": "on", "restricted": "res", "disabled": "off"}
         caps = [[c.label, cap_state.get(c.state.value, "off")]
@@ -276,6 +275,58 @@ def create_app(engine: JarvisEngine | None = None,
                         "redact": settings.memory_redact_secrets},
             "weather": await _weather(),
         }
+
+    @app.get("/dashboard/state")
+    async def dashboard_state(_: str = Depends(require_principal)) -> dict:
+        return await _state_payload()
+
+    @app.websocket("/dashboard/ws")
+    async def dashboard_ws(websocket: WebSocket) -> None:
+        """Push live dashboard state to the client every few seconds."""
+        import asyncio as _a
+        principal = _principal(websocket.query_params.get("key"))
+        if principal is None:
+            await websocket.close(code=1008)
+            return
+        await websocket.accept()
+        try:
+            while True:
+                await websocket.send_json(await _state_payload())
+                await _a.sleep(5)
+        except WebSocketDisconnect:
+            return
+        except Exception:  # noqa: BLE001 - client gone / send failed
+            return
+
+    @app.get("/dashboard/tasks")
+    async def dashboard_tasks(_: str = Depends(require_principal)) -> dict:
+        """Scheduled automations + reminders (read from the shared store)."""
+        import asyncio as _a
+
+        from jarvis.interfaces.automations import AutomationStore
+        from jarvis.interfaces.reminders import ReminderStore
+
+        def _read() -> dict:
+            autos, rems = [], []
+            a_store = AutomationStore(settings.memory_db_path)
+            r_store = ReminderStore(settings.memory_db_path)
+            try:
+                rows = a_store._conn.execute(  # noqa: SLF001 - read-only view
+                    "SELECT id, prompt, kind, next_ts FROM automations "
+                    "WHERE enabled = 1 ORDER BY next_ts LIMIT 50").fetchall()
+                autos = [{"id": r["id"], "prompt": r["prompt"], "kind": r["kind"],
+                        "next_ts": r["next_ts"]} for r in rows]
+                rrows = r_store._conn.execute(  # noqa: SLF001
+                    "SELECT id, text, due_ts FROM reminders WHERE fired = 0 "
+                    "ORDER BY due_ts LIMIT 50").fetchall()
+                rems = [{"id": r["id"], "text": r["text"], "due_ts": r["due_ts"]}
+                        for r in rrows]
+            finally:
+                a_store.close()
+                r_store.close()
+            return {"automations": autos, "reminders": rems}
+
+        return await _a.to_thread(_read)
 
     @app.get("/dashboard/models")
     async def dashboard_models(_: str = Depends(require_principal)) -> dict:

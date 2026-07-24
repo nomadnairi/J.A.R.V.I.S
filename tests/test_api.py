@@ -71,6 +71,28 @@ def test_dashboard_sessions_shape():
         assert "sessions" in s and isinstance(s["sessions"], list)
 
 
+def test_dashboard_tasks_shape():
+    with TestClient(_app()) as client:
+        t = client.get("/dashboard/tasks").json()
+        assert "automations" in t and "reminders" in t
+        assert isinstance(t["automations"], list)
+
+
+def test_dashboard_ws_pushes_state():
+    with TestClient(_app()) as client:
+        with client.websocket_connect("/dashboard/ws") as ws:
+            state = ws.receive_json()
+            assert "capabilities" in state and "cpu" in state
+
+
+def test_dashboard_ws_requires_key_when_set():
+    from starlette.websockets import WebSocketDisconnect as _WSD
+    with TestClient(_app(api_key="secret")) as client:
+        with pytest.raises(_WSD):
+            with client.websocket_connect("/dashboard/ws") as ws:
+                ws.receive_json()
+
+
 def test_dashboard_update_check():
     # update_channel defaults to "early"; check should return a shape even
     # though the network call is stubbed to fail offline (soft -> not available).
