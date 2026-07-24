@@ -1,6 +1,6 @@
 # KER v1.9.1
 
-A branding-cleanup release: the app now lives at **github.com/nomadnairi/KER**
+A branding-cleanup release: the app now lives at **github.com/nomadnairi/K.E.R**
 and the downloads are named after the brand.
 
 ## ✨ What's new
@@ -8,7 +8,7 @@ and the downloads are named after the brand.
 - **KER-named binaries.** The Windows installer is now **`KER-Setup.exe`** and
   the portable build is **`KER-windows-amd64.exe`** (installs as `KER.exe`,
   under a `KER` program folder). No more leftover third-party filenames.
-- **Repository renamed** to `nomadnairi/KER`; all links, the clone URL and the
+- **Repository renamed** to `nomadnairi/K.E.R`; all links, the clone URL and the
   built-in updater now point at the new home. (GitHub redirects the old
   address, so existing clones keep working.)
 - Everything from **v1.9.0** — the KER rebrand and full white-label naming

@@ -207,7 +207,7 @@ class Settings(BaseSettings):
 
     # --- Updates ---
     #: Repository that releases are published to (owner/name).
-    update_repo: str = "nomadnairi/KER"
+    update_repo: str = "nomadnairi/K.E.R"
     #: Which release channel to track: "early" includes pre-releases (grey
     #: access), "stable" only full releases, "off" disables update checks.
     update_channel: Literal["early", "stable", "off"] = "early"

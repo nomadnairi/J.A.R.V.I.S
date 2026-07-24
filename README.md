@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-1.9.1-orange)](https://github.com/nomadnairi/KER/releases)
+[![Version](https://img.shields.io/badge/Version-1.9.1-orange)](https://github.com/nomadnairi/K.E.R/releases)
 
 **English** · [Русский](README.ru.md) · [O'zbek](README.uz.md)
 
@@ -99,8 +99,8 @@ ASSISTANT_ALIASES=Jarvis   # optional — answers to both
 **You'll need:** Python 3.10+ and an API key (or a local model).
 
 ```bash
-git clone https://github.com/nomadnairi/KER.git
-cd KER
+git clone https://github.com/nomadnairi/K.E.R.git
+cd K.E.R
 
 python -m venv venv
 source venv/bin/activate         # Windows: venv\Scripts\activate
@@ -149,7 +149,7 @@ in with a username/password or a **Telegram login code** the bot hands them, and
 get a limited version. It can check for and install updates on its own.
 
 Downloads (Windows installer + portable build) are on the
-[**Releases**](https://github.com/nomadnairi/KER/releases) page. Build
+[**Releases**](https://github.com/nomadnairi/K.E.R/releases) page. Build
 details for the `.exe` / `.apk` are in [docs/CLIENTS.md](docs/CLIENTS.md).
 
 ---
@@ -221,6 +221,6 @@ Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md), and please run
 
 - Telegram: [@deathgu11](https://t.me/deathgu11)
 - Channel: [@jar_v1_s](https://t.me/jar_v1_s)
-- Bugs & ideas: [GitHub Issues](https://github.com/nomadnairi/KER/issues)
+- Bugs & ideas: [GitHub Issues](https://github.com/nomadnairi/K.E.R/issues)
 
 Licensed under the [MIT License](LICENSE).
