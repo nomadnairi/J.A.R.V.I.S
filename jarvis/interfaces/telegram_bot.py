@@ -242,6 +242,8 @@ async def run(settings: Settings | None = None) -> None:
     model_index = ModelIndex(settings.openrouter_base_url)
     from jarvis.interfaces.reminders import ReminderStore
     reminder_store = ReminderStore(settings.memory_db_path)
+    from jarvis.interfaces.automations import AutomationStore
+    automation_store = AutomationStore(settings.memory_db_path)
     from jarvis.interfaces.model_registry import FavoritesStore
     favorites = FavoritesStore(settings.memory_db_path)
     #: Filled in at startup once we know the bot's @username (for invite links).
@@ -407,6 +409,28 @@ async def run(settings: Settings | None = None) -> None:
                         body or t("reminders_title", locale), due.timestamp())
         when = due.strftime("%d.%m %H:%M")
         await message.answer(t("reminder_set", locale, when=when), parse_mode=None)
+
+    async def _handle_automation(message: "Message", locale: str) -> None:
+        """Parse and store a recurring 'каждый …' task."""
+        from datetime import datetime
+
+        from jarvis.interfaces.automations import next_run, parse_automation
+        spec = parse_automation(message.text, datetime.now())
+        if spec is None or not spec.prompt:
+            await message.answer(t("auto_bad", locale), parse_mode=None)
+            return
+        when = next_run(spec, datetime.now())
+        automation_store.add(message.from_user.id, message.chat.id, spec, when)
+        nxt = datetime.fromtimestamp(when).strftime("%d.%m %H:%M")
+        await message.answer(t("auto_set", locale, when=nxt), parse_mode=None)
+
+    def _automation_items(user_id: int) -> list:
+        from datetime import datetime
+        items = []
+        for a in automation_store.list_active(user_id):
+            nxt = datetime.fromtimestamp(a["next_ts"]).strftime("%d.%m %H:%M")
+            items.append((a["id"], f"{a['prompt'][:34]} · ⏭ {nxt}"))
+        return items
 
     async def _send_support(message: "Message", locale: str) -> None:
         """Forward a user's support message to the bot owner(s)."""
@@ -738,6 +762,13 @@ async def run(settings: Settings | None = None) -> None:
             reminder_store.cancel(int(parts[2]), user.id)
             await _edit(callback, *bm.screen_reminders(
                 locale, _reminder_items(user.id)))
+        elif action == "automations":
+            await _edit(callback, *bm.screen_automations(
+                locale, _automation_items(user.id)))
+        elif action == "autocancel":
+            automation_store.cancel(int(parts[2]), user.id)
+            await _edit(callback, *bm.screen_automations(
+                locale, _automation_items(user.id)))
         elif action == "proactive":
             new_state = not prefs.get_proactive(user.id)
             prefs.set_proactive(user.id, new_state)
@@ -1042,6 +1073,11 @@ async def run(settings: Settings | None = None) -> None:
                 prefs.get_model_id(message.from_user.id) or "", favs)
             await message.answer(text, reply_markup=_markup(rows))
             return
+        # "каждый день/каждые N часов …" → a recurring automation.
+        from jarvis.interfaces.automations import is_automation
+        if is_automation(message.text):
+            await _handle_automation(message, locale)
+            return
         # "напомни …" / "remind me …" → schedule a reminder.
         from jarvis.interfaces.reminders import is_reminder
         if is_reminder(message.text):
@@ -1249,6 +1285,24 @@ async def run(settings: Settings | None = None) -> None:
                     except Exception as exc:  # noqa: BLE001
                         logger.debug("Reminder send failed: %s", exc)
                     reminder_store.mark_fired(r["id"])
+                # 1b) Run due automations: execute the task and deliver the
+                #     result, then reschedule the next occurrence.
+                from datetime import datetime as _dt
+
+                from jarvis.interfaces.automations import next_run
+                for a in automation_store.due(now):
+                    loc = normalize_locale(prefs.get_language(a["user_id"]))
+                    try:
+                        reply = await generate_reply(
+                            engine, int(a["user_id"]), a["prompt"], loc)
+                        await bot.send_message(
+                            int(a["chat_id"]),
+                            t("auto_fire", loc, prompt=a["prompt"][:60],
+                            result=reply))
+                    except Exception as exc:  # noqa: BLE001 - keep worker alive
+                        logger.debug("Automation run failed: %s", exc)
+                    spec = automation_store.spec_of(a)
+                    automation_store.reschedule(a["id"], next_run(spec, _dt.now()))
                 # 2) Morning check-in + idle nudge for opted-in users.
                 hour = datetime.now().hour
                 today = datetime.now().strftime("%Y-%m-%d")
@@ -1316,6 +1370,7 @@ async def run(settings: Settings | None = None) -> None:
         usage.close()
         referrals.close()
         reminder_store.close()
+        automation_store.close()
         favorites.close()
         await bot.session.close()
 

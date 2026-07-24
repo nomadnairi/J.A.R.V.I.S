@@ -107,7 +107,8 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
         _b(t("menu_memory", locale), "memory")],
         [_b(t("menu_ideas", locale), "ideas"),
         _b(t("menu_newchat", locale), "newchat")],
-        [_b(t("menu_reminders", locale), "reminders")],
+        [_b(t("menu_reminders", locale), "reminders"),
+        _b(t("menu_automations", locale), "automations")],
     ]
     third = [_b(t("menu_language", locale), "language")]
     if voice_on:
@@ -472,6 +473,21 @@ def screen_settings_prefs(locale: str, *, proactive: bool) -> tuple[str, Rows]:
         _nav(locale, "settings"),
     ]
     return text, rows
+
+
+def screen_automations(locale: str,
+                    items: list[tuple[int, str]]) -> tuple[str, Rows]:
+    """Active recurring automations with cancel buttons."""
+    head = f"🔁 <b>{t('auto_title', locale)}</b>\n\n{t('auto_hint', locale)}"
+    if not items:
+        return f"{head}\n\n{t('auto_empty', locale)}", [_back(locale)]
+    lines = [head, ""]
+    rows: Rows = []
+    for aid, label in items:
+        lines.append(f"• {label}")
+        rows.append([_b(f"🗑 {label[:40]}", f"autocancel:{aid}")])
+    rows.append(_back(locale))
+    return "\n".join(lines), rows
 
 
 def screen_reminders(locale: str, items: list[tuple[int, str]]) -> tuple[str, Rows]:
