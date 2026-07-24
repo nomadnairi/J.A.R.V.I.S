@@ -30,6 +30,11 @@ a = Analysis(
         "jarvis.desktop_app.app",
         "jarvis.desktop_app.engine_thread",
         "jarvis.integrations.telegram_channel",
+        # The bundled local API (Command Deck) — uvicorn's dynamic imports.
+        "uvicorn.loops.auto", "uvicorn.loops.asyncio",
+        "uvicorn.protocols.http.auto", "uvicorn.protocols.http.h11_impl",
+        "uvicorn.protocols.websockets.auto", "uvicorn.lifespan.off",
+        "uvicorn.logging",
     ],
     hookspath=[],
     runtime_hooks=[],

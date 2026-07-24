@@ -340,6 +340,13 @@ def run_app() -> int:
                 self.engine_thread.start()
             except Exception as exc:  # noqa: BLE001 - shown in the chat view
                 self._append_system(tr("error", config.language, error=exc))
+                return
+            # Serve a local API over the running engine so the Command Deck is
+            # live in-window (real data), not just demo. Best-effort.
+            try:
+                self._local_api = self.engine_thread.start_api()
+            except Exception:  # noqa: BLE001 - deck falls back to demo mode
+                self._local_api = None
 
         def _init_voice(self) -> None:
             if self.engine_thread is None or not config.voice_enabled:
@@ -417,7 +424,14 @@ def run_app() -> int:
             return "<h1 style='color:#eee;font-family:sans-serif'>Command Deck not bundled.</h1>"
 
         def _deck_conn(self) -> tuple[str, str]:
-            """API endpoint + key to hand the dashboard (remote mode only)."""
+            """API endpoint + key to hand the dashboard.
+
+            Local mode serves a live API over the running engine; remote mode
+            points at the configured server. Empty = demo mode.
+            """
+            local = getattr(self, "_local_api", None)
+            if config.mode == "local" and local:
+                return local
             if config.mode == "remote" and config.server_url:
                 return config.server_url, config.auth_token or ""
             return "", ""

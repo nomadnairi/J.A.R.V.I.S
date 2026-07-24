@@ -49,6 +49,9 @@ class EngineThread:
         self._loop.close()
 
     def stop(self, timeout: float = 10.0) -> None:
+        server = getattr(self, "_api_server", None)
+        if server is not None:
+            server.should_exit = True
         if self._loop is not None and self._loop.is_running():
             self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join(timeout)
@@ -116,6 +119,35 @@ class EngineThread:
                 on_done(exc)
 
         future.add_done_callback(_done)
+
+    def start_api(self, host: str = "127.0.0.1") -> tuple[str, str] | None:
+        """Serve the HTTP API over this engine (same loop) for the dashboard.
+
+        Returns ``(base_url, api_key)`` or ``None`` if FastAPI/uvicorn aren't
+        available (a lean build) — the caller then falls back to demo mode.
+        """
+        import secrets
+        import socket
+
+        try:
+            import uvicorn
+
+            from jarvis.api.app import create_app
+        except Exception:  # noqa: BLE001 - optional in lean desktop builds
+            return None
+        sock = socket.socket()
+        sock.bind((host, 0))
+        port = sock.getsockname()[1]
+        sock.close()
+        key = secrets.token_urlsafe(18)
+        api_settings = self._settings.model_copy(update={"api_key": key})
+        app = create_app(engine=self.engine, settings=api_settings)
+        config = uvicorn.Config(app, host=host, port=port,
+                                log_level="warning", lifespan="off")
+        self._api_server = uvicorn.Server(config)
+        self._api_server.install_signal_handlers = lambda: None  # not on this thread
+        self.submit(self._api_server.serve())
+        return f"http://{host}:{port}", key
 
     def reset(self, session_id: str = "desktop") -> None:
         self.submit(self.engine.reset(session_id)).result(30)
