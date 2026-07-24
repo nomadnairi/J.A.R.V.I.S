@@ -92,6 +92,7 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
                 voice_on: bool = False, channel: str = "", name: str = "Sir",
                 plan=None, used_today: int = 0,
                 image_on: bool = False, referral_on: bool = False,
+                integrations_on: bool = False,
                 ) -> tuple[str, Rows]:
     header = (
         f"🤖 <b>J.A.R.V.I.S.</b>\n"
@@ -119,6 +120,8 @@ def screen_main(locale: str, *, is_admin: bool = False, billing_on: bool = False
     if billing_on:
         rows.append([_b(t("menu_plans", locale), "plans"),
                     _b(t("menu_subscription", locale), "subscription")])
+    if integrations_on:
+        rows.append([_b(t("menu_integrations", locale), "myint")])
     if referral_on:
         rows.append([_b(t("menu_referral", locale), "referral")])
     if accounts_on:
@@ -473,6 +476,28 @@ def screen_settings_prefs(locale: str, *, proactive: bool) -> tuple[str, Rows]:
         _nav(locale, "settings"),
     ]
     return text, rows
+
+
+def screen_user_integrations(locale: str, items: list[tuple[int, str]],
+                            count: int, limit: str,
+                            at_limit: bool) -> tuple[str, Rows]:
+    """A user's own integrations with a tier-gated add limit."""
+    head = (f"🔗 <b>{t('uint_title', locale)}</b>\n"
+            f"{t('uint_count', locale, n=count, limit=limit)}\n\n"
+            f"{t('uint_hint', locale)}")
+    lines = [head]
+    rows: Rows = []
+    for iid, label in items:
+        lines.append(f"• {label}")
+        rows.append([_b(f"🗑 {label[:36]}", f"intdel:{iid}")])
+    if at_limit:
+        lines += ["", f"🔒 {t('uint_limit', locale)}"]
+        rows.append([_b(t("menu_plans", locale), "plans")])
+    else:
+        rows.append([_b(t("uint_add_ha", locale), "intadd:homeassistant"),
+                    _b(t("uint_add_hook", locale), "intadd:webhook")])
+    rows.append(_back(locale))
+    return "\n".join(lines), rows
 
 
 def screen_automations(locale: str,

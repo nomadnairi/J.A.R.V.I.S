@@ -21,6 +21,7 @@ package works without it.
 from __future__ import annotations
 
 import asyncio
+import re
 from pathlib import Path
 
 from jarvis.config.settings import Settings, get_settings
@@ -244,6 +245,8 @@ async def run(settings: Settings | None = None) -> None:
     reminder_store = ReminderStore(settings.memory_db_path)
     from jarvis.interfaces.automations import AutomationStore
     automation_store = AutomationStore(settings.memory_db_path)
+    from jarvis.interfaces.user_integrations import UserIntegrationsStore
+    user_int_store = UserIntegrationsStore(settings.memory_db_path)
     from jarvis.interfaces.model_registry import FavoritesStore
     favorites = FavoritesStore(settings.memory_db_path)
     #: Filled in at startup once we know the bot's @username (for invite links).
@@ -310,6 +313,7 @@ async def run(settings: Settings | None = None) -> None:
             used_today=usage.stats(user_id)["messages_today"],
             image_on=image_service is not None,
             referral_on=bool(bot_username),
+            integrations_on=settings.integrations_enabled,
         )
 
     async def _is_subscribed(user_id: int) -> bool:
@@ -432,6 +436,23 @@ async def run(settings: Settings | None = None) -> None:
             items.append((a["id"], f"{a['prompt'][:34]} · ⏭ {nxt}"))
         return items
 
+    def _integrations_screen(user_id: int, locale: str):
+        import jarvis.interfaces.bot_menu as bm
+        from jarvis.interfaces.user_integrations import (
+            KINDS,
+            integration_limit_reached,
+        )
+        plan = _user_plan(user_id)
+        count = user_int_store.count(user_id)
+        limit = (t("plan_unlimited", locale)
+                if getattr(plan, "unlimited_integrations", False)
+                else str(plan.integrations))
+        items = [(i.id, f"{KINDS.get(i.kind, i.kind)} · {i.label}"[:44])
+                for i in user_int_store.list(user_id)]
+        return bm.screen_user_integrations(
+            locale, items, count, limit,
+            at_limit=integration_limit_reached(plan, count))
+
     async def _send_support(message: "Message", locale: str) -> None:
         """Forward a user's support message to the bot owner(s)."""
         admins = settings.telegram_admins()
@@ -473,6 +494,44 @@ async def run(settings: Settings | None = None) -> None:
         # Best effort: strip the key from the chat (works only where allowed).
         try:
             await message.delete()
+        except Exception:  # noqa: BLE001
+            pass
+
+    async def _save_integration(message: "Message", kind: str,
+                                locale: str) -> None:
+        """Validate + store a user's own integration, enforcing the tier limit."""
+        from jarvis.interfaces.user_integrations import (
+            integration_limit_reached,
+            validate,
+        )
+        user_id = message.from_user.id
+        # Re-check the limit at save time (plan may have changed).
+        if integration_limit_reached(_user_plan(user_id),
+                                    user_int_store.count(user_id)):
+            await message.answer(t("uint_limit", locale))
+            return
+        text = (message.text or "").strip()
+        if kind == "homeassistant":
+            # Expect "https://ha.local | LONG_LIVED_TOKEN".
+            parts_ = [p.strip() for p in re.split(r"[|\n]", text, maxsplit=1)]
+            if len(parts_) != 2:
+                await message.answer(t("uint_ask_ha", locale))
+                engine.session(session_id_for(user_id)
+                            ).scratch["awaiting_integration"] = kind
+                return
+            config = {"url": parts_[0], "token": parts_[1]}
+            label = parts_[0]
+        else:
+            config = {"url": text}
+            label = text
+        ok, detail = await validate(kind, config)
+        if not ok:
+            await message.answer(t("uint_bad", locale, detail=detail))
+            return
+        user_int_store.add(user_id, kind, label[:60], config)
+        await message.answer(t("uint_saved", locale))
+        try:
+            await message.delete()  # the token may be in the message
         except Exception:  # noqa: BLE001
             pass
 
@@ -769,6 +828,25 @@ async def run(settings: Settings | None = None) -> None:
             automation_store.cancel(int(parts[2]), user.id)
             await _edit(callback, *bm.screen_automations(
                 locale, _automation_items(user.id)))
+        elif action == "myint":
+            await _edit(callback, *_integrations_screen(user.id, locale))
+        elif action == "intadd":
+            from jarvis.interfaces.user_integrations import (
+                integration_limit_reached,
+            )
+            if integration_limit_reached(_user_plan(user.id),
+                                        user_int_store.count(user.id)):
+                await _show_plans(callback, *bm.screen_plans(
+                    locale, plans, _user_plan(user.id).name))
+                return
+            kind = parts[2]
+            engine.session(session_id_for(user.id)
+                        ).scratch["awaiting_integration"] = kind
+            ask = "uint_ask_ha" if kind == "homeassistant" else "uint_ask_hook"
+            await callback.message.answer(t(ask, locale))
+        elif action == "intdel":
+            user_int_store.remove(int(parts[2]), user.id)
+            await _edit(callback, *_integrations_screen(user.id, locale))
         elif action == "proactive":
             new_state = not prefs.get_proactive(user.id)
             prefs.set_proactive(user.id, new_state)
@@ -1094,6 +1172,11 @@ async def run(settings: Settings | None = None) -> None:
         if awaiting_provider:
             await _save_byok(message, awaiting_provider, message.text, locale)
             return
+        # A pending "connect an integration" message (URL | token).
+        awaiting_int = session.scratch.pop("awaiting_integration", None)
+        if awaiting_int:
+            await _save_integration(message, awaiting_int, locale)
+            return
         if not await _within_limit(message, message.from_user.id, locale):
             return
         # If the user tapped "Image", this message is a drawing prompt.
@@ -1371,6 +1454,7 @@ async def run(settings: Settings | None = None) -> None:
         referrals.close()
         reminder_store.close()
         automation_store.close()
+        user_int_store.close()
         favorites.close()
         await bot.session.close()
 
