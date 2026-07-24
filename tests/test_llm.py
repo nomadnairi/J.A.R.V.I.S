@@ -22,7 +22,7 @@ class _AlwaysFails(LLMProvider):
         self.attempts += 1
         raise LLMRequestError("nope")
 
-    async def stream(self, messages, system=None) -> AsyncIterator[str]:
+    async def stream(self, messages, system=None, model=None) -> AsyncIterator[str]:
         raise LLMRequestError("nope")
         yield ""  # pragma: no cover
 
@@ -39,7 +39,7 @@ class _Works(LLMProvider):
     async def complete(self, messages, system=None, tools=None, model=None):
         return LLMResult(text="ok", model="m", provider=self.name)
 
-    async def stream(self, messages, system=None) -> AsyncIterator[str]:
+    async def stream(self, messages, system=None, model=None) -> AsyncIterator[str]:
         for chunk in ("he", "llo"):
             yield chunk
 

@@ -1,15 +1,12 @@
 <div align="center">
 
-# 🤖 J.A.R.V.I.S.
+# KER
 
-### Just A Rather Very Intelligent System
+**O'zingizning shaxsiy AI yordamchingiz — nomini o'zingiz beradigan, o'zingiz ishga tushiradigan va haqiqatan ham o'zingizniki bo'lgan.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-1.1.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
-[![Status](https://img.shields.io/badge/Status-Desktop%20Edition%20complete-brightgreen)](https://github.com/nomadnairi/J.A.R.V.I.S)
-
-**Modulli shaxsiy AI-yordamchi frameworki — Toni Starkning yordamchisidan ilhomlangan.**
+[![Version](https://img.shields.io/badge/Version-1.9.1-orange)](https://github.com/nomadnairi/K.E.R/releases)
 
 [English](README.md) · [Русский](README.ru.md) · **O'zbek**
 
@@ -17,236 +14,202 @@
 
 ---
 
-## Loyiha haqida
+## Bu nima
 
-J.A.R.V.I.S. — shaxsiy AI-yordamchi yaratish uchun ochiq kodli framework:
-LLM asosidagi intellektual yadro, plagin/ko'nikma tizimi, tool calling
-(funksiya chaqirish) va ovoz, aqlli uy hamda avtomatlashtirish tomon
-kengayishga mo'ljallangan qatlamli arxitektura.
+KER — bu o'zingizda joylashtiriladigan shaxsiy AI yordamchi. U bilan Telegramda
+yoki desktop ilovada suhbatlashasiz, ortida esa haqiqiy dvigatel ishlaydi:
+suhbatlaringizni eslab qoladi, biror ishni haqiqatan bajarish uchun
+vositalarni chaqiradi, gapiradi va eshitadi, vazifalarni jadval bo'yicha
+bajaradi hamda aqlli uyga ulanadi.
 
-> **Loyiha holati:** dastlabki bosqich. Yadro tayyor va ishlayapti — async-dvigatel,
-> LLM integratsiyasi (Anthropic / OpenAI), ko'nikma va tool tizimi, oqimli
-> javoblar, interaktiv CLI va **xotira tizimi** (doimiy tarix + semantik recall).
-> Ovoz, integratsiyalar, avtomatlashtirish va web/API — rejalarda. Aniq holat
-> uchun [Rejalar](#rejalar) bo'limiga qarang.
+Uni "navbatdagi chat ustidan qobiq"dan ikki narsa ajratib turadi:
 
----
+- **U sizniki.** Hech qanday nom qat'iy o'rnatilmagan. Uni KER deb ataysizmi,
+  boshqacha deysizmi — har kim o'z yordamchisiga o'z nomini berishi mumkin va u
+  o'sha nomga (istasangiz, ikkinchi taxallusga ham) javob beradi. O'z kalitingiz,
+  o'z serveringiz, o'z ma'lumotlaringiz.
+- **Bu skript emas, yaxlit mahsulot.** Buyruqlar o'rniga tugmalar bilan ishlaydigan
+  ozoda Telegram-bot, jonli boshqaruv paneli bilan desktop "Command Deck",
+  akkauntlar va tariflar, avto-yangilanishlar — buni boshqalarga berish (yoki
+  sotish) uchun kerak bo'ladigan hamma narsa.
 
-## Hozir nima ishlaydi
+Hammasi lokal ishlaydi. Oddiy narsalar (vaqt, kalkulyator, diagnostika) API
+kalitisiz ham ishlaydi.
 
-- **🧠 LLM yadrosi** — **Anthropic (Claude)** va **OpenAI (GPT)** uchun
-  provayderdan mustaqil klient; avtomatik qayta urinish va provayderlar
-  o'rtasida almashinuv.
-- **🔧 Tool / funksiya chaqirish** — agentik sikl: model o'zi toollarni
-  (ko'nikmalarni) chaqiradi, ishlarni bajaradi va natijaga ko'ra javob beradi.
-- **🧩 Ko'nikma/plagin tizimi** — tez-tez uchraydigan so'rovlarni (sana/vaqt,
-  kalkulyator, tizim diagnostikasi) LLMga murojaat qilmasdan deterministik
-  bajarish.
-- **🧠 Xotira** — suhbat tarixi doimiy saqlanadi (qayta ishga tushirishdan omon
-  qoladi) hamda semantik recall (RAG): LLM har bir suhbatdan **barqaror
-  faktlarni** ajratib oladi va keyin keraklilarini eslaydi. Async, SQLite
-  asosida, o'xshashlik chegarasi va yangilik og'irligi bilan; ulanadigan
-  embeddinglar (offline / lokal / OpenAI).
-- **⚡ Oqim (streaming)** — CLIda tokenma-token oqimli javoblar.
-- **💬 Telegram bot** — Telegram orqali yordamchi bilan suhbat; har bir
-  foydalanuvchi o'z doimiy sessiyasi va xotirasiga ega. Lokalizatsiyalangan
-  interfeys (ingliz / rus / o'zbek), buyruqlar menyusi va til tanlash tugmalari
-  bilan; yordamchi tanlangan tilda javob beradi.
-- **🎙 Ovoz (botda)** — ovozli xabar yuboring: u OpenAI Whisper API orqali
-  matnga o'giriladi, yordamchi javob beradi va (xohishga ko'ra) OpenAI TTS
-  bilan javobni ovozda aytadi. Ko'p tilli: siz gapirgan tilda javob beradi.
-- **🔌 Integratsiyalar** — tashqi xizmatlar LLM uchun tool sifatida: **ob-havo**
-  (Open-Meteo, bepul, kalitsiz) va **aqlli uy** (Home Assistant). Ulanadigan
-  karkas (connect/health/tool-ko'prik) — yana qo'shish oson.
-- **👥 Ko'p sessiya** — sessiya menejeri orqali ko'plab mustaqil suhbatlar.
-- **📡 Hodisaga asoslangan** — ichki pub/sub shina va passiv telemetriya.
-- **🖥️ Interaktiv CLI** — suhbat, shuningdek `/skills`, `/stats`, `/state`, `/reset`.
-
-Yuqoridagilarning barchasi lokal ishlaydi; ko'nikma/tool buyruqlari API kalitisiz
-ham ishlaydi.
+> **⚡ Bepul va to'liq versiya.** Bu yerda, GitHubda, faqat **bepul yadro** —
+> o'z yordamchingizni ishga tushirish uchun yetarli. **To'liq versiya** (barcha
+> premium imkoniyatlar va yuqori limitlar) **faqat Telegram-bot orqali**,
+> obuna asosida mavjud. Botni ishga tushiring: [@jar_v1_s](https://t.me/jar_v1_s).
 
 ---
 
-## Arxitektura
+## U nima qila oladi
 
-```
-┌───────────────────────────────────────────────┐
-│  Interfeyslar:  CLI (hozir)  ·  Web / API (reja)│
-└───────────────────────────┬───────────────────┘
-                           │  So'rov
-┌───────────────────────────▼───────────────────┐
-│                   JarvisEngine                 │
-│   StateMachine · Pipeline · SessionManager     │
-│        ┌───────────────┴───────────────┐       │
-│        ▼                               ▼       │
-│  SkillRegistry (tools)          LLMClient (AI) │
-│   tezkor yo'l + tools         retry + fallback │
-└───────────────────────────┬───────────────────┘
-                           │ hodisalar
-        ┌───────────────────┼───────────────────┐
-        ▼                   ▼                   ▼
-   EventBus            Telemetry          Memory /
-   (pub/sub)           (metrikalar)      Integrations
-                                          (reja)
-```
+**Gaplashish va eslab qolish.** Matn yoki ovoz bilan suhbat. Uning haqiqiy
+xotirasi bor — qayta ishga tushgach ham suhbatlaringizni eslaydi va ulardan siz
+haqingizdagi barqaror faktlarni ajratib oladi. Joylashtirilgan parollar,
+tokenlar va karta raqamlari saqlanishdan oldin olib tashlanadi.
 
-Batafsil — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) da.
+**Haqiqatan ish bajarish.** Model shunchaki javob bermaydi — u vositalarni
+chaqira oladi: internetdan qidirish, fayllarni o'qish va yozish, terminalda
+buyruqlar bajarish, kompyuterni boshqarish, ob-havoni ko'rish, aqlli uy bilan
+gaplashish. Xavfli imkoniyatlar sukut bo'yicha o'chirilgan va bittalab yoqiladi.
 
----
+**Yangi vositalarni ulash (MCP).** KER Model Context Protocol tilida
+gaplashadi, shuning uchun istalgan MCP-server vositalari yordamchining o'z
+ko'nikmalariga aylanadi. Konfiguratsiyani ko'rsating yoki serverni to'g'ridan-
+to'g'ri paneldan qo'shing.
 
-## Texnologiyalar
+**Mustaqil ishlash.** "Har kuni soat 9:00 da xulosa qil" yoki "har 3 soatda
+pochtani tekshir" deng — u vazifani jadvalga qo'yadi, bajaradi, natijani
+yuboradi va keyingi ishga tushishni o'zi qayta rejalashtiradi.
 
-| Soha | Vositalar |
-|------|-----------|
-| Til | Python 3.10+ |
-| Konfiguratsiya | pydantic-settings |
-| LLM | Anthropic SDK, OpenAI SDK |
-| CLI | rich |
-| Testlar | pytest, pytest-asyncio |
-| Linter / CI | ruff, GitHub Actions |
+**Tilingizni tushunish.** Butun interfeys va javoblar o'zbek, rus va ingliz
+tillarida. Ovozli xabar yuboring — u tanib oladi, javob beradi va javobni siz
+gapirgan tilda ovozda aytib berishi mumkin. Ovozni to'liq bepul va oflayn ishga
+tushirish mumkin.
 
-Ixtiyoriy bog'liqliklar (vektor bazasi, ovoz, FastAPI) ro'yxatda, ammo kerakli
-imkoniyat yoqilmaguncha faol emas.
+**"Miya"ni tanlash.** Anthropic (Claude), OpenAI (GPT), OpenRouter yoki lokal
+model (Ollama, LM Studio, vLLM, llama.cpp) bilan ishlaydi — lokalni olsangiz,
+bulut kaliti umuman kerak emas. Qayta urinish va provayderlar o'rtasida
+almashishni o'zi qiladi, router esa oson savollarni tez modelga, murakkablarini
+kuchli modelga yuboradi.
 
 ---
 
-## Loyiha tuzilishi
+## Uni o'zingizniki qiling (white-label)
 
-```
-jarvis/
-├── __main__.py        # interaktiv CLI (python -m jarvis)
-├── config/            # tiplangan sozlamalar va konstantalar
-├── core/              # dvigatel, DI-konteyner, pipeline, holat, sessiyalar
-├── llm/               # provayderdan mustaqil klient + Anthropic/OpenAI + tools
-├── skills/            # ko'nikma/tool tizimi + o'rnatilganlar
-├── events/            # pub/sub hodisa shinasi
-├── telemetry/         # metrikalar yig'uvchi
-├── interfaces/        # Telegram bot (CLI — __main__.py da)
-├── i18n/              # lokalizatsiya (en/ru/uz)
-├── models/            # Message/Conversation, Request/Response
-├── memory/            # doimiy tarix + semantik recall (SQLite + vektorlar)
-├── integrations/      # kontraktlar (amalga oshirish rejada)
-└── utils/             # loglash, retry, vaqt, istisnolar, matn
-tests/                 # pytest testlar to'plami
-docs/                  # arxitektura hujjatlari
+Aynan boshqa yordamchilar bermaydigan narsa.
+
+- **Nom bering.** Sukut bo'yicha — **KER**, lekin har bir foydalanuvchi
+  yordamchisini bot sozlamalaridan qayta nomlashi mumkin: yangi nom menyuda,
+  javoblarda va desktop panelda ko'rinadi. Operator butun o'rnatma uchun sukut
+  nomini belgilashi mumkin.
+- **Qo'shimcha nomlar.** `ASSISTANT_ALIASES` ni belgilang — u bir nechta nomga
+  javob beradi (shaxsiy "uyg'otish so'zi" sifatida qulay). Sukut bo'yicha bo'sh,
+  toki birovga bergan nusxangiz "toza" qolsin.
+- **O'z kalitingiz, serveringiz, ma'lumotingiz.** Foydalanuvchi hatto o'z
+  API-kalitini ulashi mumkin (BYOK). Hech narsa yashirincha jo'natilmaydi.
+
+```env
+ASSISTANT_NAME=KER
+ASSISTANT_ALIASES=Jarvis   # ixtiyoriy — ikkalasiga ham javob beradi
 ```
 
 ---
 
 ## Tez boshlash
 
-**Talablar:** Python 3.10+
+**Kerak bo'ladi:** Python 3.10+ va API kalit (yoki lokal model).
 
 ```bash
-# Klonlash
-git clone https://github.com/nomadnairi/J.A.R.V.I.S.git
-cd J.A.R.V.I.S
+git clone https://github.com/nomadnairi/K.E.R.git
+cd K.E.R
 
-# O'rnatish
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+source venv/bin/activate         # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Sozlash (API kalitingizni qo'shing)
-cp .env.example .env            # ANTHROPIC_API_KEY yoki OPENAI_API_KEY ni kiriting
-
-# Ishga tushirish
+cp .env.example .env             # ANTHROPIC_API_KEY (yoki OPENAI_API_KEY) qo'shing,
+                                 # yoki lokal modelni ko'rsating
 python -m jarvis
 ```
 
-`make` ni afzal ko'rasizmi? `make install`, `make run`, `make test`, `make lint`.
+`make` yoqadimi? `make install`, `make run`, `make test`, `make lint`.
 
 ---
 
-## Foydalanish
+## Telegramda suhbat
 
-CLI ichida:
-
-```
-Sir › calc (12.5/100)*320
-J.A.R.V.I.S. › (12.5/100)*320 = 40
-
-Sir › what time is it
-J.A.R.V.I.S. › It is 14:05.
-
-Sir › system status
-J.A.R.V.I.S. › All systems nominal. …
-
-Sir › /skills      # ko'nikmalar va qaysilari LLMga tool sifatida ochiq
-Sir › /stats       # sessiya telemetriyasi
-Sir › /memory      # xotira statistikasi
-Sir › /reset       # suhbatni tozalash (uzoq muddatli xotira saqlanadi)
-Sir › /forget      # tarix va uzoq muddatli xotirani o'chirish
-```
-
-Ko'nikma hal qila olmagan har qanday narsaga LLM javob beradi (kerak bo'lsa
-toollarni chaqirib).
-
----
-
-## Telegram bot
-
-J.A.R.V.I.S. bilan Telegram orqali suhbatlashing. Har bir foydalanuvchi o'z
-doimiy sessiyasiga ega, shuning uchun yordamchi har bir kishini alohida eslaydi.
+Eng qulay usul. Bu tugmali bot — hech qanday buyruqni yodlash shart emas — har
+kimga alohida sessiya bilan, shuning uchun sizni boshqalardan mustaqil eslaydi.
 
 ```bash
-pip install aiogram            # interfeys uchun ixtiyoriy bog'liqlik
+pip install aiogram
 
-# .env faylingizda:
-#   TELEGRAM_BOT_TOKEN=...      (@BotFather dan)
-#   ANTHROPIC_API_KEY=...       (yoki OPENAI_API_KEY)
+# .env:
+#   TELEGRAM_BOT_TOKEN=...   (@BotFather dan)
+#   ANTHROPIC_API_KEY=...    (yoki OPENAI_API_KEY, yoki lokal model)
 
 python -m jarvis.interfaces.telegram_bot     # yoki: jarvis-bot
 ```
 
-Buyruqlar: `/language` (interfeys va javob tilini almashtirish), `/reset`
-(joriy suhbatni tozalash), `/forget` (siz haqingizda eslab qolingan hamma
-narsani o'chirish), `/help`. Menyu va interfeys **ingliz, rus va o'zbek**
-tillarida, yordamchi foydalanuvchi tanlagan tilda javob beradi. Kirishni
-`TELEGRAM_ALLOWED_USERS` orqali muayyan user ID lar bilan cheklash mumkin.
+Ichида — ozoda ichma-ich menyularga joylangan sozlamalar: til, yordamchi nomi,
+AI modeli, xotira, ovoz, integratsiyalar va boshqalar. Ovozli yuboring — ovozda
+javob beradi. Agar buni mahsulot sifatida ishga tushirmoqchi bo'lsangiz, tariflar
+(Free / Plus / Pro) va reja bo'yicha limitlar bor.
 
 ---
 
-## Rejalar
+## Desktop — "Command Deck"
 
-| Soha | Holat |
-|------|-------|
-| Yadro: async-dvigatel, LLM, ko'nikma/tool, streaming, CLI, testlar, CI | ✅ tayyor |
-| Xotira: doimiy tarix + semantik recall | ✅ tayyor |
-| Telegram bot (foydalanuvchi bo'yicha sessiyalar + xotira) | ✅ tayyor |
-| Botda ovoz: nutqni tanish (Whisper API) / sintez (OpenAI), ko'p tilli | ✅ tayyor |
-| Integratsiyalar: karkas + ob-havo + aqlli uy (Home Assistant) | ✅ tayyor |
-| Desktop / Raspberry Pi ovoz (mikrofon va karnay) | reja |
-| Yana integratsiyalar: taqvim, pochta | reja |
-| Integratsiyalar: aqlli uy, taqvim, pochta | reja |
-| Vazifalarni avtomatlashtirish: rejalashtiruvchi, ssenariylar | reja |
-| API qatlami: FastAPI + WebSocket | reja |
-| Veb-boshqaruv paneli | reja |
+`jarvis-desktop` — bu haqiqiy desktop ilova (PySide6, Windows `.exe` ga
+yig'iladi), ichida jonli veb-panel bilan: animatsiyali reaktor bilan bosh ekran
+va tizim telemetriyasi, tarixli chat, modellar katalogi, MCP-serverlar va
+sozlamalar — hammasi ichki lokal API orqali haqiqiy dvigatelga ulangan va real
+vaqtda yangilanadi.
 
----
+Egasi uni lokal, kompyuterini to'liq boshqarib ishga tushiradi; boshqalar login/
+parol yoki bot bergan **Telegram kirish kodi** bilan kirib, cheklangan versiyani
+oladi. Ilova yangilanishlarni o'zi tekshirib o'rnata oladi.
 
-## Hissa qo'shish
-
-Hissangiz xush kelibsiz. Sozlash, qatlamlar tuzilishi va ko'nikma qo'shish
-bo'yicha [CONTRIBUTING.md](CONTRIBUTING.md) ga qarang. Pull request ochishdan
-oldin `make test` va `make lint` ni ishga tushiring.
+Yuklab olishlar (Windows o'rnatuvchisi + portativ yig'ma) —
+[**Releases**](https://github.com/nomadnairi/K.E.R/releases) sahifasida.
+`.exe` / `.apk` ni yig'ish — [docs/CLIENTS.md](docs/CLIENTS.md) da.
 
 ---
 
-## Aloqa
+## Serverga qo'yish
 
-- Telegram (shaxsiy): [@deathgu11](https://t.me/deathgu11)
-- Telegram (kanal): [@jar_v1_s](https://t.me/jar_v1_s)
-- Xatolar va takliflar: [GitHub Issues](https://github.com/nomadnairi/J.A.R.V.I.S/issues)
+Bot va HTTP/WebSocket-API ni VPS da Docker orqali:
+
+```bash
+cp .env.example .env      # kalitlaringizni kiriting
+docker compose up -d --build
+```
+
+Bot long-polling orqali ishlaydi (kiruvchi port kerak emas), API `:8000` da
+tinglaydi, ikkalasi doimiy `data/` va `logs/` jildlarini ishlatadi. systemd-unit,
+nginx + TLS namunasi va xavfsizlik ro'yxati — [docs/DEPLOY.md](docs/DEPLOY.md) da.
+
+Boshqa ilovalar shu dvigatel bilan API orqali gaplasha oladi: `GET /health`,
+`POST /chat` va strim uchun `/ws/{session}` WebSocket. Ommaga ochishdan oldin
+`API_KEY` ni belgilang.
 
 ---
 
-## Litsenziya
+## Ichki tuzilishi
 
-[MIT litsenziyasi](LICENSE) ostida tarqatiladi.
+Python 3.10+, hammasi asinxron. Provayderdan mustaqil LLM-mijoz qayta urinish va
+zaxira bilan, tez determinatsiyalangan yo'lli ko'nikma/vosita tizimi, semantik
+qidiruvli SQLite xotira, pub/sub hodisalar shinasi, imkoniyatlarni cheklovchi
+xavfsizlik qatlami, FastAPI + WebSocket va aiogram Telegram-boti. Konfiguratsiya
+tiplashtirilgan (pydantic-settings). Testlar — pytest, lint — har commitda ruff.
 
-<div align="center">
+To'liq manzara va komponentlar holati — [VISION.md](VISION.md) va
+[ROADMAP.md](ROADMAP.md) da, arxitektura — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) da.
 
-*Aqlli avtomatlashtirish uchun yaratilgan.* 🤖
+---
 
-</div>
+## Keyingi qadamlar
+
+Tayyor: yordamchi yadrosi, xotira, Telegram-bot, ovoz, integratsiyalar, API,
+desktop Command Deck, MCP, vazifalarni avtomatlashtirish, avto-yangilanishlar,
+akkauntlar va tariflar, hamda nom bo'yicha to'liq white-label.
+
+Rejada: Raspberry Pi da doim tinglaydigan ovozli yordamchi (xonaning istalgan
+joyidan nomi bilan chaqirish), yangi integratsiyalar (kalendar, pochta) va
+ko'p-xonali stsenariylar.
+
+---
+
+## Hissa va aloqa
+
+Hissa qo'shishga xush kelibsiz — [CONTRIBUTING.md](CONTRIBUTING.md) ga qarang va,
+iltimos, avval `make test` va `make lint` ni ishga tushiring.
+
+- Telegram: [@deathgu11](https://t.me/deathgu11)
+- Kanal: [@jar_v1_s](https://t.me/jar_v1_s)
+- Xatolar va g'oyalar: [GitHub Issues](https://github.com/nomadnairi/K.E.R/issues)
+
+Litsenziya — [MIT](LICENSE).

@@ -99,3 +99,50 @@ class WeatherIntegration(BaseIntegration):
         country = place.get("country", "")
         where = f"{name}, {country}".rstrip(", ")
         return f"{where}: {condition}, {temp}°C, wind {wind} km/h."
+
+    async def current(self, location: str) -> dict | None:
+        """Structured current weather for ``location`` (for dashboards)."""
+        location = (location or "").strip()
+        if not location:
+            return None
+        geo = await self._http.get_json(_GEOCODE_URL,
+                                        params={"name": location, "count": 1})
+        results = geo.get("results") or []
+        if not results:
+            return None
+        place = results[0]
+        forecast = await self._http.get_json(
+            _FORECAST_URL,
+            params={"latitude": place["latitude"], "longitude": place["longitude"],
+                    "current": "temperature_2m,weather_code,wind_speed_10m"})
+        cur = forecast.get("current") or {}
+        code = int(cur.get("weather_code", -1))
+        name = place.get("name", location)
+        country = place.get("country", "")
+        return {
+            "temp": f"{round(float(cur.get('temperature_2m', 0)))}°",
+            "loc": f"{name}, {country}".rstrip(", "),
+            "cond": _WMO.get(code, "—"),
+            "wind": cur.get("wind_speed_10m"),
+            "glyph": _weather_glyph(code),
+        }
+
+
+def _weather_glyph(code: int) -> str:
+    if code == 0:
+        return "☀️"
+    if code in (1, 2):
+        return "🌤"
+    if code == 3:
+        return "☁️"
+    if code in (45, 48):
+        return "🌫"
+    if 51 <= code <= 67:
+        return "🌧"
+    if 71 <= code <= 77:
+        return "❄️"
+    if 80 <= code <= 82:
+        return "🌦"
+    if code >= 95:
+        return "⛈"
+    return "🛰"

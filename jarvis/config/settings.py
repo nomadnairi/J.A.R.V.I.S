@@ -15,6 +15,16 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _parse_ids(raw: str) -> set[int]:
+    """Parse a comma-separated list of integer IDs, ignoring junk."""
+    ids: set[int] = set()
+    for part in (raw or "").split(","):
+        part = part.strip()
+        if part.isdigit():
+            ids.add(int(part))
+    return ids
+
+
 class Settings(BaseSettings):
     """Application settings loaded from the environment / `.env`."""
 
@@ -29,8 +39,33 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(default="", description="Anthropic API key.")
     openai_api_key: str = Field(default="", description="OpenAI API key.")
 
-    llm_provider: Literal["anthropic", "openai"] = "anthropic"
+    #: Which provider the core engine uses by default. Each is standalone:
+    #: "openai" = the real OpenAI, "openrouter" = OpenRouter (its own key/model).
+    llm_provider: Literal[
+        "anthropic", "openai", "openrouter", "local"] = "anthropic"
     llm_model: str = "claude-sonnet-4-20250514"
+    #: Custom OpenAI-compatible endpoint for the OpenAI provider only. Empty =
+    #: the official OpenAI API. (For OpenRouter use the OPENROUTER_* settings.)
+    openai_base_url: str = ""
+    #: OpenRouter — a fully separate provider. Set these to use OpenRouter as the
+    #: engine (LLM_PROVIDER=openrouter) and/or as a switchable model profile.
+    openrouter_api_key: str = ""
+    #: Default model used by the OpenRouter provider (an OpenRouter model slug).
+    openrouter_model: str = "anthropic/claude-3.7-sonnet"
+    #: OpenRouter endpoint (rarely changed).
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+
+    #: Local / self-hosted models via an OpenAI-compatible server. Pick a backend
+    #: preset (its default URL is used unless LOCAL_LLM_BASE_URL overrides it).
+    local_llm_backend: Literal[
+        "ollama", "lmstudio", "vllm", "llamacpp", "custom"] = "ollama"
+    #: Override the backend's default endpoint (needed for "custom").
+    local_llm_base_url: str = ""
+    #: Model name to request from the local server (e.g. "llama3", "qwen2.5").
+    local_llm_model: str = "llama3"
+    #: Most local servers ignore auth; set only if yours requires a token.
+    local_llm_api_key: str = ""
+
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     llm_max_tokens: int = Field(default=2048, gt=0)
 
@@ -54,8 +89,24 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: float = Field(default=60.0, gt=0)
 
     # --- Assistant persona ---
-    assistant_name: str = "J.A.R.V.I.S."
+    #: The assistant's name. Ships as "KER" but is white-label: each user can
+    #: rename their assistant, and operators can override the default here.
+    assistant_name: str = "KER"
+    #: Extra names the assistant also answers to (comma-separated), e.g. a
+    #: personal wake-word alias. Left blank in the shipping default so resold
+    #: copies carry no third-party name; set e.g. "Jarvis" for a personal build.
+    assistant_aliases: str = ""
     user_name: str = "Sir"
+
+    def alias_list(self) -> list[str]:
+        """The assistant's extra address names, parsed and de-duplicated."""
+        seen: list[str] = []
+        for raw in self.assistant_aliases.split(","):
+            name = raw.strip()
+            if name and name.lower() != self.assistant_name.lower() \
+                    and name not in seen:
+                seen.append(name)
+        return seen
 
     # --- Logging ---
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
@@ -148,14 +199,122 @@ class Settings(BaseSettings):
     integrations_enabled: bool = True
     #: Weather integration (Open-Meteo, free, no key).
     weather_enabled: bool = True
+    #: City shown on the dashboard's weather panel (empty = no live weather).
+    weather_city: str = ""
     #: Home Assistant (smart home) — both are required to enable it.
     homeassistant_url: str = ""
     homeassistant_token: str = ""
+
+    # --- Updates ---
+    #: Repository that releases are published to (owner/name).
+    update_repo: str = "nomadnairi/K.E.R"
+    #: Which release channel to track: "early" includes pre-releases (grey
+    #: access), "stable" only full releases, "off" disables update checks.
+    update_channel: Literal["early", "stable", "off"] = "early"
+    #: Optional Telegram channel to point users at for update announcements.
+    update_telegram_channel: str = ""
+
+    # --- MCP (Model Context Protocol) — mount external agent skills as tools ---
+    #: Connect to MCP servers (the agentskills.io / Hermes / Claude standard) and
+    #: expose their tools as J.A.R.V.I.S. skills the model can call.
+    mcp_enabled: bool = False
+    #: Path to a JSON file with the standard {"mcpServers": {...}} shape.
+    mcp_config_path: str = ""
+    #: Inline JSON alternative to the file (same shape). Handy for env-only setups.
+    mcp_servers: str = ""
+
+    # --- API server ---
+    api_host: str = "0.0.0.0"
+    api_port: int = Field(default=8000, gt=0, le=65535)
+    #: Bearer / X-API-Key required to call the API (empty = open, dev only).
+    api_key: str = ""
+
+    # --- Accounts & licensing (per-user login for exe/apk clients) ---
+    #: Enable username/password accounts + license checks on the API.
+    #: When off, the API falls back to the shared ``api_key`` only.
+    auth_enabled: bool = False
+    #: SQLite file holding accounts, licenses, tokens and pairings.
+    auth_db_path: str = "data/auth.db"
+    #: Admin key required to create accounts / issue licenses (empty = disabled).
+    auth_admin_key: str = ""
+    #: Lifetime of an issued login token, in hours.
+    auth_token_ttl_hours: int = Field(default=720, gt=0)
+    #: Require a linked+verified Telegram account before login succeeds.
+    auth_require_telegram: bool = False
+
+    # --- Billing (payments → automatic license issuance) ---
+    #: Enable the /buy flow in the bot and the /billing/webhook endpoint.
+    billing_enabled: bool = False
+    #: Price of a license in Telegram Stars (XTR).
+    billing_price_stars: int = Field(default=2500, gt=0)
+    #: Plan name written on issued licenses.
+    billing_plan: str = "standard"
+    #: License validity in days (0 = perpetual).
+    billing_plan_days: int = Field(default=365, ge=0)
+    #: HMAC-SHA256 secret for POST /billing/webhook (empty = webhook disabled).
+    billing_webhook_secret: str = ""
+
+    # --- Plans / tiers (Free / Plus / Pro) ---
+    #: Daily message allowance per tier (0 = unlimited). Free is deliberately
+    #: tight; Plus is generous; Pro is unlimited.
+    plan_free_daily: int = Field(default=10, ge=0)
+    plan_plus_daily: int = Field(default=100, ge=0)
+    plan_pro_daily: int = Field(default=0, ge=0)
+    #: Telegram Stars price shown on the Plus / Pro upgrade cards.
+    plan_plus_price_stars: int = Field(default=2500, gt=0)
+    plan_pro_price_stars: int = Field(default=8000, gt=0)
+
+    # --- Image generation (Plus/Pro feature) ---
+    #: Enable the bot's image mode (needs an OpenAI-compatible Images API key).
+    image_enabled: bool = False
+    #: Image model, size, and optional dedicated key/endpoint. The key/endpoint
+    #: fall back to the OpenAI ones when left blank.
+    image_model: str = "dall-e-3"
+    image_size: str = "1024x1024"
+    image_api_key: str = ""
+    image_base_url: str = ""
+
+    # --- Referrals ---
+    #: Extra daily messages granted per successful referral (0 disables the
+    #: referral program's reward, but invite links still work).
+    referral_bonus_daily: int = Field(default=20, ge=0)
+
+    # --- Web / AI search (Search Manager) ---
+    #: Enable the search service (the AI never hits the internet directly).
+    search_enabled: bool = False
+    #: Preferred provider: "auto" picks the first available by priority.
+    search_provider: str = "auto"
+    #: Provider API keys (each empty = that provider is unavailable).
+    tavily_api_key: str = ""
+    exa_api_key: str = ""
+    brave_api_key: str = ""
+    perplexity_api_key: str = ""
+    serpapi_key: str = ""
+    google_cse_key: str = ""
+    google_cse_cx: str = ""
+
+    # --- Proactive messaging (the bot reaches out first) ---
+    #: Hour (server local time, 0-23) for the opt-in morning check-in.
+    proactive_morning_hour: int = Field(default=9, ge=0, le=23)
+    #: Nudge users who've been quiet for at least this many days (0 disables).
+    proactive_idle_days: int = Field(default=3, ge=0)
 
     # --- Telegram bot ---
     telegram_bot_token: str = Field(default="", description="Bot token from @BotFather.")
     #: Optional comma-separated allowlist of Telegram user IDs (empty = open).
     telegram_allowed_users: str = ""
+    #: Comma-separated Telegram user IDs with access to the bot's admin panel.
+    telegram_admin_users: str = ""
+    #: Comma-separated Telegram user IDs treated as Pro (unlimited, all features)
+    #: with no licence or key needed — for close people / a ready-to-use gift bot.
+    telegram_vip_users: str = ""
+    #: Allow the assistant to SEND Telegram messages/posts as a tool (outbound).
+    telegram_send_enabled: bool = False
+    #: Default channel (@channelusername or chat id) for the telegram_post tool.
+    telegram_channel: str = ""
+    #: If set (e.g. "@jar_v1_s"), users must join this channel before they can
+    #: use the bot — a subscription gate checked on every interaction.
+    telegram_required_channel: str = ""
 
     def telegram_allowlist(self) -> set[int]:
         """Parsed set of allowed Telegram user IDs (empty = everyone)."""
@@ -166,16 +325,31 @@ class Settings(BaseSettings):
                 ids.add(int(part))
         return ids
 
+    def telegram_admins(self) -> set[int]:
+        """Parsed set of Telegram user IDs allowed to use the admin panel."""
+        return _parse_ids(self.telegram_admin_users)
+
+    def telegram_vips(self) -> set[int]:
+        """Parsed set of VIP Telegram user IDs (always Pro, no setup needed)."""
+        return _parse_ids(self.telegram_vip_users)
+
     def active_api_key(self) -> str:
-        """Return the API key for the currently selected provider."""
-        return (
-            self.anthropic_api_key
-            if self.llm_provider == "anthropic"
-            else self.openai_api_key
-        )
+        """Return the API key for the currently selected provider.
+
+        Local backends need no cloud key, so a placeholder is returned to mark
+        them as "credentialed" (see :meth:`has_llm_credentials`).
+        """
+        return {
+            "anthropic": self.anthropic_api_key,
+            "openai": self.openai_api_key,
+            "openrouter": self.openrouter_api_key,
+            "local": self.local_llm_api_key or "local",
+        }.get(self.llm_provider, "")
 
     def has_llm_credentials(self) -> bool:
-        """Whether an API key is configured for the active provider."""
+        """Whether the active provider is usable (key set, or a local model)."""
+        if self.llm_provider == "local":
+            return bool(self.local_llm_model)
         return bool(self.active_api_key())
 
 

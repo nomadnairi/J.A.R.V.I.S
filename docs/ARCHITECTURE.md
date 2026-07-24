@@ -74,7 +74,7 @@ doesn't claim falls through to the language model.
 | Desktop / Raspberry Pi voice (mic & speaker) | planned |
 | More integrations (calendar, email) | planned |
 | Task automation (scheduler, workflows) | planned |
-| API layer (FastAPI + WebSocket) | planned |
+| API layer (FastAPI + WebSocket) | ✅ done |
 | Web dashboard | planned |
 
 ## Memory

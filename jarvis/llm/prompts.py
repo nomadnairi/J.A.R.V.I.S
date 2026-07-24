@@ -14,16 +14,28 @@ from datetime import datetime
 class PromptBuilder:
     """Builds system prompts for the assistant."""
 
-    def __init__(self, assistant_name: str, user_name: str) -> None:
+    def __init__(self, assistant_name: str, user_name: str,
+                 aliases: list[str] | None = None) -> None:
         self.assistant_name = assistant_name
         self.user_name = user_name
+        self.aliases = aliases or []
 
-    def persona(self) -> str:
-        """The core persona / behaviour contract."""
+    def persona(self, name: str | None = None) -> str:
+        """The core persona / behaviour contract.
+
+        Args:
+            name: Optional per-request assistant name (white-label override).
+                Falls back to the configured default.
+        """
+        assistant_name = name or self.assistant_name
+        also = ""
+        if self.aliases:
+            also = (f"The user may also address you as "
+                    f"{', '.join(self.aliases)}; respond to any of these.\n")
         return (
-            f"You are {self.assistant_name}, a highly capable, witty, and "
-            f"unfailingly loyal personal AI assistant modelled after Tony "
-            f"Stark's J.A.R.V.I.S.\n"
+            f"You are {assistant_name}, a highly capable, witty, and "
+            f"unfailingly loyal personal AI assistant.\n"
+            f"{also}"
             f"You address the user as '{self.user_name}'.\n\n"
             "Principles:\n"
             "- Be concise, precise, and proactive.\n"
@@ -34,7 +46,8 @@ class PromptBuilder:
         )
 
     def system_prompt(self, *, extra_context: str | None = None,
-                    include_time: bool = True, language: str | None = None) -> str:
+                    include_time: bool = True, language: str | None = None,
+                    assistant_name: str | None = None) -> str:
         """Assemble the full system prompt.
 
         Args:
@@ -44,7 +57,7 @@ class PromptBuilder:
             language: Human-readable language the assistant must reply in
                 (e.g. "Russian"). When omitted, the model matches the user.
         """
-        parts = [self.persona()]
+        parts = [self.persona(assistant_name)]
         if include_time:
             now = datetime.now().strftime("%A, %d %B %Y, %H:%M")
             parts.append(f"Current date and time: {now}.")

@@ -121,11 +121,20 @@ def test_session_manager_loader_populates():
 
 
 def test_prompt_builder_includes_persona_and_language():
-    pb = PromptBuilder("J.A.R.V.I.S.", "Sir")
+    pb = PromptBuilder("KER", "Sir")
     prompt = pb.system_prompt(language="Russian", extra_context="Note: X")
-    assert "J.A.R.V.I.S." in prompt
+    assert "KER" in prompt
     assert "reply to the user in Russian" in prompt
     assert "Note: X" in prompt
+
+
+def test_prompt_builder_aliases_and_name_override():
+    pb = PromptBuilder("KER", "Sir", aliases=["Jarvis"])
+    prompt = pb.system_prompt()
+    assert "KER" in prompt and "Jarvis" in prompt
+    # A per-request name overrides the default (white-label).
+    prompt2 = pb.system_prompt(assistant_name="Vesper")
+    assert "You are Vesper" in prompt2
 
 
 # -- context ----------------------------------------------------------------

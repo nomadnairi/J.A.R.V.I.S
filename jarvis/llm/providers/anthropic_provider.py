@@ -84,14 +84,16 @@ class AnthropicProvider(LLMProvider):
         self,
         messages: list[dict],
         system: str | None = None,
+        model: str | None = None,
     ) -> AsyncIterator[str]:
         if not self.api_key:
             raise LLMConfigError("Missing Anthropic API key.")
 
         client = self._ensure_client()
+        use_model = model or self.model
         try:
             async with client.messages.stream(  # type: ignore[attr-defined]
-                model=self.model,
+                model=use_model,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
                 system=system or "",
@@ -102,7 +104,7 @@ class AnthropicProvider(LLMProvider):
         except Exception as exc:  # noqa: BLE001
             raise LLMRequestError(
                 f"Anthropic stream failed: {exc}",
-                details={"model": self.model},
+                details={"model": use_model},
             ) from exc
 
     def continuation_messages(

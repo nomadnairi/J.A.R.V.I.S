@@ -1,15 +1,12 @@
 <div align="center">
 
-# 🤖 J.A.R.V.I.S.
+# KER
 
-### Just A Rather Very Intelligent System
+**Your own AI assistant — one you name, run, and actually own.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/Version-1.1.0-orange)](https://github.com/nomadnairi/J.A.R.V.I.S)
-[![Status](https://img.shields.io/badge/Status-Desktop%20Edition%20complete-brightgreen)](https://github.com/nomadnairi/J.A.R.V.I.S)
-
-**A modular personal AI assistant framework — inspired by Tony Stark's companion.**
+[![Version](https://img.shields.io/badge/Version-1.9.1-orange)](https://github.com/nomadnairi/K.E.R/releases)
 
 **English** · [Русский](README.ru.md) · [O'zbek](README.uz.md)
 
@@ -17,155 +14,100 @@
 
 ---
 
-## About
+## What this is
 
-J.A.R.V.I.S. is an open-source framework for building a personal AI assistant:
-an LLM-powered intelligence core, a plugin/skill system, tool calling, and a
-layered architecture designed to grow into voice, smart-home, and automation
-capabilities.
+KER is a personal AI assistant you host yourself. You talk to it in Telegram
+or in a desktop app, and behind the scenes it's a real engine — it remembers
+your conversations, calls tools to get things done, speaks and listens, runs
+tasks on a schedule, and can plug into your smart home.
 
-> **Project status:** the **Desktop Edition is feature-complete** — async
-> engine, LLM core with model-tier routing, memory, goals, autonomous agents,
-> tools (files, coding/shell, desktop control), a security module, integrations
-> (weather, smart home), and voice — reachable from the CLI and the Telegram
-> bot. Next up is the Smart-Home Edition (Raspberry Pi, wake word, sensors,
-> cameras). See [VISION.md](VISION.md) and [ROADMAP.md](ROADMAP.md).
+Two things make it different from "just another chatbot wrapper":
 
----
+- **It's yours.** No name is baked in. Call it KER, call it anything — each
+  person can name their own assistant, and it'll answer to that name (and to a
+  second nickname too, if you want). You bring your own API key, your own
+  server, your own data.
+- **It's a whole product, not a script.** A polished Telegram bot with buttons
+  instead of commands, a desktop "Command Deck" with a live dashboard,
+  accounts and subscription tiers, auto-updates — the pieces you'd actually
+  need if you wanted to give this to other people (or sell it).
 
-## What works today
+Everything runs locally. The simple stuff (time, math, diagnostics) works even
+without an API key.
 
-- **🧠 LLM core** — provider-agnostic client for **Anthropic (Claude)** and
-  **OpenAI (GPT)**, with automatic retry and fallback between providers.
-- **🔧 Tool / function calling** — an agentic loop where the model can call
-  tools (skills) to get things done, then answer with the results.
-- **🧩 Skill / plugin system** — deterministic, zero-cost handling of common
-  requests (date/time, calculator, system diagnostics) before hitting the LLM.
-- **🧠 Memory** — persistent conversation history (survives restarts) plus
-  semantic recall (RAG): the LLM distils **durable facts** from each turn and
-  recalls the relevant ones later. Async, SQLite-backed, with similarity
-  threshold + recency weighting; pluggable embeddings (offline / local / OpenAI).
-  Bounded per user, deduplicated, and **secret-redacted** — pasted tokens, API
-  keys and card numbers are never stored.
-- **⚡ Streaming** — token-by-token streamed replies in the CLI.
-- **💬 Telegram bot** — chat with the assistant from Telegram; each user gets
-  their own persistent session and memory. Localized UI (English / Russian /
-  Uzbek) with a command menu and inline language picker; the assistant replies
-  in the user's chosen language.
-- **🎙 Voice (in the bot)** — send a voice message; it's transcribed, answered,
-  and (optionally) spoken back. **Pluggable backends**: STT via OpenAI Whisper
-  API or **local Whisper** (free, offline); TTS via OpenAI, **edge-tts** or
-  **gTTS** (both free). Multilingual — replies in whatever language you spoke.
-- **🔌 Integrations** — external services exposed to the LLM as callable tools:
-  **weather** (Open-Meteo, free, no key) and **smart home** (Home Assistant).
-  A pluggable framework (connect/health/tool-bridge) makes adding more easy.
-- **🎯 Goals & 🤖 agents** — tracks your goals (and stays aware of them) and can
-  delegate multi-step work to an autonomous sub-agent (`run_agent`) that uses
-  tools until the task is done.
-- **🗂 Files & coding** — sandboxed read/write/search plus shell/test tools, so
-  it can work with your files and code (gated by the security module).
-- **🖥 Desktop control** — type, press keys, click, screenshot, open URLs.
-- **🔀 AI router** — sends simple turns to a fast model and complex ones to a
-  strong model, by transparent heuristics.
-- **🔒 Security** — dangerous capabilities (file write, shell, desktop) are
-  **off by default**, gated, and audited (with secrets redacted). Filesystem
-  sandbox, input validation, rate limiting. See [SECURITY.md](SECURITY.md).
-- **👥 Multi-session** — many independent conversations via a session manager.
-- **📡 Event-driven** — an internal pub/sub bus with passive telemetry.
-- **🖥️ Interactive CLI** — chat plus `/skills`, `/stats`, `/state`, `/reset`.
-
-Everything above runs locally; skill/tool commands work even without an API key.
+> **⚡ Free vs. full version.** What's here on GitHub is the **free core** —
+> enough to run your own assistant. The **full version** (all premium features
+> and higher limits) is available **only through the Telegram bot**, by
+> subscription. Start the bot: [@jar_v1_s](https://t.me/jar_v1_s).
 
 ---
 
-## Architecture
+## What it can do
 
-```
-┌───────────────────────────────────────────────┐
-│  Interfaces:  CLI (now)  ·  Web / API (planned)│
-└───────────────────────────┬───────────────────┘
-                           │  Request
-┌───────────────────────────▼───────────────────┐
-│                   JarvisEngine                 │
-│   StateMachine · Pipeline · SessionManager     │
-│        ┌───────────────┴───────────────┐       │
-│        ▼                               ▼       │
-│  SkillRegistry (tools)          LLMClient (AI) │
-│   fast path + tool exec       retry + fallback │
-└───────────────────────────┬───────────────────┘
-                           │ events
-        ┌───────────────────┼───────────────────┐
-        ▼                   ▼                   ▼
-   EventBus            Telemetry          Memory ·
-   (pub/sub)           (metrics)         Integrations
-```
+**Talk & remember.** Chat by text or voice. It keeps a real memory — it
+remembers your conversations across restarts and quietly distils lasting facts
+about you so it can bring them up later. Pasted passwords, tokens and card
+numbers are stripped out before anything is ever stored.
 
-Full details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The north-star
-vision and component status live in [VISION.md](VISION.md) and
-[ROADMAP.md](ROADMAP.md).
+**Actually do things.** The model doesn't just answer — it can call tools:
+search the web, read and write files, run shell commands, control the desktop,
+check the weather, talk to your smart home. Dangerous powers are off by default
+and switched on one at a time.
 
----
+**Plug in more tools (MCP).** KER speaks the Model Context Protocol, so any MCP
+server's tools show up as native skills the assistant can use. Point it at a
+config or add one at runtime from the dashboard.
 
-## Tech stack
+**Run on its own.** Tell it "every day at 9am give me a summary" or "check my
+email every 3 hours" and it schedules the task, does it, and reports back —
+then reschedules itself.
 
-| Area | Tools |
-|------|-------|
-| Language | Python 3.10+ |
-| Config | pydantic-settings |
-| LLM | Anthropic SDK, OpenAI SDK |
-| CLI | rich |
-| Testing | pytest, pytest-asyncio |
-| Lint / CI | ruff, GitHub Actions |
+**Speak your language.** Full interface and replies in English, Russian and
+Uzbek. Send a voice note and it transcribes, answers, and can speak back — in
+whatever language you used. Voice can run fully free and offline.
 
-Optional dependencies (vector DB, voice, FastAPI) are listed but kept inactive
-until the feature that needs them is enabled.
+**Bring your own brain.** Works with Anthropic (Claude), OpenAI (GPT),
+OpenRouter, or a local model (Ollama, LM Studio, vLLM, llama.cpp) — no cloud
+key needed if you go local. It retries and falls back automatically, and a
+router can send easy questions to a fast model and hard ones to a strong one.
 
 ---
 
-## Project structure
+## Make it yours (white-label)
 
-```
-jarvis/
-├── __main__.py        # interactive CLI (python -m jarvis)
-├── config/            # typed settings & constants
-├── core/              # engine, DI, pipeline, state, sessions, ratelimit, diagnostics
-├── llm/ · routing/    # provider-agnostic LLM client + model-tier AI router
-├── skills/            # skill/tool system + built-ins + ToolManager facade
-├── memory/            # persistent history + semantic recall (SQLite + vectors)
-├── goals/ · agents/   # goal system + autonomous sub-agents
-├── files/ · coding/   # sandboxed file tools + shell/coding tools
-├── desktop/           # desktop control (keyboard/mouse/screen)
-├── security/          # capability gating + audit
-├── integrations/      # external connectors as tools (weather, Home Assistant)
-├── voice/ · i18n/     # STT/TTS backends + localization (en/ru/uz)
-├── interfaces/        # Telegram bot (CLI lives in __main__.py)
-├── events/ · telemetry/  # pub/sub bus + metrics
-├── models/            # Message/Conversation, Request/Response
-└── utils/             # logging, retry, timing, exceptions, redaction, text
-tests/                 # pytest suite
-docs/                  # architecture documentation
+This is the part most assistants don't give you.
+
+- **Name it.** Ships as **KER**, but every user can rename their assistant from
+  the bot's settings — the new name shows up in the menu, in the replies, and
+  on the desktop dashboard. Operators can set a default name for the whole
+  deployment.
+- **Extra nicknames.** Set `ASSISTANT_ALIASES` and it'll answer to more than one
+  name — handy as a personal wake-word. (Left blank by default so a copy you
+  hand to someone else stays clean.)
+- **Your key, your server, your data.** Users can even bring their own API key
+  (BYOK). Nothing phones home.
+
+```env
+ASSISTANT_NAME=KER
+ASSISTANT_ALIASES=Jarvis   # optional — answers to both
 ```
 
 ---
 
 ## Quick start
 
-**Requirements:** Python 3.10+
+**You'll need:** Python 3.10+ and an API key (or a local model).
 
 ```bash
-# Clone
-git clone https://github.com/nomadnairi/J.A.R.V.I.S.git
-cd J.A.R.V.I.S
+git clone https://github.com/nomadnairi/K.E.R.git
+cd K.E.R
 
-# Install
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+source venv/bin/activate         # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Configure (add your API key)
-cp .env.example .env            # set ANTHROPIC_API_KEY or OPENAI_API_KEY
-
-# Run
+cp .env.example .env             # add ANTHROPIC_API_KEY (or OPENAI_API_KEY),
+                                 # or point it at a local model
 python -m jarvis
 ```
 
@@ -173,107 +115,112 @@ Prefer `make`? `make install`, `make run`, `make test`, `make lint`.
 
 ---
 
-## Usage
+## Talk to it in Telegram
 
-Inside the CLI:
-
-```
-Sir › calc (12.5/100)*320
-J.A.R.V.I.S. › (12.5/100)*320 = 40
-
-Sir › what time is it
-J.A.R.V.I.S. › It is 14:05.
-
-Sir › system status
-J.A.R.V.I.S. › All systems nominal. …
-
-Sir › /skills      # list skills and which are exposed as LLM tools
-Sir › /stats       # session telemetry
-Sir › /memory      # memory statistics
-Sir › /reset       # clear conversation (keeps long-term memory)
-Sir › /forget      # wipe history and long-term memory
-```
-
-Anything a skill doesn't handle is answered by the LLM (which may call tools
-along the way).
-
----
-
-## Telegram bot
-
-Chat with J.A.R.V.I.S. from Telegram. Each user gets their own persistent
-session, so the assistant remembers each person independently.
+The friendliest way to use KER. It's a button-driven bot — no commands to
+memorise — with per-user sessions, so it remembers each person separately.
 
 ```bash
-pip install aiogram            # optional interface dependency
+pip install aiogram
 
-# In your .env:
-#   TELEGRAM_BOT_TOKEN=...      (from @BotFather)
-#   ANTHROPIC_API_KEY=...       (or OPENAI_API_KEY)
+# .env:
+#   TELEGRAM_BOT_TOKEN=...   (from @BotFather)
+#   ANTHROPIC_API_KEY=...    (or OPENAI_API_KEY, or a local model)
 
 python -m jarvis.interfaces.telegram_bot     # or: jarvis-bot
 ```
 
-Bot commands: `/language` (switch UI/reply language), `/reset` (clear the
-current conversation), `/forget` (wipe everything remembered about you),
-`/help`. The command menu and interface are localized in **English, Russian and
-Uzbek**, and the assistant replies in the language each user picks. Access can
-be limited to specific user IDs via `TELEGRAM_ALLOWED_USERS`.
-
-**Voice messages:** send the bot a voice note — it transcribes it, answers, and
-(optionally) replies with a spoken message. It understands and speaks any
-language, matching the one you used. Backends are configurable:
-
-- **STT** (`STT_BACKEND`): `openai` (Whisper API, paid) or `local`
-  (open-source Whisper — free & offline, `pip install openai-whisper`).
-- **TTS** (`TTS_BACKEND`): `openai` (paid), `edge` (free, `pip install edge-tts`)
-  or `gtts` (free, `pip install gTTS`).
-
-So you can run voice **fully free** (`STT_BACKEND=local`, `TTS_BACKEND=edge`) or
-with cloud quality. Other knobs: `VOICE_ENABLED`, `TTS_VOICE`, `VOICE_REPLIES`,
-`LOCAL_WHISPER_MODEL`.
+Inside the bot you get settings tucked into tidy nested menus: language, the
+assistant's name, your AI model, memory, voice, integrations, and more. Send a
+voice note and it'll answer by voice. There are subscription tiers (Free / Plus
+/ Pro) with per-plan limits if you want to run it as a product.
 
 ---
 
-## Roadmap
+## The desktop app — "Command Deck"
 
-| Area | Status |
-|------|--------|
-| Core: async engine, LLM, skills/tools, streaming, CLI, tests, CI | ✅ done |
-| Memory: persistent history + semantic recall | ✅ done |
-| Telegram bot (per-user sessions + memory) | ✅ done |
-| Voice in the bot: speech-to-text / text-to-speech (multilingual) | ✅ done |
-| Integrations framework + weather + smart home (Home Assistant) | ✅ done |
-| Desktop voice + Raspberry Pi (mic/speaker) | planned |
-| More integrations: calendar, email | planned |
-| Task automation: scheduler, workflows | planned |
-| API layer: FastAPI + WebSocket | planned |
-| Web dashboard | planned |
+`jarvis-desktop` is a real desktop app (PySide6, builds to a Windows `.exe`)
+with a live web dashboard inside it: an animated reactor home screen with system
+telemetry, a chat with history, the model catalogue, MCP servers, and settings —
+all wired to the real engine over a bundled local API, updating in real time.
 
----
+The owner runs it locally with full control of their PC; other people can sign
+in with a username/password or a **Telegram login code** the bot hands them, and
+get a limited version. It can check for and install updates on its own.
 
-## Contributing
-
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup,
-the layer layout, and how to add a skill. Please run `make test` and
-`make lint` before opening a pull request.
+Downloads (Windows installer + portable build) are on the
+[**Releases**](https://github.com/nomadnairi/K.E.R/releases) page. Build
+details for the `.exe` / `.apk` are in [docs/CLIENTS.md](docs/CLIENTS.md).
 
 ---
 
-## Contact
+## Put it on a server
 
-- Telegram (personal): [@deathgu11](https://t.me/deathgu11)
-- Telegram (channel): [@jar_v1_s](https://t.me/jar_v1_s)
-- Issues & feature requests: [GitHub Issues](https://github.com/nomadnairi/J.A.R.V.I.S/issues)
+Run the bot and the HTTP/WebSocket API on a VPS with Docker:
+
+```bash
+cp .env.example .env      # fill in your keys
+docker compose up -d --build
+```
+
+The bot uses long-polling (no inbound port), the API listens on `:8000`, and
+both share persistent `data/` and `logs/` volumes. A systemd unit, an nginx +
+TLS example and a security checklist are in [docs/DEPLOY.md](docs/DEPLOY.md).
+
+Other apps can talk to the same engine over the API — `GET /health`,
+`POST /chat`, and a `/ws/{session}` WebSocket for streaming. Set `API_KEY`
+before you expose it publicly.
 
 ---
 
-## License
+## Under the hood
+
+Python 3.10+, async throughout. A provider-agnostic LLM client with retry and
+fallback, a skill/tool system with a fast deterministic path, SQLite-backed
+memory with semantic recall, a pub/sub event bus, a capability-gated security
+layer, FastAPI + WebSocket, and an aiogram Telegram bot. Config is typed
+(pydantic-settings). Tested with pytest and linted with ruff on every commit.
+
+```
+jarvis/
+├── core/            engine, pipeline, sessions, rate limiting, diagnostics
+├── llm/ · routing/  provider-agnostic LLM client + model-tier router
+├── skills/ · mcp/   built-in tools + Model Context Protocol client
+├── memory/          persistent history + semantic recall (RAG)
+├── voice/ · i18n/   STT/TTS backends + EN/RU/UZ localisation
+├── integrations/    weather, Home Assistant, per-user connectors
+├── interfaces/      Telegram bot, reminders, automations
+├── desktop_app/     PySide6 app + live Command Deck dashboard
+├── api/             FastAPI + WebSocket server
+├── licensing/ · billing/   accounts, login codes, plans
+└── security/        capability gating + audit
+```
+
+The bigger picture and component status live in [VISION.md](VISION.md) and
+[ROADMAP.md](ROADMAP.md); the design is in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+---
+
+## What's next
+
+Done: the assistant core, memory, the Telegram bot, voice, integrations, the
+API, the desktop Command Deck, MCP, task automation, auto-updates, accounts and
+tiers, and full white-label naming.
+
+On the way: an always-listening voice assistant on a Raspberry Pi (say the name
+from across the room), more integrations (calendar, email), and multi-room
+setups.
+
+---
+
+## Contributing & contact
+
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md), and please run
+`make test` and `make lint` first.
+
+- Telegram: [@deathgu11](https://t.me/deathgu11)
+- Channel: [@jar_v1_s](https://t.me/jar_v1_s)
+- Bugs & ideas: [GitHub Issues](https://github.com/nomadnairi/K.E.R/issues)
 
 Licensed under the [MIT License](LICENSE).
-
-<div align="center">
-
-*Built for intelligent automation.* 🤖
-
-</div>

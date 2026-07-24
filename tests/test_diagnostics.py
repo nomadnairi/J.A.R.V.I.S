@@ -14,6 +14,7 @@ def _engine(**overrides) -> JarvisEngine:
     settings = Settings(
         log_file="", memory_enabled=False, integrations_enabled=False,
         goals_enabled=False, rate_limit_enabled=False, memory_db_path=":memory:",
+        anthropic_api_key="k", telegram_bot_token="t",
         **overrides,
     )
     return JarvisEngine(container=ServiceContainer(
@@ -43,3 +44,10 @@ def test_diagnose_reports_tools_and_security():
 
 def test_all_ok_helper():
     assert all_ok(diagnose(_engine())) is True
+
+
+def test_config_check_present_and_clean():
+    checks = {c.name: c for c in diagnose(_engine())}
+    assert "config" in checks
+    assert checks["config"].ok is True
+    assert "no issues" in checks["config"].detail

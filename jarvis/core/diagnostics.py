@@ -66,6 +66,28 @@ def diagnose(engine) -> list[Check]:
     count = engine.tools.count()
     checks.append(Check("tools", count > 0, f"{count} tools available"))
 
+    # Configuration Manager — cross-field validation (errors fail the check).
+    from jarvis.config.manager import ConfigManager
+    issues = ConfigManager(engine.settings).validate()
+    errors = [i for i in issues if i.level == "error"]
+    warnings = [i for i in issues if i.level == "warning"]
+    if errors:
+        detail = "; ".join(f"{i.key}: {i.message}" for i in errors)
+    elif warnings:
+        detail = "warnings — " + "; ".join(i.key for i in warnings)
+    else:
+        detail = "no issues"
+    checks.append(Check("config", not errors, detail))
+
+    # Security self-audit — informational (dangerous caps flagged, never fails).
+    from jarvis.security.audit import audit_settings, worst_severity
+    findings = audit_settings(engine.settings)
+    worst = worst_severity(findings)
+    checks.append(Check(
+        "security_audit", True,
+        f"{len(findings)} finding(s), worst={worst}" if findings
+        else "hardened defaults"))
+
     return checks
 
 

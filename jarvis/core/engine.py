@@ -68,6 +68,7 @@ class JarvisEngine:
         self.security = self.container.security  # capability gate + audit
         self.router = self.container.router  # model-tier routing
         self.tools = self.container.tool_manager  # tool governance/introspection
+        self.mcp = self.container.mcp_manager  # None unless MCP is enabled
 
         # Per-engine state. When memory is on, new sessions reload their
         # persisted history transparently via the loader.
@@ -105,12 +106,33 @@ class JarvisEngine:
     async def start(self) -> None:
         await self.bus.emit(EventType.STARTUP, source="engine")
         await self._connect_integrations()
+        await self._connect_mcp()
 
     async def shutdown(self) -> None:
         await self.drain()
         if self.integrations is not None:
             await self.integrations.disconnect_all()
+        if self.mcp is not None:
+            await self.mcp.stop()
         await self.bus.emit(EventType.SHUTDOWN, source="engine")
+
+    async def _connect_mcp(self) -> None:
+        """Connect MCP servers and register their tools as skills."""
+        if self.mcp is None:
+            return
+        try:
+            skills = await self.mcp.start()
+        except Exception as exc:  # noqa: BLE001 - MCP must never block startup
+            logger.warning("MCP startup failed: %s", exc)
+            return
+        for skill in skills:
+            try:
+                self.skills.register(skill)
+            except Exception as exc:  # noqa: BLE001 - skip duplicates/bad tools
+                logger.warning("Could not register MCP skill %r: %s",
+                            skill.name, exc)
+        if skills:
+            logger.info("MCP: mounted %d external tool(s).", len(skills))
 
     async def _connect_integrations(self) -> None:
         if self.integrations is None:
@@ -189,13 +211,17 @@ class JarvisEngine:
         system = self.prompts.system_prompt(
             extra_context=await self._context(request.text, session.session_id),
             language=self._language(session),
+            assistant_name=self._assistant_name(session),
         )
         await self.state.transition(AssistantState.THINKING)
         await self.bus.emit(EventType.LLM_REQUEST, source=self.settings.llm_provider)
 
+        model_id, profile = self._model_selection(session)
+        override = self._byok_provider(session)
         chunks: list[str] = []
         async for chunk in self.llm.stream(
-            session.conversation.to_provider_format(), system=system
+            session.conversation.to_provider_format(), system=system,
+            profile=profile, model=model_id, override=override,
         ):
             chunks.append(chunk)
             yield chunk
@@ -206,6 +232,34 @@ class JarvisEngine:
                                 semantic=True)
         await self.bus.emit(EventType.RESPONSE_READY, source=self.settings.llm_provider)
         await self.state.transition(AssistantState.IDLE)
+
+    def _model_selection(self, session) -> tuple[str | None, str | None]:
+        """Resolve ``(model, profile)`` from the session scratch.
+
+        A specific catalog model (``model_id``) is routed through the
+        OpenRouter profile; otherwise only the user's chosen profile applies.
+        """
+        model_id = session.scratch.get("model_id")
+        if model_id:
+            return model_id, "openrouter"
+        return None, session.scratch.get("model_profile")
+
+    def _byok_provider(self, session):
+        """Build an ad-hoc provider from the user's own key (BYOK), or None."""
+        byok = session.scratch.get("byok")
+        if not byok or not byok.get("key"):
+            return None
+        from jarvis.llm.providers import PROVIDER_REGISTRY
+        cls = PROVIDER_REGISTRY.get(byok.get("provider", ""))
+        if cls is None:
+            return None
+        return cls(
+            api_key=byok["key"],
+            model=byok.get("model") or "",
+            temperature=self.settings.llm_temperature,
+            max_tokens=self.settings.llm_max_tokens,
+            base_url=byok.get("base_url", ""),
+        )
 
     # -- core handler (wrapped by the pipeline) ----------------------------
 
@@ -265,9 +319,14 @@ class JarvisEngine:
         system = self.prompts.system_prompt(
             extra_context=await self._context(request.text, session.session_id),
             language=self._language(session),
+            assistant_name=self._assistant_name(session),
         )
         tools = self.skills.tool_specs()
-        model = self.router.model_for(request.text)  # None → provider default
+        model_id, profile = self._model_selection(session)
+        override = self._byok_provider(session)
+        # A specific catalog model wins everywhere (incl. on a BYOK key); else
+        # BYOK uses its own default and the router picks a tier.
+        model = model_id or (None if override else self.router.model_for(request.text))
         messages = session.conversation.to_provider_format()
         total_tokens = 0
         result = None
@@ -275,8 +334,10 @@ class JarvisEngine:
         with measure() as sw:
             await self.bus.emit(EventType.LLM_REQUEST, source=self.settings.llm_provider)
             for _ in range(self.settings.max_tool_rounds):
-                result = await self.llm.complete(messages, system=system,
-                                                tools=tools, model=model)
+                result = await self.llm.complete(
+                    messages, system=system, tools=tools, model=model,
+                    profile=profile, override=override,
+                )
                 total_tokens += result.total_tokens
 
                 if not result.wants_tools:
@@ -343,6 +404,11 @@ class JarvisEngine:
         """Human-readable language the assistant should reply in, if set."""
         code = session.scratch.get("language")
         return language_name(code) if code else None
+
+    @staticmethod
+    def _assistant_name(session: SessionContext) -> str | None:
+        """A per-user assistant name (white-label override), if set."""
+        return session.scratch.get("assistant_name") or None
 
     async def _persist_turn(self, session_id: str, user: str, assistant: str, *,
                             semantic: bool) -> None:

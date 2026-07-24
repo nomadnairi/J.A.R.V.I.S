@@ -17,7 +17,7 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 | Capability | Status | Notes |
 |------------|--------|-------|
 | Text Interface | ✅ | CLI + Telegram bot |
-| Voice Interface | 🟡 | In the bot (STT/TTS, pluggable, multilingual). Desktop mic/speaker + wake word planned |
+| Voice Interface | ✅ | Bot (STT/TTS, pluggable, multilingual) + desktop mic/speaker tab. Wake word planned |
 | Memory | ✅ | Persistent history + semantic recall + facts; bounded, deduped, secret-redacted |
 | Tool Manager | ✅ | Skill/tool registry + governance facade (list/categorize/disable) |
 | Goal System | ✅ | Per-session goals; LLM tools to add/list/complete/cancel; open goals surfaced in context |
@@ -54,6 +54,30 @@ Legend: ✅ done · 🟡 partial · ⬜ planned
 | Item | Status |
 |------|--------|
 | Telegram bot | ✅ |
-| Desktop voice app | ⬜ |
-| API layer (FastAPI + WebSocket) | ⬜ |
+| API layer (FastAPI + WebSocket + streaming /chat/stream) | ✅ |
+| Deployment: Docker + Compose + systemd | ✅ |
+| Desktop voice (mic/speaker tab in the app) | ✅ |
+| Desktop (exe) & mobile (apk) clients | ✅ |
 | Web dashboard | ⬜ (later) |
+
+## Autonomous Freelance Agent (next major phase)
+
+J.A.R.V.I.S. working as an autonomous contractor on the owner's behalf —
+taking orders, talking to clients, and doing the work end to end. Planned
+after the current build is field-tested.
+
+| Capability | Status |
+|------------|--------|
+| Accept a client brief / technical spec | ⬜ |
+| Ask clarifying questions | ⬜ |
+| Draft a project plan | ⬜ |
+| Estimate cost | ⬜ |
+| Estimate timeline | ⬜ |
+| Scaffold the project structure | ⬜ |
+| Write part of the code autonomously | ⬜ |
+| Run tests on its own work | ⬜ |
+| Prepare documentation | ⬜ |
+| Report progress to the owner/client | ⬜ |
+
+Foundation already in place: Agent System (sub-agents), Goal System, file &
+coding tools, `run_tests`, Telegram send/post tools, memory.

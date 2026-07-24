@@ -46,7 +46,7 @@ class FakeProvider(LLMProvider):
             output_tokens=5,
         )
 
-    async def stream(self, messages, system=None) -> AsyncIterator[str]:  # type: ignore[override]
+    async def stream(self, messages, system=None, model=None) -> AsyncIterator[str]:  # type: ignore[override]
         for chunk in self.stream_chunks:
             yield chunk
 

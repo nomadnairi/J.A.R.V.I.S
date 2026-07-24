@@ -1,0 +1,133 @@
+name: Desktop builds
+
+# Builds the desktop app for supported platforms/architectures.
+# PyInstaller cannot cross-compile, so each target runs on a native runner.
+#
+# Triggers:
+#   - manually (workflow_dispatch) → pick which platforms to build; artifacts
+#     are downloadable from the run page. Defaults to Windows only, which is
+#     the fastest (macOS runners in particular can queue for a long time).
+#   - on a version tag (v*)        → always builds every platform and attaches
+#     the binaries to the GitHub Release.
+#
+# Note: 32-bit Windows (x86) is not possible — Qt 6 / PySide6 ship 64-bit
+# packages only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: "Platforms to build"
+        type: choice
+        default: windows
+        options:
+          - windows   # windows-amd64 only (fastest)
+          - fast      # windows-amd64 + linux-amd64
+          - all       # every platform + arch (slow: includes macOS/arm)
+  push:
+    # Accept both "v1.6.1" and a bare "1.6.1" so a missing 'v' doesn't
+    # silently skip the release build.
+    tags: ["v*", "[0-9]*"]
+
+# Needed so the build can attach binaries to the GitHub Release.
+permissions:
+  contents: write
+
+jobs:
+  # Choose the build matrix. A tag push always builds everything; a manual run
+  # builds only what you asked for, so grabbing a Windows exe doesn't wait on
+  # the slow macOS/arm runners.
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - id: pick
+        shell: bash
+        run: |
+          windows='{"include":[{"os":"windows-latest","target":"windows-amd64","experimental":false}]}'
+          fast='{"include":[{"os":"windows-latest","target":"windows-amd64","experimental":false},{"os":"ubuntu-latest","target":"linux-amd64","experimental":false}]}'
+          all='{"include":[{"os":"windows-latest","target":"windows-amd64","experimental":false},{"os":"windows-11-arm","target":"windows-arm64","experimental":true},{"os":"ubuntu-latest","target":"linux-amd64","experimental":false},{"os":"ubuntu-24.04-arm","target":"linux-arm64","experimental":false},{"os":"macos-13","target":"macos-amd64","experimental":false},{"os":"macos-latest","target":"macos-arm64","experimental":false}]}'
+          if [ "${{ github.event_name }}" = "push" ]; then
+            sel="$all"
+          else
+            case "${{ inputs.targets }}" in
+              all)  sel="$all" ;;
+              fast) sel="$fast" ;;
+              *)    sel="$windows" ;;
+            esac
+          fi
+          echo "matrix=$sel" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: setup
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Qt system libraries (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libopengl0 libxkbcommon0 libxkbcommon-x11-0 \
+            libdbus-1-3 libfontconfig1
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[gui]" pyinstaller
+
+      - name: Build
+        env:
+          JARVIS_BUILD_NAME: KER-${{ matrix.target }}
+        run: pyinstaller deploy/desktop/jarvis-desktop.spec
+
+      - name: Build Windows installer
+        if: matrix.target == 'windows-amd64'
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $exe = (Get-ChildItem dist -Filter *.exe | Select-Object -First 1).FullName
+          $env:JARVIS_EXE = $exe
+          $ver = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" -replace '^v','' } else { "1.9.1" }
+          $env:JARVIS_VERSION = $ver
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /Odist deploy/desktop/installer.iss
+          Write-Host "Installer built:"; Get-ChildItem dist -Filter *Setup*.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: KER-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+
+      # Manual publish: a workflow_dispatch run creates the public release
+      # itself (the Action's GITHUB_TOKEN has contents: write), so a tag can
+      # be cut without local tag-push access. Windows job carries the
+      # exe + installer.
+      - name: Publish release (manual dispatch)
+        if: github.event_name == 'workflow_dispatch' && matrix.target == 'windows-amd64'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.9.1
+          name: "KER v1.9.1"
+          body_path: docs/RELEASE_NOTES_v1.9.1.md
+          prerelease: true
+          files: dist/*

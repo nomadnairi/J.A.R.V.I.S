@@ -25,7 +25,8 @@ T = TypeVar("T")
 def _next_delay(delay: float, max_delay: float, jitter: bool) -> float:
     sleep_for = min(delay, max_delay)
     if jitter:
-        sleep_for += random.uniform(0, sleep_for * 0.1)
+        # Non-security: retry jitter only, no cryptographic requirement.
+        sleep_for += random.uniform(0, sleep_for * 0.1)  # noqa: S311  # nosec B311
     return sleep_for
 
 

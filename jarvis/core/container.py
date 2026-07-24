@@ -117,6 +117,7 @@ class ServiceContainer:
 
     def _build_integrations(self) -> IntegrationManager:
         from jarvis.integrations.homeassistant import HomeAssistantIntegration
+        from jarvis.integrations.telegram_channel import TelegramIntegration
         from jarvis.integrations.weather import WeatherIntegration
 
         manager = IntegrationManager()
@@ -128,7 +129,26 @@ class ServiceContainer:
                 self._settings.homeassistant_token,
             )
         )
+        manager.register(
+            TelegramIntegration(
+                self._settings.telegram_bot_token,
+                enabled=self._settings.telegram_send_enabled,
+                default_channel=self._settings.telegram_channel,
+            )
+        )
         return manager
+
+    @cached_property
+    def mcp_manager(self):
+        """MCP client manager (None unless MCP is enabled and servers configured)."""
+        if not self._settings.mcp_enabled:
+            return None
+        from jarvis.mcp.config import load_servers
+        from jarvis.mcp.manager import MCPManager
+        servers = load_servers(self._settings)
+        if not servers:
+            return None
+        return MCPManager(servers)
 
     @cached_property
     def router(self):
@@ -145,6 +165,7 @@ class ServiceContainer:
         return PromptBuilder(
             assistant_name=self._settings.assistant_name,
             user_name=self._settings.user_name,
+            aliases=self._settings.alias_list(),
         )
 
     @cached_property
@@ -177,6 +198,13 @@ class ServiceContainer:
             from jarvis.desktop.controller import DesktopController
             from jarvis.desktop.tools import desktop_skills
             registry.register_many(desktop_skills(DesktopController(self.security)))
+        # Expose the web-search tool (gated by SEARCH_ENABLED; keyless
+        # DuckDuckGo fallback means it works even with no API keys).
+        if self._settings.search_enabled:
+            from jarvis.search.manager import SearchManager
+            from jarvis.search.tools import search_skills
+            registry.register_many(
+                search_skills(SearchManager.from_settings(self._settings)))
         # Expose the run_agent tool (delegating to an autonomous sub-agent).
         if self._settings.agents_enabled:
             from jarvis.agents.tools import RunAgentSkill

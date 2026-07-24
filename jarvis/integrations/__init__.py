@@ -7,6 +7,7 @@ the LLM can call:
     IntegrationManager        — lifecycle + tool installation.
     WeatherIntegration        — current weather (Open-Meteo, free, no key).
     HomeAssistantIntegration  — smart-home control via Home Assistant.
+    TelegramIntegration       — outbound Telegram messages / channel posts.
 
 All integrations implement :class:`BaseIntegration`.
 """
@@ -19,6 +20,7 @@ from jarvis.integrations.base import (
 )
 from jarvis.integrations.homeassistant import HomeAssistantIntegration
 from jarvis.integrations.manager import IntegrationManager
+from jarvis.integrations.telegram_channel import TelegramIntegration
 from jarvis.integrations.weather import WeatherIntegration
 
 __all__ = [
@@ -29,4 +31,5 @@ __all__ = [
     "IntegrationState",
     "WeatherIntegration",
     "HomeAssistantIntegration",
+    "TelegramIntegration",
 ]

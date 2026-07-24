@@ -42,6 +42,19 @@ class ReadFileSkill(_FileSkill):
             return SkillResult(text=f"Cannot read file: {exc}")
 
 
+class ReadDocumentSkill(_FileSkill):
+    name = "read_document"
+    description = ("Extract text from a document in the workspace "
+                "(PDF, DOCX, or plain text) for reading or summarising.")
+    parameters = _PATH
+
+    async def execute(self, path: str = "", **_: object) -> SkillResult:
+        try:
+            return SkillResult(text=await self.files.read_document(path))
+        except JarvisError as exc:
+            return SkillResult(text=f"Cannot read document: {exc}")
+
+
 class WriteFileSkill(_FileSkill):
     name = "write_file"
     description = "Write text to a file in the workspace (may be disabled by policy)."
@@ -98,6 +111,7 @@ class SearchFilesSkill(_FileSkill):
 def file_skills(files: FileManager) -> list[BaseSkill]:
     return [
         ReadFileSkill(files),
+        ReadDocumentSkill(files),
         WriteFileSkill(files),
         ListFilesSkill(files),
         SearchFilesSkill(files),
